@@ -1,21 +1,24 @@
-#See https://aka.ms/customizecontainer to learn how to customize your debug container and how Visual Studio uses this Dockerfile to build your images for faster debugging.
+ARG TAG=6.0-alpine
 
-FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
+FROM mcr.microsoft.com/dotnet/aspnet:${TAG} AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:${TAG} AS build
 WORKDIR /src
-COPY ["TraderEngine.API/TraderEngine.API.csproj", "TraderEngine.API/"]
-RUN dotnet restore "TraderEngine.API/TraderEngine.API.csproj"
 COPY . .
-WORKDIR "/src/TraderEngine.API"
-RUN dotnet build "TraderEngine.API.csproj" -c Release -o /app/build
+RUN dotnet restore "TraderEngine.API/TraderEngine.API.csproj"
+
+WORKDIR /src/TraderEngine.API
+ARG MODE=Release
+RUN dotnet build "TraderEngine.API.csproj" -c ${MODE} -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "TraderEngine.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+ARG MODE=Release
+RUN dotnet publish "TraderEngine.API.csproj" -c ${MODE} -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
+RUN apk add -U --no-cache tzdata
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "TraderEngine.API.dll"]

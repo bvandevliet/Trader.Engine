@@ -1,0 +1,20 @@
+version: '3.4'
+
+services:
+  traderengine.api:
+    build:
+      args:
+        - TAG=6.0-alpine
+        - MODE=Debug
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "${PORT_API}:80"
+
+  traderengine.cli:
+    build:
+      args:
+        - TAG=6.0-alpine
+        - MODE=Debug
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development

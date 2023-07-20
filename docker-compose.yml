@@ -1,0 +1,24 @@
+version: '3.4'
+
+services:
+  traderengine.api:
+    image: ${DOCKER_REGISTRY-}traderengineapi
+    build:
+      context: .
+      dockerfile: TraderEngine.API/Dockerfile
+      args:
+        - TAG=6.0-alpine-arm64v8
+    tty: true
+    environment:
+      - TZ=Europe/Amsterdam
+
+  traderengine.cli:
+    image: ${DOCKER_REGISTRY-}traderenginecli
+    build:
+      context: .
+      dockerfile: TraderEngine.CLI/Dockerfile
+      args:
+        - TAG=6.0-alpine-arm64v8
+    tty: true
+    environment:
+      - TZ=Europe/Amsterdam
