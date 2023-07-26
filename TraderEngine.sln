@@ -20,6 +20,8 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TraderEngine.Common", "TraderEngine.Common\TraderEngine.Common.csproj", "{974F2738-41AC-40D4-9520-830004E21453}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TraderEngine.CommonTests", "TraderEngine.CommonTests\TraderEngine.CommonTests.csproj", "{8E6F9944-0A9B-4779-B03F-B1907429C156}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -42,6 +44,10 @@ Global
 		{974F2738-41AC-40D4-9520-830004E21453}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{974F2738-41AC-40D4-9520-830004E21453}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{974F2738-41AC-40D4-9520-830004E21453}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
