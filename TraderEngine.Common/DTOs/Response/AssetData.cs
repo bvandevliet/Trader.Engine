@@ -1,6 +1,6 @@
 namespace TraderEngine.Common.DTOs.Response;
 
-public class AssetDataDto
+public class AssetData
 {
   public string BaseSymbol { get; set; } = null!;
 
