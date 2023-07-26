@@ -14,6 +14,11 @@ public class MarketCapData
   public double MarketCap { get; set; }
 
   /// <summary>
+  /// Array of tags associated with this asset.
+  /// </summary>
+  public List<string> Tags { get; set; } = new();
+
+  /// <summary>
   /// Timestamp of the last time this asset's market data was updated.
   /// </summary>
   public DateTime Updated { get; set; }
