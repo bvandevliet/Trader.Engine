@@ -3,7 +3,7 @@ using TraderEngine.Common.DTOs.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
 
-namespace TraderEngine.API.Services;
+namespace TraderEngine.API.Exchanges;
 
 public interface IExchange
 {

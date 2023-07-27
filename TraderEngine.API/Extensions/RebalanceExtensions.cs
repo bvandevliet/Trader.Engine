@@ -1,5 +1,5 @@
+using TraderEngine.API.Exchanges;
 using TraderEngine.API.Extensions;
-using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.Request;
 using TraderEngine.Common.DTOs.Response;
 using TraderEngine.Common.Models;
@@ -117,17 +117,12 @@ public static partial class Trader
   /// <returns></returns>
   public static OrderDto ConstructBuyOrder(this IExchange @this, Allocation curAlloc, decimal amountQuote)
   {
-    // Expected fee.
-    decimal feeExpected =
-      @this.TakerFee * amountQuote;
-
     return new OrderDto(
       curAlloc.Market,
       Common.Enums.OrderSide.Buy,
       Common.Enums.OrderType.Market)
     {
       AmountQuote = amountQuote,
-      FeeExpected = feeExpected,
     };
   }
 
@@ -140,23 +135,22 @@ public static partial class Trader
   /// <returns></returns>
   public static OrderDto ConstructSellOrder(this IExchange @this, Allocation curAlloc, decimal amountQuote)
   {
-    // Prevent dust.
-    bool terminatePosition =
-      curAlloc.AmountQuote - amountQuote <= @this.MinimumOrderSize;
-
-    // Expected fee.
-    decimal feeExpected = !terminatePosition
-      ? @this.TakerFee * amountQuote
-      : @this.TakerFee * curAlloc.AmountQuote;
-
-    return new OrderDto(
+    var order = new OrderDto(
       curAlloc.Market,
       Common.Enums.OrderSide.Sell,
-      Common.Enums.OrderType.Market)
+      Common.Enums.OrderType.Market);
+
+    // Prevent dust.
+    if (curAlloc.AmountQuote - amountQuote <= @this.MinimumOrderSize)
     {
-      Amount = !terminatePosition ? amountQuote / curAlloc.Price : curAlloc.Amount,
-      FeeExpected = feeExpected,
-    };
+      order.Amount = curAlloc.Amount;
+    }
+    else
+    {
+      order.AmountQuote = amountQuote;
+    }
+
+    return order;
   }
 
   /// <summary>
@@ -166,7 +160,8 @@ public static partial class Trader
   /// <param name="this"></param>
   /// <param name="allocQuoteDiffs"></param>
   /// <returns></returns>
-  public static async Task<Order[]> SellOveragesAndVerify(this IExchange @this, IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs)
+  public static async Task<Order[]> SellOveragesAndVerify(
+    this IExchange @this, IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs)
   {
     var sellTasks = new List<Task<Order>>();
 
@@ -201,7 +196,8 @@ public static partial class Trader
   /// <param name="newAssetAllocs"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
-  public static async Task<Order[]> SellOveragesAndVerify(this IExchange @this, IEnumerable<AbsAssetAllocDto> newAssetAllocs, Balance? curBalance = null)
+  public static async Task<Order[]> SellOveragesAndVerify(
+    this IExchange @this, IEnumerable<AbsAssetAllocDto> newAssetAllocs, Balance? curBalance = null)
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
@@ -220,7 +216,8 @@ public static partial class Trader
   /// <param name="this"></param>
   /// <param name="newAssetAllocs"></param>
   /// <returns></returns>
-  public static async Task<Order[]> BuyUnderages(this IExchange @this, IEnumerable<AbsAssetAllocDto> newAssetAllocs, Balance? curBalance = null)
+  public static async Task<Order[]> BuyUnderages(
+    this IExchange @this, IEnumerable<AbsAssetAllocDto> newAssetAllocs, Balance? curBalance = null)
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
