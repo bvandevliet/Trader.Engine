@@ -28,7 +28,7 @@ public class Worker
   {
     if (_appArgs.DoUpdateMarketCap || _appArgs.DoAutomatedTriggers)
     {
-      IEnumerable<MarketCapData> latest = await _marketCapExtRepo.ListLatest("EUR");
+      IEnumerable<MarketCapDataDto> latest = await _marketCapExtRepo.ListLatest("EUR");
 
       await _marketCapIntRepo.InsertMany(latest);
     }

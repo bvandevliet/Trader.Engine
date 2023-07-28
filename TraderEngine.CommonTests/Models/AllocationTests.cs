@@ -16,7 +16,7 @@ public class AllocationTests
     private bool _amountQuoteUpdate = false;
 
     public AllocationWrapper(
-      MarketDto market,
+      MarketReqDto market,
       decimal price,
       decimal? amount = null)
       : base(market, price, amount)
@@ -38,7 +38,7 @@ public class AllocationTests
     decimal amount = 25;
 
     // Create instance.
-    var alloc = new AllocationWrapper(new MarketDto(_quoteSymbol, _baseSymbol), price, amount);
+    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
 
     // Test if quote amounts are correct.
     Assert.AreEqual(amount * price, alloc.AmountQuote);
@@ -50,7 +50,7 @@ public class AllocationTests
     decimal price = 15;
     decimal amount = 25;
 
-    var alloc = new AllocationWrapper(new MarketDto(_quoteSymbol, _baseSymbol), price, amount);
+    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
 
     price = alloc.Price = 10; // was 15
 
@@ -69,7 +69,7 @@ public class AllocationTests
     decimal price = 15;
     decimal amount = 25;
 
-    var alloc = new AllocationWrapper(new MarketDto(_quoteSymbol, _baseSymbol), price, amount);
+    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
 
     amount = alloc.Amount = 30; // was 25
 
@@ -93,7 +93,7 @@ public class AllocationTests
     decimal price = 15;
     decimal amount = 25;
 
-    var alloc = new AllocationWrapper(new MarketDto(_quoteSymbol, _baseSymbol), price, amount);
+    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
 
     amount = alloc.Amount = 20; // was 25
 
@@ -118,7 +118,7 @@ public class AllocationTests
     decimal amount = 25;
     decimal amountQuote = amount * price;
 
-    var alloc = new AllocationWrapper(new MarketDto(_quoteSymbol, _baseSymbol), price, amount);
+    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
 
     alloc.AmountQuote = amountQuote += 5;
     amount = amountQuote / price;
@@ -143,7 +143,7 @@ public class AllocationTests
     decimal price = 15;
     decimal amount = 25;
 
-    var alloc = new AllocationWrapper(new MarketDto(_quoteSymbol, _baseSymbol), price, amount);
+    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
 
     decimal amountQuote = alloc.AmountQuote = amount = 0;
 

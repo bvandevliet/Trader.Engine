@@ -24,21 +24,21 @@ public interface IExchange
   Task<object> WithdrawHistory();
 
   // TODO: ASIGN TYPE !!
-  Task<object> GetCandles(MarketDto market, CandleInterval interval, int limit);
+  Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit);
 
-  Task<bool> IsTradable(MarketDto market);
+  Task<bool> IsTradable(MarketReqDto market);
 
-  Task<decimal> GetPrice(MarketDto market);
+  Task<decimal> GetPrice(MarketReqDto market);
 
-  Task<Order> NewOrder(OrderDto order);
+  Task<OrderDto> NewOrder(OrderReqDto order);
 
-  Task<Order?> GetOrder(string orderId, MarketDto? market = null);
+  Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null);
 
-  Task<Order?> CancelOrder(string orderId, MarketDto? market = null);
+  Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null);
 
-  Task<IEnumerable<Order>> GetOpenOrders(MarketDto? market = null);
+  Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<Order>> CancelAllOpenOrders(MarketDto? market = null);
+  Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<Order>> SellAllPositions(string? baseSymbol = null);
+  Task<IEnumerable<OrderDto>> SellAllPositions(string? baseSymbol = null);
 }

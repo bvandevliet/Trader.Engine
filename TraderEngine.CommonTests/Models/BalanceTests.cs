@@ -30,9 +30,9 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var alloc0 = new Allocation(new MarketDto(_quoteSymbol, _quoteSymbol), 1, 10);
-    var alloc1 = new Allocation(new MarketDto(_quoteSymbol, "BTC"), 0, 0);
-    var alloc2 = new Allocation(new MarketDto(_quoteSymbol, "ETH"), 0, 0);
+    var alloc0 = new Allocation(new MarketReqDto(_quoteSymbol, _quoteSymbol), 1, 10);
+    var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 0);
+    var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, "ETH"), 0, 0);
 
     balance.AddAllocation(alloc1);
     balance.AddAllocation(alloc2);
@@ -56,9 +56,9 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var alloc0 = new Allocation(new MarketDto(_quoteSymbol, _quoteSymbol), 1, 10);
-    var alloc1 = new Allocation(new MarketDto(_quoteSymbol, "BTC"), 0, 0);
-    var alloc2 = new Allocation(new MarketDto(_quoteSymbol, "ETH"), 0, 0);
+    var alloc0 = new Allocation(new MarketReqDto(_quoteSymbol, _quoteSymbol), 1, 10);
+    var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 0);
+    var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, "ETH"), 0, 0);
 
     balance.AddAllocation(alloc0);
     balance.AddAllocation(alloc1);
@@ -89,7 +89,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var alloc = new Allocation(new MarketDto(_quoteSymbol, "BTC"), 0, 5);
+    var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 5);
 
     balance.AddAllocation(alloc);
 
@@ -115,7 +115,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var alloc = new Allocation(new MarketDto(_quoteSymbol, "BTC"), 5, 0);
+    var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 5, 0);
 
     balance.AddAllocation(alloc);
 
@@ -141,7 +141,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var alloc = new Allocation(new MarketDto(_quoteSymbol, "BTC"), 5, 5);
+    var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 5, 5);
 
     balance.AddAllocation(alloc);
 
@@ -167,7 +167,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var alloc = new Allocation(new MarketDto(_quoteSymbol, "BTC"), 0, 0);
+    var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 0);
 
     balance.AddAllocation(alloc);
     try
@@ -186,7 +186,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var market = new MarketDto(_quoteSymbol, "BTC");
+    var market = new MarketReqDto(_quoteSymbol, "BTC");
 
     var alloc1 = new Allocation(market, 0, 0);
     var alloc2 = new Allocation(market, 0, 0);
@@ -210,8 +210,8 @@ public class BalanceTests
 
     var baseCurrency = "BTC";
 
-    var alloc1 = new Allocation(new MarketDto(_quoteSymbol, baseCurrency), 0, 0);
-    var alloc2 = new Allocation(new MarketDto(_quoteSymbol, baseCurrency), 0, 0);
+    var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
+    var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
 
     balance.AddAllocation(alloc1);
     try
@@ -232,8 +232,8 @@ public class BalanceTests
 
     var baseCurrency = "BTC";
 
-    var alloc1 = new Allocation(new MarketDto(_quoteSymbol, baseCurrency), 0, 0);
-    var alloc2 = new Allocation(new MarketDto(baseCurrency, _quoteSymbol), 0, 0);
+    var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
+    var alloc2 = new Allocation(new MarketReqDto(baseCurrency, _quoteSymbol), 0, 0);
 
     balance.AddAllocation(alloc1);
     try

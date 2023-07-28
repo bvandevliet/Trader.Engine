@@ -14,7 +14,7 @@ public interface IMarketCapService
   /// <param name="market"></param>
   /// <param name="days"></param>
   /// <returns></returns>
-  Task<IEnumerable<MarketCapData>> ListHistorical(MarketDto market, int days = 21);
+  Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21);
 
   /// <summary>
   /// Get historical market cap data of top ranked base currencies for the specified quote currency for each day within given amount of days ago.
@@ -22,7 +22,7 @@ public interface IMarketCapService
   /// <param name="quoteSymbol"></param>
   /// <param name="days"></param>
   /// <returns></returns>
-  IAsyncEnumerable<IEnumerable<MarketCapData>> ListHistoricalMany(string quoteSymbol, int days = 21);
+  IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21);
 
   /// <summary>
   /// Get the latest market cap data of top ranked base currencies for the specified quote currency,
@@ -31,5 +31,5 @@ public interface IMarketCapService
   /// <param name="quoteSymbol"></param>
   /// <param name="smoothing"></param>
   /// <returns></returns>
-  Task<List<MarketCapData>> ListLatest(string quoteSymbol, int smoothing = 7);
+  Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7);
 }

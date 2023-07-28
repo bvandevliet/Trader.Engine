@@ -6,7 +6,7 @@ namespace TraderEngine.API.Extensions;
 
 public static partial class IndicatorExtensions
 {
-  public static IEnumerable<EmaResult> GetEma(this IEnumerable<MarketCapData> marketCaps, int lookbackPeriods)
+  public static IEnumerable<EmaResult> GetEma(this IEnumerable<MarketCapDataDto> marketCaps, int lookbackPeriods)
   {
     return marketCaps
       .Select(marketCap => (marketCap.Updated, marketCap.MarketCap))
@@ -19,7 +19,7 @@ public static partial class IndicatorExtensions
   /// <param name="marketCaps"></param>
   /// <param name="lookbackPeriods"></param>
   /// <returns></returns>
-  public static double TryGetEmaValue(this IEnumerable<MarketCapData> marketCaps, int lookbackPeriods)
+  public static double TryGetEmaValue(this IEnumerable<MarketCapDataDto> marketCaps, int lookbackPeriods)
   {
     lookbackPeriods = Math.Max(1, Math.Min(marketCaps.Count(), lookbackPeriods));
 

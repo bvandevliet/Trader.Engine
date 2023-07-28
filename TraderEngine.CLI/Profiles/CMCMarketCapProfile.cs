@@ -12,13 +12,13 @@ internal class CMCMarketCapProfile : Profile
     SourceMemberNamingConvention = LowerUnderscoreNamingConvention.Instance;
     DestinationMemberNamingConvention = PascalCaseNamingConvention.Instance;
 
-    CreateMap<CMCAssetDto, MarketCapData>()
+    CreateMap<CMCAssetDto, MarketCapDataDto>()
       .ForMember(
         dest => dest.Updated, opt => opt.MapFrom(
           src => src.Last_Updated))
       .ForMember(
         dest => dest.Market, opt => opt.MapFrom(
-          src => new MarketDto(src.Quote.FirstOrDefault().Key, src.Symbol)))
+          src => new MarketReqDto(src.Quote.FirstOrDefault().Key, src.Symbol)))
       .ForMember(
         dest => dest.Price, opt => opt.MapFrom(
           src => src.Quote.FirstOrDefault().Value.Price))

@@ -12,7 +12,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 {
   private readonly ILogger<MarketCapInternalRepository> _logger;
 
-  private readonly IMongoCollection<MarketCapData> _marketCapRecords;
+  private readonly IMongoCollection<MarketCapDataDto> _marketCapRecords;
 
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
@@ -22,28 +22,28 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     _logger = logger;
 
     IMongoDatabase marketCapDb = mongoClient.GetDatabase(mongoSettings.Value.Databases.MetricData.MarketCap);
-    _marketCapRecords = marketCapDb.GetCollection<MarketCapData>($"{mongoSettings.Value.Databases.MetricData.MarketCap}Collection");
+    _marketCapRecords = marketCapDb.GetCollection<MarketCapDataDto>($"{mongoSettings.Value.Databases.MetricData.MarketCap}Collection");
   }
 
-  protected static readonly FindOptions<MarketCapData> findDescByDate = new()
+  protected static readonly FindOptions<MarketCapDataDto> findDescByDate = new()
   {
-    Sort = Builders<MarketCapData>.Sort.Descending(record => record.Updated),
+    Sort = Builders<MarketCapDataDto>.Sort.Descending(record => record.Updated),
   };
 
-  protected static readonly FindOptions<MarketCapData> limitForLatest = new()
+  protected static readonly FindOptions<MarketCapDataDto> limitForLatest = new()
   {
-    Sort = Builders<MarketCapData>.Sort.Descending(record => record.Updated),
+    Sort = Builders<MarketCapDataDto>.Sort.Descending(record => record.Updated),
     Limit = 1,
   };
 
-  protected static FilterDefinition<MarketCapData> FilterWithinDays(int days) =>
-    Builders<MarketCapData>.Filter
+  protected static FilterDefinition<MarketCapDataDto> FilterWithinDays(int days) =>
+    Builders<MarketCapDataDto>.Filter
     .Gte(record => record.Updated, DateTime.UtcNow.AddDays(-(days + earlierTolerance / 1440)));
 
-  protected static FilterDefinition<MarketCapData> FilterEqualMarket(MarketDto market) =>
-    Builders<MarketCapData>.Filter
+  protected static FilterDefinition<MarketCapDataDto> FilterEqualMarket(MarketReqDto market) =>
+    Builders<MarketCapDataDto>.Filter
     .Eq(record => record.Market.QuoteSymbol, market.QuoteSymbol) &
-    Builders<MarketCapData>.Filter
+    Builders<MarketCapDataDto>.Filter
     .Eq(record => record.Market.BaseSymbol, market.BaseSymbol);
 
   /// <summary>
@@ -51,18 +51,18 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   /// </summary>
   /// <param name="marketCap"></param>
   /// <returns></returns>
-  protected async Task<bool> ShouldInsert(MarketCapData marketCap)
+  protected async Task<bool> ShouldInsert(MarketCapDataDto marketCap)
   {
-    IAsyncCursor<MarketCapData> records =
+    IAsyncCursor<MarketCapDataDto> records =
       await _marketCapRecords.FindAsync(FilterEqualMarket(marketCap.Market), limitForLatest);
 
-    MarketCapData? lastRecord = await records.FirstOrDefaultAsync();
+    MarketCapDataDto? lastRecord = await records.FirstOrDefaultAsync();
 
     return IsCloseToTheWholeHour(marketCap.Updated) &&
       (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance);
   }
 
-  public async Task Insert(MarketCapData marketCap)
+  public async Task Insert(MarketCapDataDto marketCap)
   {
     if (await ShouldInsert(marketCap))
     {
@@ -91,9 +91,9 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     }
   }
 
-  public async Task InsertMany(IEnumerable<MarketCapData> marketCaps)
+  public async Task InsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
-    foreach (MarketCapData marketCap in marketCaps)
+    foreach (MarketCapDataDto marketCap in marketCaps)
     {
       await Insert(marketCap);
     }
@@ -101,9 +101,9 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     _logger.LogInformation("Updated market cap records in database.");
   }
 
-  public async Task<IEnumerable<MarketCapData>> ListHistorical(MarketDto market, int days = 21)
+  public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
   {
-    var filterBuilder = Builders<MarketCapData>.Filter;
+    var filterBuilder = Builders<MarketCapDataDto>.Filter;
     var filter = filterBuilder.Empty;
 
     // Filter by market.
@@ -113,16 +113,16 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     filter &= FilterWithinDays(days);
 
     // Get historical market cap data.
-    IAsyncCursor<MarketCapData> records =
+    IAsyncCursor<MarketCapDataDto> records =
       await _marketCapRecords.FindAsync(filter, findDescByDate);
 
     // Filter by market.
     return records.ToEnumerable();
   }
 
-  public async IAsyncEnumerable<IEnumerable<MarketCapData>> ListHistoricalMany(string quoteSymbol, int days = 21)
+  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
   {
-    var filterBuilder = Builders<MarketCapData>.Filter;
+    var filterBuilder = Builders<MarketCapDataDto>.Filter;
     var filter = filterBuilder.Empty;
 
     // Filter by quote symbol.
@@ -132,17 +132,17 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     filter &= FilterWithinDays(1);
 
     // Get historical market cap data.
-    IAsyncCursor<MarketCapData> records =
+    IAsyncCursor<MarketCapDataDto> records =
       await _marketCapRecords.FindAsync(filter, findDescByDate);
 
     // Group by asset base symbol.
-    IEnumerable<IGrouping<string, MarketCapData>> assetGroups =
+    IEnumerable<IGrouping<string, MarketCapDataDto>> assetGroups =
       records.ToEnumerable().GroupBy(record => record.Market.BaseSymbol);
 
     // For each unique asset base symbol, return its historical market cap.
-    foreach (IGrouping<string, MarketCapData> assetGroup in assetGroups)
+    foreach (IGrouping<string, MarketCapDataDto> assetGroup in assetGroups)
     {
-      var market = new MarketDto(quoteSymbol, assetGroup.Key);
+      var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
 
       yield return await ListHistorical(market, days);
     }

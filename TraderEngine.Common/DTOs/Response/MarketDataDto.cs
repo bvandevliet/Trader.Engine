@@ -2,7 +2,7 @@ using TraderEngine.Common.DTOs.Request;
 
 namespace TraderEngine.Common.DTOs.Response;
 
-public class MarketData : MarketDto
+public class MarketDataDto : MarketReqDto
 {
   /// <summary>
   /// Determines how many significant digits are allowed.

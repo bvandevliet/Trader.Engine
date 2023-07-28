@@ -19,16 +19,16 @@ internal class MarketCapExternalRepository : IMarketCapExternalRepository
     _httpClient = httpClient;
   }
 
-  public Task<MarketCapData> GetMarketCap(MarketDto market)
+  public Task<MarketCapDataDto> GetMarketCap(MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public async Task<IEnumerable<MarketCapData>> ListLatest(string quoteSymbol, int count = 100)
+  public async Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int count = 100)
   {
     CMCListLatestDto? listLatest = await _httpClient.GetFromJsonAsync<CMCListLatestDto>(
       $"cryptocurrency/listings/latest?sort=market_cap&limit={count}&convert={quoteSymbol}");
 
-    return _mapper.Map<IEnumerable<MarketCapData>>(listLatest?.Data);
+    return _mapper.Map<IEnumerable<MarketCapDataDto>>(listLatest?.Data);
   }
 }

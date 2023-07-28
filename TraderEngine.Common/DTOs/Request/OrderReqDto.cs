@@ -3,13 +3,13 @@ using TraderEngine.Common.Enums;
 
 namespace TraderEngine.Common.DTOs.Request;
 
-public class OrderDto
+public class OrderReqDto
 {
   /// <summary>
   /// The market to trade.
   /// </summary>
   [Required]
-  public MarketDto Market { get; set; } = null!;
+  public MarketReqDto Market { get; set; } = null!;
 
   /// <summary>
   /// When placing a buy order the base currency will be bought for the quote currency.
@@ -51,15 +51,15 @@ public class OrderDto
   /// </summary>
   public TimeInForce TimeInForce { get; set; } = TimeInForce.GTC;
 
-  public OrderDto()
+  public OrderReqDto()
   {
   }
 
   /// <param name="market"><inheritdoc cref="Market"/></param>
   /// <param name="side"><inheritdoc cref="Side"/></param>
   /// <param name="type"><inheritdoc cref="Type"/></param>
-  public OrderDto(
-    MarketDto market,
+  public OrderReqDto(
+    MarketReqDto market,
     OrderSide side,
     OrderType type)
   {

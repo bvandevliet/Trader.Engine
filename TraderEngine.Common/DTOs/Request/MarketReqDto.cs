@@ -5,7 +5,7 @@ namespace TraderEngine.Common.DTOs.Request;
 /// <summary>
 /// Market, pair of quote currency and base currency.
 /// </summary>
-public class MarketDto : IEquatable<MarketDto>
+public class MarketReqDto : IEquatable<MarketReqDto>
 {
   /// <summary>
   /// The quote currency to value <see cref="BaseSymbol"/> against.
@@ -19,22 +19,22 @@ public class MarketDto : IEquatable<MarketDto>
   [Required]
   public string BaseSymbol { get; set; } = null!;
 
-  public MarketDto()
+  public MarketReqDto()
   {
   }
 
   /// <param name="quoteSymbol"><inheritdoc cref="QuoteSymbol"/></param>
   /// <param name="baseSymbol"><inheritdoc cref="BaseSymbol"/></param>
-  public MarketDto(string quoteSymbol, string baseSymbol)
+  public MarketReqDto(string quoteSymbol, string baseSymbol)
   {
     QuoteSymbol = quoteSymbol;
     BaseSymbol = baseSymbol;
   }
 
   public override bool Equals(object? obj) =>
-    Equals(obj as MarketDto);
+    Equals(obj as MarketReqDto);
 
-  public bool Equals(MarketDto? obj) =>
+  public bool Equals(MarketReqDto? obj) =>
     obj is not null
       && QuoteSymbol == obj.QuoteSymbol
       && BaseSymbol == obj.BaseSymbol;
@@ -42,6 +42,6 @@ public class MarketDto : IEquatable<MarketDto>
   public override int GetHashCode() =>
     $"{QuoteSymbol}{BaseSymbol}".GetHashCode();
 
-  public static bool operator ==(MarketDto a, MarketDto b) => a.Equals(b);
-  public static bool operator !=(MarketDto a, MarketDto b) => !(a == b);
+  public static bool operator ==(MarketReqDto a, MarketReqDto b) => a.Equals(b);
+  public static bool operator !=(MarketReqDto a, MarketReqDto b) => !(a == b);
 }

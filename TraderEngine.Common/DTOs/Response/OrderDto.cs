@@ -3,7 +3,7 @@ using TraderEngine.Common.Enums;
 
 namespace TraderEngine.Common.DTOs.Response;
 
-public class Order : OrderDto
+public class OrderDto : OrderReqDto
 {
   /// <summary>
   /// Order Id.
@@ -26,14 +26,14 @@ public class Order : OrderDto
   public decimal AmountQuoteFilled { get; set; }
 
   /// <summary>
-  /// Only for orders with <see cref="OrderDto.Amount"/> supplied.
-  /// Amount in base currency remaining (lower than <see cref="OrderDto.Amount"/> after fills).
+  /// Only for orders with <see cref="OrderReqDto.Amount"/> supplied.
+  /// Amount in base currency remaining (lower than <see cref="OrderReqDto.Amount"/> after fills).
   /// </summary>
   public decimal AmountRemaining { get; set; }
 
   /// <summary>
-  /// Only for market orders with <see cref="OrderDto.AmountQuote"/> supplied.
-  /// Amount in quote currency remaining (lower than <see cref="OrderDto.AmountQuote"/> after fills).
+  /// Only for market orders with <see cref="OrderReqDto.AmountQuote"/> supplied.
+  /// Amount in quote currency remaining (lower than <see cref="OrderReqDto.AmountQuote"/> after fills).
   /// </summary>
   public decimal AmountQuoteRemaining { get; set; }
 

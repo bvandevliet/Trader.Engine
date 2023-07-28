@@ -2,12 +2,12 @@ using TraderEngine.Common.DTOs.Request;
 
 namespace TraderEngine.Common.DTOs.Response;
 
-public class MarketCapData
+public class MarketCapDataDto
 {
   /// <summary>
   /// Market in which the market cap is calculated.
   /// </summary>
-  public MarketDto Market { get; set; } = null!;
+  public MarketReqDto Market { get; set; } = null!;
 
   public double Price { get; set; }
 

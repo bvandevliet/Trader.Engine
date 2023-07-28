@@ -2,10 +2,10 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TraderEngine.Common.DTOs.Request;
 
-public class AllocationDto
+public class AllocationReqDto
 {
   [Required]
-  public MarketDto Market { get; set; } = null!;
+  public MarketReqDto Market { get; set; } = null!;
 
   [Required]
   public decimal Price { get; set; }
@@ -16,7 +16,7 @@ public class AllocationDto
   [Required]
   public decimal AmountQuote { get; set; }
 
-  public AllocationDto()
+  public AllocationReqDto()
   {
   }
 
@@ -24,8 +24,8 @@ public class AllocationDto
   /// <param name="price"><inheritdoc cref="Price"/></param>
   /// <param name="amount"><inheritdoc cref="Amount"/></param>
   /// <param name="amountQuote"><inheritdoc cref="AmountQuote"/></param>
-  public AllocationDto(
-    MarketDto market,
+  public AllocationReqDto(
+    MarketReqDto market,
     decimal price,
     decimal amount,
     decimal amountQuote)

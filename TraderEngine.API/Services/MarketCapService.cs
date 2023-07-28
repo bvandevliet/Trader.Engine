@@ -13,7 +13,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
   private readonly IMarketCapInternalRepository _marketCapInternalRepo;
 
   private readonly object _cacheLock = new();
-  private readonly Dictionary<string, List<MarketCapData>> _listLatestSmoothedCache = new();
+  private readonly Dictionary<string, List<MarketCapDataDto>> _listLatestSmoothedCache = new();
 
   public MarketCapService(
     ILogger<MarketCapService> logger,
@@ -30,15 +30,15 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
   /// <param name="records"></param>
   /// <param name="days"></param>
   /// <returns></returns>
-  private IEnumerable<MarketCapData> GetCandidates(IEnumerable<MarketCapData> records)
+  private IEnumerable<MarketCapDataDto> GetCandidates(IEnumerable<MarketCapDataDto> records)
   {
     // Updated timestamp of last winner record.
     DateTime? prevUpdated = null;
 
     // Potential winner record.
-    MarketCapData? candidate = null;
+    MarketCapDataDto? candidate = null;
 
-    foreach (MarketCapData record in records)
+    foreach (MarketCapDataDto record in records)
     {
     start:
 
@@ -82,22 +82,22 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     }
   }
 
-  public async Task<IEnumerable<MarketCapData>> ListHistorical(MarketDto market, int days = 21)
+  public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
   {
-    IEnumerable<MarketCapData> records = await _marketCapInternalRepo.ListHistorical(market, days);
+    IEnumerable<MarketCapDataDto> records = await _marketCapInternalRepo.ListHistorical(market, days);
 
     return GetCandidates(records);
   }
 
-  public async IAsyncEnumerable<IEnumerable<MarketCapData>> ListHistoricalMany(string quoteSymbol, int days = 21)
+  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
   {
-    await foreach (IEnumerable<MarketCapData> marketCaps in _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, days))
+    await foreach (IEnumerable<MarketCapDataDto> marketCaps in _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, days))
     {
       yield return GetCandidates(marketCaps);
     }
   }
 
-  public async Task<List<MarketCapData>> ListLatest(string quoteSymbol, int smoothing = 7)
+  public async Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7)
   {
     // Concat the cache indexer string.
     string cacheHash = $"{quoteSymbol}-{smoothing}";
@@ -112,7 +112,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
         lock (_cacheLock)
         {
           // Generate a list containing only the last EMA value for each asset.
-          List<MarketCapData> listLatestSmoothed =
+          List<MarketCapDataDto> listLatestSmoothed =
             ListHistoricalMany(quoteSymbol, smoothing + 1)
             .Select(marketCaps =>
             {
@@ -120,7 +120,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
               var marketCapsList = marketCaps.ToList();
 
               // Get last market cap record.
-              MarketCapData marketCap = marketCapsList.Last();
+              MarketCapDataDto marketCap = marketCapsList.Last();
 
               // Update market cap value with EMA value.
               marketCap.MarketCap = marketCapsList.TryGetEmaValue(smoothing);

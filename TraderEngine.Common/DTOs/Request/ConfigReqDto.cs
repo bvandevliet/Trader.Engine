@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TraderEngine.Common.DTOs.Request;
 
-public class ConfigDto
+public class ConfigReqDto
 {
   [Required]
   public string QuoteCurrency { get; set; } = null!;

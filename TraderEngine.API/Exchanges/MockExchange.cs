@@ -30,11 +30,11 @@ public class MockExchange : IExchange
 
       this.curBalance = new(QuoteSymbol);
 
-      this.curBalance.AddAllocation(new(market: new MarketDto(QuoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
-      this.curBalance.AddAllocation(new(market: new MarketDto(QuoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
-      this.curBalance.AddAllocation(new(market: new MarketDto(QuoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
-      this.curBalance.AddAllocation(new(market: new MarketDto(QuoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
-      //                                                                                                              100%
+      this.curBalance.AddAllocation(new(market: new MarketReqDto(QuoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
+      this.curBalance.AddAllocation(new(market: new MarketReqDto(QuoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
+      this.curBalance.AddAllocation(new(market: new MarketReqDto(QuoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
+      this.curBalance.AddAllocation(new(market: new MarketReqDto(QuoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
+      //                                                                                                                 100%
     }
   }
 
@@ -114,22 +114,22 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<object> GetCandles(MarketDto market, CandleInterval interval, int limit)
+  public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
   {
     throw new NotImplementedException();
   }
 
-  public Task<bool> IsTradable(MarketDto market)
+  public Task<bool> IsTradable(MarketReqDto market)
   {
     return Task.FromResult(true);
   }
 
-  public Task<decimal> GetPrice(MarketDto market)
+  public Task<decimal> GetPrice(MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Order> NewOrder(OrderDto order)
+  public Task<OrderDto> NewOrder(OrderReqDto order)
   {
     Allocation? curAlloc = curBalance.GetAllocation(order.Market.BaseSymbol);
 
@@ -139,7 +139,7 @@ public class MockExchange : IExchange
 
     Allocation newQuoteAlloc = quoteAlloc ?? new(QuoteSymbol, QuoteSymbol, 1);
 
-    var returnOrder = new Order()
+    var returnOrder = new OrderDto()
     {
       Market = order.Market,
       Side = order.Side,
@@ -184,27 +184,27 @@ public class MockExchange : IExchange
     return Task.FromResult(returnOrder);
   }
 
-  public Task<Order?> GetOrder(string orderId, MarketDto? market = null)
+  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Order?> CancelOrder(string orderId, MarketDto? market = null)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<Order>> GetOpenOrders(MarketDto? market = null)
+  public Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<Order>> CancelAllOpenOrders(MarketDto? market = null)
+  public Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null)
   {
-    return Task.FromResult(new List<Order>().AsEnumerable());
+    return Task.FromResult(new List<OrderDto>().AsEnumerable());
   }
 
-  public Task<IEnumerable<Order>> SellAllPositions(string? asset = null)
+  public Task<IEnumerable<OrderDto>> SellAllPositions(string? asset = null)
   {
     throw new NotImplementedException();
   }

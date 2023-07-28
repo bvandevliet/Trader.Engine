@@ -4,7 +4,7 @@ using TraderEngine.Common.DTOs.Response;
 
 namespace TraderEngine.Common.DTOs.Database;
 
-public class ConfigDb : Config
+public class ConfigDb : ConfigDto
 {
   [BsonId]
   public BsonObjectId? Id { get; set; }

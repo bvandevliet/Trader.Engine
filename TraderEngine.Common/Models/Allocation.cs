@@ -31,7 +31,7 @@ public class Allocation
   /// <summary>
   /// The market for this allocation.
   /// </summary>
-  public MarketDto Market { get; }
+  public MarketReqDto Market { get; }
 
   private decimal _price;
   /// <summary>
@@ -73,7 +73,7 @@ public class Allocation
   }
 
   public Allocation(
-    MarketDto market,
+    MarketReqDto market,
     decimal? price = null,
     decimal? amount = null)
   {
@@ -87,7 +87,7 @@ public class Allocation
     string baseSymbol,
     decimal? price = null,
     decimal? amount = null)
-    : this(new MarketDto(quoteSymbol, baseSymbol), price, amount)
+    : this(new MarketReqDto(quoteSymbol, baseSymbol), price, amount)
   {
   }
 
