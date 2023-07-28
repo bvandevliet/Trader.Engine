@@ -1,3 +1,6 @@
+using Microsoft.Net.Http.Headers;
+using TraderEngine.API.Exchanges;
+
 namespace TraderEngine.API;
 
 public class Program
@@ -11,6 +14,15 @@ public class Program
     // Swagger/OpenAPI.
     builder.Services.AddEndpointsApiExplorer();
     builder.Services.AddSwaggerGen();
+
+    builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+    builder.Services.AddHttpClient<BitvavoExchange>(httpClient =>
+    {
+      httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
+
+      httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
+    });
 
     var app = builder.Build();
 
