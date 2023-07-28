@@ -1,8 +1,22 @@
 version: '3.4'
 
 services:
+
+  traderengine.mongodb:
+    container_name: traderengine.mongodb
+    image: mongo:latest
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
+    volumes:
+      - ./.volumes/mongo/db:/data/db
+      - ./.volumes/mongo/configdb:/data/configdb
+       
   traderengine.api:
-    image: ${DOCKER_REGISTRY-}traderengineapi
+    container_name: traderengine.api
+    image: ${DOCKER_REGISTRY-}traderengine.api
+    restart: unless-stopped
     build:
       context: .
       dockerfile: TraderEngine.API/Dockerfile
@@ -11,14 +25,23 @@ services:
     tty: true
     environment:
       - TZ=Europe/Amsterdam
+      - MongoDB__ConnectionString=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@traderengine.mongodb:27017
 
   traderengine.cli:
-    image: ${DOCKER_REGISTRY-}traderenginecli
+    container_name: traderengine.cli
+    image: ${DOCKER_REGISTRY-}traderengine.cli
+    restart: unless-stopped
     build:
       context: .
       dockerfile: TraderEngine.CLI/Dockerfile
       args:
         - TAG=6.0-alpine-arm64v8
+    depends_on:
+      - traderengine.api
+      - traderengine.mongodb
     tty: true
     environment:
       - TZ=Europe/Amsterdam
+      - Addresses__TRADER_API=http://traderengine.api
+      - CoinMarketCap__API_KEY=${CMC_API_KEY}
+      - MongoDB__ConnectionString=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@traderengine.mongodb:27017
