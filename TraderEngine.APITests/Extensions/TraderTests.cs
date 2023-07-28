@@ -4,12 +4,13 @@ using TraderEngine.Common.DTOs.Request;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions.Tests;
+
 [TestClass()]
 public class TraderTests
 {
   private readonly string _quoteSymbol = "EUR";
 
-  private readonly MockExchange _exchangeService;
+  private MockExchange _exchangeService = null!;
 
   private readonly List<AbsAssetAllocReqDto> _absAssetAlloc = new()
   {
@@ -20,9 +21,20 @@ public class TraderTests
     //                               100%
   };
 
-  public TraderTests()
+  [TestInitialize()]
+  public void TestInit()
   {
-    _exchangeService = new(_quoteSymbol, 5, .0015m, .0025m);
+    Balance curBalance = new(_quoteSymbol);
+
+    decimal deposit = 1000;
+
+    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
+    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
+    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
+    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
+    //                                                                                                             100%
+
+    _exchangeService = new(_quoteSymbol, 5, .0015m, .0025m, curBalance);
   }
 
   [TestMethod()]
