@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Microsoft.Net.Http.Headers;
 using MongoDB.Driver;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
@@ -28,9 +29,18 @@ public class Program
         services.Configure<MongoSettings>(builder.Configuration.GetSection("MongoDB"));
 
         services.AddSingleton<IMongoClient>(x =>
-          new MongoClient(x.GetService<IOptions<MongoSettings>>()!.Value.ConnectionString));
+          new MongoClient(x.GetRequiredService<IOptions<MongoSettings>>().Value.ConnectionString));
 
-        services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>()
+        services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
+        {
+          CoinMarketCapSettings cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
+
+          httpClient.BaseAddress = new("https://pro-api.coinmarketcap.com/v1/");
+
+          httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
+
+          httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
+        })
           .AddTransientHttpErrorPolicy(policy =>
             policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
 

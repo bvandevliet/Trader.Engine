@@ -9,18 +9,21 @@ internal class CMCMarketCapProfile : Profile
 {
   public CMCMarketCapProfile()
   {
+    SourceMemberNamingConvention = LowerUnderscoreNamingConvention.Instance;
+    DestinationMemberNamingConvention = PascalCaseNamingConvention.Instance;
+
     CreateMap<CMCAssetDto, MarketCapData>()
       .ForMember(
         dest => dest.Updated, opt => opt.MapFrom(
-          src => src.last_updated))
+          src => src.Last_Updated))
       .ForMember(
         dest => dest.Market, opt => opt.MapFrom(
-          src => new MarketDto(src.quote.FirstOrDefault().Key, src.symbol)))
+          src => new MarketDto(src.Quote.FirstOrDefault().Key, src.Symbol)))
       .ForMember(
         dest => dest.Price, opt => opt.MapFrom(
-          src => src.quote.FirstOrDefault().Value.price))
+          src => src.Quote.FirstOrDefault().Value.Price))
       .ForMember(
         dest => dest.MarketCap, opt => opt.MapFrom(
-          src => src.quote.FirstOrDefault().Value.market_cap));
+          src => src.Quote.FirstOrDefault().Value.Market_Cap));
   }
 }
