@@ -41,23 +41,6 @@ public class MockExchange : IExchange
   }
 
   /// <summary>
-  /// <inheritdoc cref="IExchange"/>
-  /// </summary>
-  /// <param name="exchangeService">Instance of the exchange service to base this mock instance on.</param>
-  /// <param name="curBalance"><inheritdoc cref="Balance"/></param>
-  public MockExchange(
-    IExchange exchangeService,
-    Balance curBalance)
-    : this(
-      exchangeService.QuoteSymbol,
-      exchangeService.MinimumOrderSize,
-      exchangeService.MakerFee,
-      exchangeService.TakerFee,
-      curBalance)
-  {
-  }
-
-  /// <summary>
   /// Null, if no initial <see cref="Balance"/> was given.
   /// </summary>
   /// <returns></returns>

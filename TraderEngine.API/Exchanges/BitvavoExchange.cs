@@ -1,3 +1,4 @@
+using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.Request;
 using TraderEngine.Common.DTOs.Response;
 using TraderEngine.Common.Enums;
@@ -22,9 +23,32 @@ public class BitvavoExchange : IExchange
     _httpClient = httpClient;
   }
 
-  public Task<Balance> GetBalance()
+  public async Task<Balance> GetBalance()
   {
-    throw new NotImplementedException();
+    var balance = new Balance(QuoteSymbol);
+
+    var result = await _httpClient.GetFromJsonAsync<List<BitvavoAllocationDto>>("balance");
+
+    if (null == result)
+    {
+      // TODO: THROW !!
+      return balance;
+    }
+
+    foreach (BitvavoAllocationDto allocationDto in result)
+    {
+      var market = new MarketReqDto(QuoteSymbol, allocationDto.Symbol);
+
+      decimal price = allocationDto.Symbol == QuoteSymbol ? 1 : await GetPrice(market);
+
+      decimal available = decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder);
+
+      var allocation = new Allocation(market, price, available);
+
+      balance.AddAllocation(allocation);
+    }
+
+    return balance;
   }
 
   public Task<object> DepositHistory()
@@ -47,9 +71,13 @@ public class BitvavoExchange : IExchange
     return Task.FromResult(true);
   }
 
-  public Task<decimal> GetPrice(MarketReqDto market)
+  public async Task<decimal> GetPrice(MarketReqDto market)
   {
-    throw new NotImplementedException();
+    var price = await _httpClient.GetFromJsonAsync<BitvavoTickerPriceDto>(
+      $"ticker/price?market={market.BaseSymbol}-{market.QuoteSymbol}");
+
+    // TODO: Throw if GET fails.
+    return null == price ? 0 : decimal.Parse(price.Price);
   }
 
   public Task<OrderDto> NewOrder(OrderReqDto order)

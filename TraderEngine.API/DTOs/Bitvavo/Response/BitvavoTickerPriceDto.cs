@@ -10,5 +10,5 @@ public class BitvavoTickerPriceDto
   /// <summary>
   /// The last trade price.
   /// </summary>
-  public decimal Price { get; set; }
+  public string Price { get; set; } = null!;
 }
