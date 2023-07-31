@@ -20,10 +20,6 @@ public class Program
     builder.Services.AddHttpClient<BitvavoExchange>(httpClient =>
     {
       httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
-
-      httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
-
-      httpClient.DefaultRequestHeaders.Add("bitvavo-access-window", "60000 ");
     });
 
     var app = builder.Build();
