@@ -2,16 +2,18 @@ version: '3.4'
 
 services:
 
-  traderengine.mongodb:
-    container_name: traderengine.mongodb
-    image: mongo:latest
+  traderengine.mariadb:
+    container_name: traderengine.mariadb
+    image: mariadb:latest
+    # command: '--default-authentication-plugin=mysql_native_password'
+    volumes:
+      - ./.volumes/db-data:/var/lib/mysql
     restart: unless-stopped
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=${MONGO_USERNAME}
-      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_PASSWORD}
-    volumes:
-      - ./.volumes/mongo/db:/data/db
-      - ./.volumes/mongo/configdb:/data/configdb
+      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_USER=${MYSQL_USERNAME}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
        
   traderengine.api:
     container_name: traderengine.api
@@ -25,7 +27,7 @@ services:
     tty: true
     environment:
       - TZ=Europe/Amsterdam
-      - MongoDB__ConnectionString=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@traderengine.mongodb:27017
+      - ConnectionStrings__MySql="server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};"
 
   traderengine.cli:
     container_name: traderengine.cli
@@ -38,10 +40,10 @@ services:
         - TAG=6.0-alpine-arm64v8
     depends_on:
       - traderengine.api
-      - traderengine.mongodb
+      - traderengine.mariadb
     tty: true
     environment:
       - TZ=Europe/Amsterdam
       - Addresses__TRADER_API=http://traderengine.api
       - CoinMarketCap__API_KEY=${CMC_API_KEY}
-      - MongoDB__ConnectionString=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@traderengine.mongodb:27017
+      - ConnectionStrings__MySql="server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};"

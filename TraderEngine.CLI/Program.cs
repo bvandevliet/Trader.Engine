@@ -1,11 +1,12 @@
+using Dapper;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
-using MongoDB.Driver;
+using MySqlConnector;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Services;
-using TraderEngine.Common.AppSettings;
+using TraderEngine.Common.Bootstrap;
 using TraderEngine.Common.Services;
 
 namespace TraderEngine.CLI;
@@ -25,11 +26,16 @@ public class Program
 
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-        services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
-        services.Configure<MongoSettings>(builder.Configuration.GetSection("MongoDB"));
+        services.AddTransient(x =>
+        {
+          var dbConnection = new MySqlConnection(builder.Configuration.GetConnectionString("MySql"));
 
-        services.AddSingleton<IMongoClient>(x =>
-          new MongoClient(x.GetRequiredService<IOptions<MongoSettings>>().Value.ConnectionString));
+          dbConnection.Initialize().GetAwaiter().GetResult();
+
+          return dbConnection;
+        });
+
+        services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {

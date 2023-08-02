@@ -2,9 +2,9 @@ version: '3.4'
 
 services:
   
-  traderengine.mongodb:
+  traderengine.mariadb:
     ports:
-      - "27017:27017"
+      - "3306:3306"
 
   traderengine.api:
     build:
