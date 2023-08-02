@@ -18,6 +18,10 @@ public class MockExchange : IExchange
 
   public decimal TakerFee { get; }
 
+  public string ApiKey { get; set; } = string.Empty;
+
+  public string ApiSecret { get; set; } = string.Empty;
+
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
@@ -38,23 +42,6 @@ public class MockExchange : IExchange
     MakerFee = makerFee;
     TakerFee = takerFee;
     _curBalance = curBalance;
-  }
-
-  /// <summary>
-  /// <inheritdoc cref="IExchange"/>
-  /// </summary>
-  /// <param name="exchangeService">Instance of the exchange service to base this mock instance on.</param>
-  /// <param name="curBalance"><inheritdoc cref="Balance"/></param>
-  public MockExchange(
-    IExchange exchangeService,
-    Balance curBalance)
-    : this(
-      exchangeService.QuoteSymbol,
-      exchangeService.MinimumOrderSize,
-      exchangeService.MakerFee,
-      exchangeService.TakerFee,
-      curBalance)
-  {
   }
 
   /// <summary>
