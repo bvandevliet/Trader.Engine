@@ -1,4 +1,3 @@
-using MongoDB.Driver;
 using TraderEngine.API.Extensions;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.Request;

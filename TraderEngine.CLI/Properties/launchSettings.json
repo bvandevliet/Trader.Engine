@@ -1,7 +1,10 @@
 {
   "profiles": {
     "TraderEngine.CLI": {
-      "commandName": "Project"
+      "commandName": "Project",
+      "environmentVariables": {
+        "DOTNET_ENVIRONMENT": "Development"
+      }
     },
     "Docker": {
       "commandName": "Docker"

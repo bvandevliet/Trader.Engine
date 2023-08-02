@@ -1,11 +1,16 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
-using TraderEngine.Common.DTOs.Response;
-
 namespace TraderEngine.Common.DTOs.Database;
 
-public class MarketCapDataDb : MarketCapDataDto
+public class MarketCapDataDb
 {
-  [BsonId]
-  public BsonObjectId? Id { get; set; }
+  public string QuoteSymbol { get; set; } = null!;
+
+  public string BaseSymbol { get; set; } = null!;
+
+  public double Price { get; set; }
+
+  public double MarketCap { get; set; }
+
+  public List<string> Tags { get; set; } = new();
+
+  public DateTime Updated { get; set; }
 }

@@ -1,8 +1,10 @@
+using AutoMapper;
+using Dapper;
+using Dapper.Contrib.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using MongoDB.Driver;
+using MySqlConnector;
 using TraderEngine.Common.Abstracts;
-using TraderEngine.Common.AppSettings;
+using TraderEngine.Common.DTOs.Database;
 using TraderEngine.Common.DTOs.Request;
 using TraderEngine.Common.DTOs.Response;
 
@@ -11,40 +13,18 @@ namespace TraderEngine.Common.Services;
 public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInternalRepository
 {
   private readonly ILogger<MarketCapInternalRepository> _logger;
-
-  private readonly IMongoCollection<MarketCapDataDto> _marketCapRecords;
+  private readonly IMapper _mapper;
+  private readonly MySqlConnection _mySqlConnection;
 
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
-    IOptions<MongoSettings> mongoSettings,
-    IMongoClient mongoClient)
+    IMapper mapper,
+    MySqlConnection mySqlConnection)
   {
     _logger = logger;
-
-    IMongoDatabase marketCapDb = mongoClient.GetDatabase(mongoSettings.Value.Databases.MetricData.MarketCap);
-    _marketCapRecords = marketCapDb.GetCollection<MarketCapDataDto>($"{mongoSettings.Value.Databases.MetricData.MarketCap}Collection");
+    _mapper = mapper;
+    _mySqlConnection = mySqlConnection;
   }
-
-  protected static readonly FindOptions<MarketCapDataDto> findDescByDate = new()
-  {
-    Sort = Builders<MarketCapDataDto>.Sort.Descending(record => record.Updated),
-  };
-
-  protected static readonly FindOptions<MarketCapDataDto> limitForLatest = new()
-  {
-    Sort = Builders<MarketCapDataDto>.Sort.Descending(record => record.Updated),
-    Limit = 1,
-  };
-
-  protected static FilterDefinition<MarketCapDataDto> FilterWithinDays(int days) =>
-    Builders<MarketCapDataDto>.Filter
-    .Gte(record => record.Updated, DateTime.UtcNow.AddDays(-(days + earlierTolerance / 1440)));
-
-  protected static FilterDefinition<MarketCapDataDto> FilterEqualMarket(MarketReqDto market) =>
-    Builders<MarketCapDataDto>.Filter
-    .Eq(record => record.Market.QuoteSymbol, market.QuoteSymbol) &
-    Builders<MarketCapDataDto>.Filter
-    .Eq(record => record.Market.BaseSymbol, market.BaseSymbol);
 
   /// <summary>
   /// Test whether the record meets the updated time requirement in order to be inserted to the database.
@@ -53,10 +33,11 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   /// <returns></returns>
   protected async Task<bool> ShouldInsert(MarketCapDataDto marketCap)
   {
-    IAsyncCursor<MarketCapDataDto> records =
-      await _marketCapRecords.FindAsync(FilterEqualMarket(marketCap.Market), limitForLatest);
-
-    MarketCapDataDto? lastRecord = await records.FirstOrDefaultAsync();
+    var lastRecord = await _mySqlConnection.QueryFirstOrDefaultAsync<MarketCapDataDb>(
+      "SELECT * FROM TraderEngine.MarketCap\n" +
+      "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
+      "ORDER BY Updated DESC LIMIT 1;",
+      new { marketCap.Market.QuoteSymbol, marketCap.Market.BaseSymbol });
 
     return IsCloseToTheWholeHour(marketCap.Updated) &&
       (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance);
@@ -64,29 +45,15 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task Insert(MarketCapDataDto marketCap)
   {
-    if (await ShouldInsert(marketCap))
+    var shouldInsert = await ShouldInsert(marketCap);
+
+    if (shouldInsert)
     {
-      Task result = _marketCapRecords.InsertOneAsync(marketCap);
+      int rowsAffected = await _mySqlConnection.InsertAsync(_mapper.Map<MarketCapDataDb>(marketCap));
 
-      try
+      if (0 == rowsAffected)
       {
-        await result;
-
-        if (!result.IsCompletedSuccessfully)
-        {
-          _logger.LogError("Failed to insert {marketCap} to database.", marketCap);
-        }
-
-        var exs = result.Exception?.InnerExceptions;
-        for (int i = 0; i < exs?.Count; i++)
-        {
-          Exception ex = exs[i];
-          _logger.LogError(ex, ex.Message);
-        }
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex, ex.Message);
+        _logger.LogError("Failed to insert {marketCap} to database.", marketCap);
       }
     }
   }
@@ -103,41 +70,26 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
   {
-    var filterBuilder = Builders<MarketCapDataDto>.Filter;
-    var filter = filterBuilder.Empty;
+    var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
+      "SELECT * FROM TraderEngine.MarketCap\n" +
+      "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
+      "AND Updated >= @Updated ORDER BY Updated DESC;",
+      new { market.QuoteSymbol, market.BaseSymbol, Updated = DateTime.UtcNow.AddDays(-(days + earlierTolerance / 1440)) });
 
-    // Filter by market.
-    filter &= FilterEqualMarket(market);
-
-    // Only assets that were updated within the given amount of days are considered relevant.
-    filter &= FilterWithinDays(days);
-
-    // Get historical market cap data.
-    IAsyncCursor<MarketCapDataDto> records =
-      await _marketCapRecords.FindAsync(filter, findDescByDate);
-
-    // Filter by market.
-    return records.ToEnumerable();
+    return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
   }
 
   public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
   {
-    var filterBuilder = Builders<MarketCapDataDto>.Filter;
-    var filter = filterBuilder.Empty;
-
-    // Filter by quote symbol.
-    filter &= filterBuilder.Eq(record => record.Market.QuoteSymbol, quoteSymbol);
-
-    // Only assets that were updated in the past 24 hours are considered relevant.
-    filter &= FilterWithinDays(1);
-
-    // Get historical market cap data.
-    IAsyncCursor<MarketCapDataDto> records =
-      await _marketCapRecords.FindAsync(filter, findDescByDate);
+    var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
+      "SELECT * FROM TraderEngine.MarketCap\n" +
+      "WHERE QuoteSymbol = @QuoteSymbol\n" +
+      "AND Updated >= @Updated ORDER BY Updated DESC;",
+      new { quoteSymbol, Updated = DateTime.UtcNow.AddDays(-(1 + earlierTolerance / 1440)) });
 
     // Group by asset base symbol.
-    IEnumerable<IGrouping<string, MarketCapDataDto>> assetGroups =
-      records.ToEnumerable().GroupBy(record => record.Market.BaseSymbol);
+    IEnumerable<IGrouping<string, MarketCapDataDb>> assetGroups =
+      listHistorical.GroupBy(record => record.BaseSymbol);
 
     // For each unique asset base symbol, return its historical market cap.
     foreach (IGrouping<string, MarketCapDataDto> assetGroup in assetGroups)
