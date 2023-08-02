@@ -40,7 +40,7 @@ internal class CMCAssetDto
   /// <summary>
   /// Array of tags associated with this cryptocurrency.
   /// </summary>
-  public string[] Tags = Array.Empty<string>();
+  public string[] Tags { get; set; } = Array.Empty<string>();
 
   /// <summary>
   /// Timestamp (ISO 8601) of the last time this cryptocurrency's market data was updated.
