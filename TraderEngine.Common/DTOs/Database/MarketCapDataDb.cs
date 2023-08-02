@@ -10,7 +10,7 @@ public class MarketCapDataDb
 
   public double MarketCap { get; set; }
 
-  public List<string> Tags { get; set; } = new();
+  public string Tags { get; set; } = string.Empty;
 
   public DateTime Updated { get; set; }
 }

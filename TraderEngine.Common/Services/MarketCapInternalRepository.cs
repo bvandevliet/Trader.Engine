@@ -1,6 +1,5 @@
 using AutoMapper;
 using Dapper;
-using Dapper.Contrib.Extensions;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using TraderEngine.Common.Abstracts;
@@ -34,47 +33,67 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   protected async Task<bool> ShouldInsert(MarketCapDataDto marketCap)
   {
     var lastRecord = await _mySqlConnection.QueryFirstOrDefaultAsync<MarketCapDataDb>(
-      "SELECT * FROM TraderEngine.MarketCap\n" +
+      "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
       "ORDER BY Updated DESC LIMIT 1;",
-      new { marketCap.Market.QuoteSymbol, marketCap.Market.BaseSymbol });
+      new
+      {
+        marketCap.Market.QuoteSymbol,
+        marketCap.Market.BaseSymbol
+      });
 
-    return IsCloseToTheWholeHour(marketCap.Updated) &&
+    return //IsCloseToTheWholeHour(marketCap.Updated) &&
       (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance);
   }
 
-  public async Task Insert(MarketCapDataDto marketCap)
+  public async Task<int> Insert(MarketCapDataDto marketCap)
   {
-    var shouldInsert = await ShouldInsert(marketCap);
+    int rowsAffected = 0;
 
-    if (shouldInsert)
+    if (await ShouldInsert(marketCap))
     {
-      int rowsAffected = await _mySqlConnection.InsertAsync(_mapper.Map<MarketCapDataDb>(marketCap));
+      var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
+
+      rowsAffected = await _mySqlConnection.ExecuteAsync(
+        "INSERT INTO MarketCapData (QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated)\n" +
+        "VALUES (@QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated);",
+        marketCapData);
 
       if (0 == rowsAffected)
       {
-        _logger.LogError("Failed to insert {marketCap} to database.", marketCap);
+        _logger.LogError("Failed to insert market cap of {market} to database.", marketCap.Market);
       }
     }
+
+    return rowsAffected;
   }
 
-  public async Task InsertMany(IEnumerable<MarketCapDataDto> marketCaps)
+  public async Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
+    int rowsAffected = 0;
+
     foreach (MarketCapDataDto marketCap in marketCaps)
     {
-      await Insert(marketCap);
+      rowsAffected += await Insert(marketCap);
     }
 
-    _logger.LogInformation("Updated market cap records in database.");
+    _logger.LogInformation("Inserted {rows} market cap records into database.", rowsAffected);
+
+    return rowsAffected;
   }
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
   {
     var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
-      "SELECT * FROM TraderEngine.MarketCap\n" +
+      "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
       "AND Updated >= @Updated ORDER BY Updated DESC;",
-      new { market.QuoteSymbol, market.BaseSymbol, Updated = DateTime.UtcNow.AddDays(-(days + earlierTolerance / 1440)) });
+      new
+      {
+        market.QuoteSymbol,
+        market.BaseSymbol,
+        Updated = DateTime.UtcNow.AddDays(-(days + earlierTolerance / 1440)),
+      });
 
     return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
   }
@@ -82,10 +101,14 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
   {
     var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
-      "SELECT * FROM TraderEngine.MarketCap\n" +
+      "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol\n" +
       "AND Updated >= @Updated ORDER BY Updated DESC;",
-      new { quoteSymbol, Updated = DateTime.UtcNow.AddDays(-(1 + earlierTolerance / 1440)) });
+      new
+      {
+        quoteSymbol,
+        Updated = DateTime.UtcNow.AddDays(-(1 + earlierTolerance / 1440)),
+      });
 
     // Group by asset base symbol.
     IEnumerable<IGrouping<string, MarketCapDataDb>> assetGroups =

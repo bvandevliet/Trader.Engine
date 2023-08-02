@@ -13,14 +13,14 @@ public interface IMarketCapInternalRepository
   /// </summary>
   /// <param name="marketCap"></param>
   /// <returns></returns>
-  Task Insert(MarketCapDataDto marketCap);
+  Task<int> Insert(MarketCapDataDto marketCap);
 
   /// <summary>
   /// Saves multiple market cap objects to the database.
   /// </summary>
   /// <param name="marketCaps"></param>
   /// <returns></returns>
-  Task InsertMany(IEnumerable<MarketCapDataDto> marketCaps);
+  Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps);
 
   /// <summary>
   /// Get all historical market cap data for the specified market within given amount of days ago.
