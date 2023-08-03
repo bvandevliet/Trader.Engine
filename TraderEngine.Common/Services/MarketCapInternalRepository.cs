@@ -42,7 +42,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
         marketCap.Market.BaseSymbol
       });
 
-    return //IsCloseToTheWholeHour(marketCap.Updated) &&
+    return IsCloseToTheWholeHour(marketCap.Updated) &&
       (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance);
   }
 
