@@ -27,7 +27,7 @@ services:
     tty: true
     environment:
       - TZ=Europe/Amsterdam
-      - ConnectionStrings__MySql="server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};"
+      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};
 
   traderengine.cli:
     container_name: traderengine.cli
@@ -46,4 +46,4 @@ services:
       - TZ=Europe/Amsterdam
       - Addresses__TRADER_API=http://traderengine.api
       - CoinMarketCap__API_KEY=${CMC_API_KEY}
-      - ConnectionStrings__MySql="server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};"
+      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};
