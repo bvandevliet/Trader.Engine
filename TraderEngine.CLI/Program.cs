@@ -1,4 +1,3 @@
-using Dapper;
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
 using MySqlConnector;
@@ -7,6 +6,7 @@ using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.Bootstrap;
+using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Services;
 
 namespace TraderEngine.CLI;
@@ -28,11 +28,20 @@ public class Program
 
         services.AddTransient(x =>
         {
-          var dbConnection = new MySqlConnection(builder.Configuration.GetConnectionString("MySql"));
+          var namedDbConnection = new NamedTypeHelper<MySqlConnection>(
+            "MySql", new(builder.Configuration.GetConnectionString("MySql")));
 
-          dbConnection.Initialize().GetAwaiter().GetResult();
+          namedDbConnection.Value.Initialize().GetAwaiter().GetResult();
 
-          return dbConnection;
+          return namedDbConnection;
+        });
+
+        services.AddTransient(x =>
+        {
+          var namedDbConnection = new NamedTypeHelper<MySqlConnection>(
+            "WordPress", new(builder.Configuration.GetConnectionString("WordPress")));
+
+          return namedDbConnection;
         });
 
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));

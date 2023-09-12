@@ -6,6 +6,7 @@ using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.Database;
 using TraderEngine.Common.DTOs.Request;
 using TraderEngine.Common.DTOs.Response;
+using TraderEngine.Common.Helpers;
 
 namespace TraderEngine.Common.Services;
 
@@ -18,11 +19,11 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
     IMapper mapper,
-    MySqlConnection mySqlConnection)
+    IEnumerable<NamedTypeHelper<MySqlConnection>> sqlConnections)
   {
     _logger = logger;
     _mapper = mapper;
-    _mySqlConnection = mySqlConnection;
+    _mySqlConnection = sqlConnections.First(conn => conn.Name == "MySql").Value;
   }
 
   /// <summary>
