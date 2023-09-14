@@ -166,16 +166,15 @@ public static class WordPressDbSerializer
 
       for (int index = 0; index < elementsCount; index++)
       {
-        dynamic key = Deserialize(value[endIndex..], typeof(object), out int keyEnd)!;
+        object key = Deserialize(value[endIndex..], keyType, out int keyEnd)!;
 
         endIndex += keyEnd;
 
-        dynamic? val = Deserialize(value[endIndex..], typeof(object), out int valEnd);
+        object? val = Deserialize(value[endIndex..], valType, out int valEnd);
 
         endIndex += valEnd;
 
-        dictionaryType.GetMethod("Add")!.Invoke(instance,
-          new[] { Convert.ChangeType(key, keyType), Convert.ChangeType(val, valType) });
+        dictionaryType.GetMethod("Add")!.Invoke(instance, new[] { key, val });
       }
 
       // To account for closing '}'.
