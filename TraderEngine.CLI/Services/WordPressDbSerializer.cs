@@ -148,13 +148,17 @@ public static class WordPressDbSerializer
     {
       endIndex = value.IndexOf('{') + 1;
 
-      bool isAssoc = !value[endIndex..].StartsWith('i');
-
       int elementsCount = int.Parse(value[2..(endIndex - 2)]);
 
-      Type[] genArgs = type.GetGenericArguments();
-      Type keyType = genArgs.Length == 1 ? typeof(int) : genArgs[0];
-      Type valType = genArgs.Length == 1 ? genArgs[0] : genArgs[1];
+      Type[] genArgs = type.GenericTypeArguments;
+
+      bool isAssoc = genArgs.Length == 2;
+
+      Type keyType =
+        genArgs.Length <= 1 ? typeof(int) : genArgs[0];
+      Type valType =
+        type.HasElementType ? type.GetElementType()! :
+        genArgs.Length == 1 ? genArgs[0] : genArgs[1];
 
       Type dictionaryType = typeof(Dictionary<,>).MakeGenericType(keyType, valType);
 
@@ -184,7 +188,9 @@ public static class WordPressDbSerializer
 
       object listValues = dictionaryType.GetProperty("Values")!.GetValue(instance)!;
 
-      MethodInfo toListMethod = typeof(Enumerable).GetMethod("ToList")!.MakeGenericMethod(valType);
+      MethodInfo toListMethod = type.IsArray
+        ? typeof(Enumerable).GetMethod("ToArray")!.MakeGenericMethod(valType)
+        : typeof(Enumerable).GetMethod("ToList")!.MakeGenericMethod(valType);
 
       return toListMethod.Invoke(null, new object[] { listValues })!;
     }

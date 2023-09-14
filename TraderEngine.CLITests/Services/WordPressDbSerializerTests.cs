@@ -67,6 +67,58 @@ public class WordPressDbSerializerTests
 
     WordPressDbSerializer.Serialize(new bool[] { true, false, true })
       .Should().Be("a:3:{i:0;b:1;i:1;b:0;i:2;b:1;}");
+
+    WordPressDbSerializer.Serialize(new Dictionary<string, decimal>() { { "first", 1.2m }, { "second", 2.1m }, })
+      .Should().Be("a:2:{s:5:\"first\";d:1.2;s:6:\"second\";d:2.1;}");
+
+    WordPressDbSerializer.Serialize(new Dictionary<string, string>() { { "first", "tsrif" }, { "second", "dnoces" }, })
+      .Should().Be("a:2:{s:5:\"first\";s:5:\"tsrif\";s:6:\"second\";s:6:\"dnoces\";}");
+
+    WordPressDbSerializer.Serialize(new Dictionary<int, string>() { { 1, "first" }, { 2, "second" }, })
+      .Should().Be("a:2:{i:1;s:5:\"first\";i:2;s:6:\"second\";}");
+  }
+
+  [TestMethod()]
+  public void DeserializeBasicTypesTest()
+  {
+    WordPressDbSerializer.Deserialize<string>("s:4:\"test\";")
+        .Should().Be("test");
+
+    WordPressDbSerializer.Deserialize<int>("i:16;")
+        .Should().Be(16);
+
+    WordPressDbSerializer.Deserialize<double>("d:14.32;")
+        .Should().Be(14.32);
+
+    WordPressDbSerializer.Deserialize<bool>("b:1;")
+        .Should().BeTrue();
+
+    WordPressDbSerializer.Deserialize<List<int>>("a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}")
+        .Should().BeEquivalentTo(new List<int> { 1, 2, 3 });
+
+    WordPressDbSerializer.Deserialize<int[]>("a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}")
+        .Should().BeEquivalentTo(new int[] { 1, 2, 3 });
+
+    WordPressDbSerializer.Deserialize<List<string>>("a:3:{i:0;s:1:\"a\";i:1;s:1:\"b\";i:2;s:1:\"c\";}")
+        .Should().BeEquivalentTo(new List<string> { "a", "b", "c" });
+
+    WordPressDbSerializer.Deserialize<string[]>("a:3:{i:0;s:1:\"a\";i:1;s:1:\"b\";i:2;s:1:\"c\";}")
+        .Should().BeEquivalentTo(new string[] { "a", "b", "c" });
+
+    WordPressDbSerializer.Deserialize<List<bool>>("a:3:{i:0;b:1;i:1;b:0;i:2;b:1;}")
+        .Should().BeEquivalentTo(new List<bool> { true, false, true });
+
+    WordPressDbSerializer.Deserialize<bool[]>("a:3:{i:0;b:1;i:1;b:0;i:2;b:1;}")
+        .Should().BeEquivalentTo(new bool[] { true, false, true });
+
+    WordPressDbSerializer.Deserialize<Dictionary<string, decimal>>("a:2:{s:5:\"first\";d:1.2;s:6:\"second\";d:2.1;}")
+        .Should().BeEquivalentTo(new Dictionary<string, decimal>() { { "first", 1.2m }, { "second", 2.1m } });
+
+    WordPressDbSerializer.Deserialize<Dictionary<string, string>>("a:2:{s:5:\"first\";s:5:\"tsrif\";s:6:\"second\";s:6:\"dnoces\";}")
+        .Should().BeEquivalentTo(new Dictionary<string, string>() { { "first", "tsrif" }, { "second", "dnoces" } });
+
+    WordPressDbSerializer.Deserialize<Dictionary<int, string>>("a:2:{i:1;s:5:\"first\";i:2;s:6:\"second\";}")
+      .Should().BeEquivalentTo(new Dictionary<int, string>() { { 1, "first" }, { 2, "second" } });
   }
 
   [TestMethod()]
