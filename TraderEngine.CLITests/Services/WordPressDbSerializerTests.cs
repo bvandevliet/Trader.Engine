@@ -1,0 +1,87 @@
+using FluentAssertions;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using TraderEngine.Common.DTOs.Response;
+
+namespace TraderEngine.CLI.Services.Tests;
+
+[TestClass()]
+public class WordPressDbSerializerTests
+{
+  private static readonly ConfigDto _configDto = new()
+  {
+    QuoteCurrency = "EUR",
+    QuoteAllocation = 0,
+    AltWeightingFactors = new() { { "BTC", .9m }, { "DOGE", 0 }, },
+    TagsToIgnore = new() { "stablecoin", "meme", },
+    TopRankingCount = 10,
+    Smoothing = 5,
+    NthRoot = 2,
+    IntervalHours = 8,
+    MinimumDiffQuote = 15,
+    MinimumDiffAllocation = 1.5m,
+    AutomationEnabled = true,
+    LastRebalance = new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
+  };
+
+  private static readonly string _serializedConfigDto =
+    "O:9:\"ConfigDto\":12:{s:13:\"QuoteCurrency\";s:3:\"EUR\";s:15:\"QuoteAllocation\";d:0;s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}s:15:\"TopRankingCount\";i:10;s:9:\"Smoothing\";d:5;s:7:\"NthRoot\";d:2;s:13:\"IntervalHours\";d:8;s:16:\"MinimumDiffQuote\";d:15;s:21:\"MinimumDiffAllocation\";d:1.5;s:17:\"AutomationEnabled\";b:1;s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}}";
+
+  [TestMethod()]
+  public void SerializeBasicTypesTest()
+  {
+    WordPressDbSerializer.Serialize(null)
+      .Should().Be("N;");
+
+    WordPressDbSerializer.Serialize("test")
+      .Should().Be("s:4:\"test\";");
+
+    WordPressDbSerializer.Serialize(16)
+      .Should().Be("i:16;");
+
+    WordPressDbSerializer.Serialize(14.32)
+      .Should().Be("d:14.32;");
+
+    WordPressDbSerializer.Serialize(true)
+      .Should().Be("b:1;");
+
+    WordPressDbSerializer.Serialize(false)
+      .Should().Be("b:0;");
+
+    WordPressDbSerializer.Serialize(new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc))
+      .Should().Be("O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}");
+
+    WordPressDbSerializer.Serialize(new List<int> { 1, 2, 3 })
+      .Should().Be("a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}");
+
+    WordPressDbSerializer.Serialize(new int[] { 1, 2, 3 })
+      .Should().Be("a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}");
+
+    WordPressDbSerializer.Serialize(new List<string> { "a", "b", "c" })
+      .Should().Be("a:3:{i:0;s:1:\"a\";i:1;s:1:\"b\";i:2;s:1:\"c\";}");
+
+    WordPressDbSerializer.Serialize(new string[] { "a", "b", "c" })
+      .Should().Be("a:3:{i:0;s:1:\"a\";i:1;s:1:\"b\";i:2;s:1:\"c\";}");
+
+    WordPressDbSerializer.Serialize(new List<bool> { true, false, true })
+      .Should().Be("a:3:{i:0;b:1;i:1;b:0;i:2;b:1;}");
+
+    WordPressDbSerializer.Serialize(new bool[] { true, false, true })
+      .Should().Be("a:3:{i:0;b:1;i:1;b:0;i:2;b:1;}");
+  }
+
+  [TestMethod()]
+  public void SerializeCustomTypesTest()
+  {
+    var result = WordPressDbSerializer.Serialize(_configDto);
+
+    result.Should().Be(_serializedConfigDto);
+  }
+
+  [TestMethod()]
+  public void DeserializeCustomTypesTest()
+  {
+    var result = WordPressDbSerializer.Deserialize<ConfigDto>(_serializedConfigDto);
+
+    result.Should().BeEquivalentTo(_configDto);
+  }
+}
