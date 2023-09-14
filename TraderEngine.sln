@@ -22,7 +22,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.Common", "Trad
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.CommonTests", "TraderEngine.CommonTests\TraderEngine.CommonTests.csproj", "{8E6F9944-0A9B-4779-B03F-B1907429C156}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TraderEngine.APITests", "TraderEngine.APITests\TraderEngine.APITests.csproj", "{DD145B36-8658-4765-A68B-D8DAE45CAA39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.APITests", "TraderEngine.APITests\TraderEngine.APITests.csproj", "{DD145B36-8658-4765-A68B-D8DAE45CAA39}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TraderEngine.CLITests", "TraderEngine.CLITests\TraderEngine.CLITests.csproj", "{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -54,6 +56,10 @@ Global
 		{DD145B36-8658-4765-A68B-D8DAE45CAA39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD145B36-8658-4765-A68B-D8DAE45CAA39}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DD145B36-8658-4765-A68B-D8DAE45CAA39}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
