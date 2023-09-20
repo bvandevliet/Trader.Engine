@@ -1,5 +1,6 @@
-using Microsoft.Net.Http.Headers;
+using MySqlConnector;
 using TraderEngine.API.Exchanges;
+using TraderEngine.Common.Bootstrap;
 
 namespace TraderEngine.API;
 
@@ -16,6 +17,15 @@ public class Program
     builder.Services.AddSwaggerGen();
 
     builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+
+    builder.Services.AddTransient(x =>
+    {
+      var dbConnection = new MySqlConnection(new(builder.Configuration.GetConnectionString("MySql")));
+
+      dbConnection.Initialize().GetAwaiter().GetResult();
+
+      return dbConnection;
+    });
 
     builder.Services.AddHttpClient<BitvavoExchange>(httpClient =>
     {
