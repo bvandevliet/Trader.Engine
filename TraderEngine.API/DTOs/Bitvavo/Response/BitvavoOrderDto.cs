@@ -1,4 +1,4 @@
-using TraderEngine.Common.DTOs.Request;
+using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.API.DTOs.Bitvavo.Response;
 

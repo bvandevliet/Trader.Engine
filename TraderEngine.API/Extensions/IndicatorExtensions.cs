@@ -1,6 +1,6 @@
 using Skender.Stock.Indicators;
 using TraderEngine.API.Extensions;
-using TraderEngine.Common.DTOs.Response;
+using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.API.Extensions;
 

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using TraderEngine.Common.Enums;
 
-namespace TraderEngine.Common.DTOs.Request;
+namespace TraderEngine.Common.DTOs.API.Request;
 
 public class OrderReqDto
 {

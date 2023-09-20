@@ -1,13 +1,13 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TraderEngine.Common.DTOs.Response;
+using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.CLI.Services.Tests;
 
 [TestClass()]
 public class WordPressDbSerializerTests
 {
-  private static readonly ConfigDto _configDto = new()
+  private static readonly ConfigReqDto _configDto = new()
   {
     QuoteCurrency = "EUR",
     QuoteAllocation = 0,
@@ -132,7 +132,7 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void DeserializeCustomTypesTest()
   {
-    var result = WordPressDbSerializer.Deserialize<ConfigDto>(_serializedConfigDto);
+    var result = WordPressDbSerializer.Deserialize<ConfigReqDto>(_serializedConfigDto);
 
     result.Should().BeEquivalentTo(_configDto);
   }

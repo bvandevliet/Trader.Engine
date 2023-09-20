@@ -1,5 +1,5 @@
-using TraderEngine.Common.DTOs.Request;
-using TraderEngine.Common.DTOs.Response;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
 

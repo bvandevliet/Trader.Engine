@@ -1,7 +1,7 @@
-using TraderEngine.Common.DTOs.Request;
+using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
 
-namespace TraderEngine.Common.DTOs.Response;
+namespace TraderEngine.Common.DTOs.API.Response;
 
 public class OrderDto : OrderReqDto
 {

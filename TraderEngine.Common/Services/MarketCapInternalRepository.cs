@@ -3,9 +3,9 @@ using Dapper;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
 using TraderEngine.Common.Abstracts;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.DTOs.Database;
-using TraderEngine.Common.DTOs.Request;
-using TraderEngine.Common.DTOs.Response;
 using TraderEngine.Common.Helpers;
 
 namespace TraderEngine.Common.Services;

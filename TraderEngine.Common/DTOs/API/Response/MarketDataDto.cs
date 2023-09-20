@@ -1,6 +1,6 @@
-using TraderEngine.Common.DTOs.Request;
+using TraderEngine.Common.DTOs.API.Request;
 
-namespace TraderEngine.Common.DTOs.Response;
+namespace TraderEngine.Common.DTOs.API.Response;
 
 public class MarketDataDto : MarketReqDto
 {

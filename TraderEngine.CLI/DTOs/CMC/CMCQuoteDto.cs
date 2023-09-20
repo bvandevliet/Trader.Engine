@@ -1,4 +1,4 @@
-namespace TraderEngine.CLI.DTOs;
+namespace TraderEngine.CLI.DTOs.CMC;
 
 internal class CMCQuoteDto
 {

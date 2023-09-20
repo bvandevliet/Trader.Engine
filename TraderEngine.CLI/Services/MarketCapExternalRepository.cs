@@ -1,8 +1,8 @@
 using AutoMapper;
 using System.Net.Http.Json;
-using TraderEngine.CLI.DTOs;
-using TraderEngine.Common.DTOs.Request;
-using TraderEngine.Common.DTOs.Response;
+using TraderEngine.CLI.DTOs.CMC;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.CLI.Services;
 

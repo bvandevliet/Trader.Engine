@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using TraderEngine.Common.DTOs.Response;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Services;
 
 namespace TraderEngine.CLI.Services;

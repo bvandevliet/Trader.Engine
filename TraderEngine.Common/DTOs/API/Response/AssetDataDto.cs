@@ -1,4 +1,4 @@
-namespace TraderEngine.Common.DTOs.Response;
+namespace TraderEngine.Common.DTOs.API.Response;
 
 public class AssetDataDto
 {

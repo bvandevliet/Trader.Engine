@@ -1,7 +1,7 @@
 using AutoMapper;
 using System.Text.Json;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.DTOs.Database;
-using TraderEngine.Common.DTOs.Response;
 
 namespace TraderEngine.Common.Profiles;
 
