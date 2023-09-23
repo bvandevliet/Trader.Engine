@@ -6,7 +6,7 @@ public class RebalanceTriggerReqDto
 {
   /// <inheritdoc cref="AbsAssetAllocReqDto"/>
   [Required]
-  public IEnumerable<AbsAssetAllocReqDto> NewAssetAllocs { get; set; } = null!;
+  public IEnumerable<AbsAssetAllocReqDto> NewAbsAssetAllocs { get; set; } = null!;
 
   /// <inheritdoc cref="AllocationReqDto"/>
   public IEnumerable<KeyValuePair<AllocationReqDto, decimal>>? AllocQuoteDiffs { get; set; } = null;
