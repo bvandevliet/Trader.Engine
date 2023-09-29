@@ -29,15 +29,6 @@ public class Balance
   /// </summary>
   public ReadOnlyCollection<Allocation> Allocations { get; }
 
-  private decimal? _amountQuoteTotal;
-  /// <summary>
-  /// Total value of balance in quote currency.
-  /// </summary>
-  public decimal AmountQuoteTotal
-  {
-    get => _amountQuoteTotal ??= Allocations.Sum(alloc => alloc.AmountQuote);
-  }
-
   private decimal? _amountQuote;
   /// <summary>
   /// Amount of quote currency.
@@ -45,6 +36,15 @@ public class Balance
   public decimal AmountQuote
   {
     get => _amountQuote ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
+  }
+
+  private decimal? _amountQuoteTotal;
+  /// <summary>
+  /// Total value of balance in quote currency.
+  /// </summary>
+  public decimal AmountQuoteTotal
+  {
+    get => _amountQuoteTotal ??= Allocations.Sum(alloc => alloc.AmountQuote);
   }
 
   /// <summary>
