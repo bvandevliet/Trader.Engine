@@ -15,9 +15,9 @@ public interface IExchange
 
   decimal TakerFee { get; }
 
-  string ApiKey { get; set; }
+  internal string ApiKey { get; set; }
 
-  string ApiSecret { get; set; }
+  internal string ApiSecret { get; set; }
 
   Task<Balance> GetBalance();
 
