@@ -154,32 +154,6 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="allocQuoteDiffs"/>.
-  /// Completes when verified that all triggered sell orders are ended.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="allocQuoteDiffs"></param>
-  /// <returns></returns>
-  public static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs)
-  {
-    // The sell task loop ..
-    IEnumerable<Task<OrderDto>> sellTasks = allocQuoteDiffs
-      // We can't sell quote currency for quote currency.
-      .Where(allocQuoteDiff => !allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
-      // Positive quote differences refer to oversized allocations,
-      // and check if reached minimum order size.
-      .Where(allocQuoteDiff => allocQuoteDiff.Value >= @this.MinimumOrderSize)
-      // Sell ..
-      .Select(allocQuoteDiff =>
-        @this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
-        // Continue to verify sell order ended, within same task to optimize performance.
-        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
-
-    return await Task.WhenAll(sellTasks);
-  }
-
-  /// <summary>
   /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
@@ -196,7 +170,20 @@ public static partial class Trader
     // Get enumerable since we're iterating it just once.
     IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs = GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
 
-    return await @this.SellOveragesAndVerify(allocQuoteDiffs);
+    // The sell task loop ..
+    IEnumerable<Task<OrderDto>> sellTasks = allocQuoteDiffs
+      // We can't sell quote currency for quote currency.
+      .Where(allocQuoteDiff => !allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+      // Positive quote differences refer to oversized allocations,
+      // and check if reached minimum order size.
+      .Where(allocQuoteDiff => allocQuoteDiff.Value >= @this.MinimumOrderSize)
+      // Sell ..
+      .Select(allocQuoteDiff =>
+        @this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
+        // Continue to verify sell order ended, within same task to optimize performance.
+        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
+
+    return await Task.WhenAll(sellTasks);
   }
 
   /// <summary>
@@ -253,6 +240,8 @@ public static partial class Trader
       // Buy ..
       .Select(allocQuoteDiff =>
          @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote))));
+    // Continue to verify buy order ended, within same task to optimize performance.
+    //.ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
 
     return await Task.WhenAll(buyTasks);
   }
@@ -262,20 +251,16 @@ public static partial class Trader
   /// </summary>
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
-  /// <param name="allocQuoteDiffs"></param>
   public static async Task<IEnumerable<OrderDto>> Rebalance(
     this IExchange @this,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
-    IEnumerable<KeyValuePair<Allocation, decimal>>? allocQuoteDiffs = null)
+    IEnumerable<AbsAllocReqDto> newAbsAllocs)
   {
     // Clear the path ..
     await @this.CancelAllOpenOrders();
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    OrderDto[] sellResults = null != allocQuoteDiffs
-      ? await @this.SellOveragesAndVerify(allocQuoteDiffs)
-      : await @this.SellOveragesAndVerify(newAbsAllocs);
+    OrderDto[] sellResults = await @this.SellOveragesAndVerify(newAbsAllocs);
 
     // Then buy to increase undersized allocations.
     OrderDto[] buyResults = await @this.BuyUnderages(newAbsAllocs);
