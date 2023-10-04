@@ -102,11 +102,14 @@ public class BitvavoExchange : IExchange
 
     var balance = new Balance(QuoteSymbol);
 
-    IEnumerable<Task<Allocation>> priceTasks = result
-      .Select(allocationDto =>
-        (dto: allocationDto, amount: decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder)))
+    IEnumerable<Task<Allocation>> priceTasks =
+      result
+
       // Filter out assets of which the amount is 0.
+      .Select(allocationDto => (dto: allocationDto, amount: decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder)))
       .Where(alloc => alloc.amount > 0)
+
+      // Get price of each asset.
       .Select(async alloc =>
       {
         var market = new MarketReqDto(QuoteSymbol, alloc.dto.Symbol);
