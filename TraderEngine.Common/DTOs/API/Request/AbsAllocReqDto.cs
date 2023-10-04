@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
-public class AbsAssetAllocReqDto
+public class AbsAllocReqDto
 {
   [Required]
   public string BaseSymbol { get; set; } = null!;
@@ -10,13 +10,13 @@ public class AbsAssetAllocReqDto
   [Required]
   public decimal AbsAlloc { get; set; }
 
-  public AbsAssetAllocReqDto()
+  public AbsAllocReqDto()
   {
   }
 
   /// <param name="baseSymbol"><inheritdoc cref="BaseSymbol"/></param>
   /// <param name="absAlloc"><inheritdoc cref="AbsAlloc"/></param>
-  public AbsAssetAllocReqDto(string baseSymbol, decimal absAlloc)
+  public AbsAllocReqDto(string baseSymbol, decimal absAlloc)
   {
     BaseSymbol = baseSymbol;
     AbsAlloc = absAlloc;

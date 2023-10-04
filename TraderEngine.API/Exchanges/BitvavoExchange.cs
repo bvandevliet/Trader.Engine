@@ -29,6 +29,8 @@ public class BitvavoExchange : IExchange
   public BitvavoExchange(HttpClient httpClient)
   {
     _httpClient = httpClient;
+
+    _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
   }
 
   private string CreateSignature(long timestamp, string method, string url, object? body)
@@ -100,16 +102,30 @@ public class BitvavoExchange : IExchange
 
     var balance = new Balance(QuoteSymbol);
 
-    foreach (BitvavoAllocationDto allocationDto in result)
+    IEnumerable<Task<Allocation>> priceTasks =
+      result
+
+      // Filter out assets of which the amount is 0.
+      .Select(allocationDto => (dto: allocationDto, amount: decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder)))
+      .Where(alloc => alloc.amount > 0)
+
+      // Get price of each asset.
+      .Select(async alloc =>
+      {
+        var market = new MarketReqDto(QuoteSymbol, alloc.dto.Symbol);
+
+        decimal price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
+
+        var allocation = new Allocation(market, price, alloc.amount);
+
+        return allocation;
+      });
+
+    // TODO: Error handling.
+    Allocation[] allocations = await Task.WhenAll(priceTasks);
+
+    foreach (Allocation allocation in allocations)
     {
-      var market = new MarketReqDto(QuoteSymbol, allocationDto.Symbol);
-
-      decimal price = allocationDto.Symbol == QuoteSymbol ? 1 : await GetPrice(market);
-
-      decimal available = decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder);
-
-      var allocation = new Allocation(market, price, available);
-
       balance.AddAllocation(allocation);
     }
 

@@ -12,7 +12,7 @@ public class TraderTests
 
   private MockExchange _exchangeService = null!;
 
-  private readonly List<AbsAssetAllocReqDto> _absAssetAlloc = new()
+  private readonly List<AbsAllocReqDto> _absAssetAlloc = new()
   {
     new(baseSymbol: "EUR", absAlloc: .05m),
     new(baseSymbol: "BTC", absAlloc: .40m),
