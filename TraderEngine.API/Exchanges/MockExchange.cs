@@ -121,6 +121,8 @@ public class MockExchange : IExchange
       returnOrder.Amount = order.Amount;
     }
 
+    returnOrder.AmountFilled = amountQuote / curAlloc!.Price;
+    returnOrder.AmountQuoteFilled = amountQuote;
     returnOrder.FeePaid = amountQuote * TakerFee;
 
     if (null == curAlloc)
@@ -163,20 +165,20 @@ public class MockExchange : IExchange
 }
 
 /// <inheritdoc cref="MockExchange"/>
-public class MockExchange<T> : MockExchange, IExchange where T : class, IExchange
+public class SimExchange : MockExchange, IExchange
 {
   protected readonly IExchange _instance;
 
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
-  public MockExchange(T exchangeService, Balance? curBalance = null)
+  public SimExchange(IExchange exchangeService, Balance? curBalance = null)
     : base(
       exchangeService.QuoteSymbol,
       exchangeService.MinimumOrderSize,
       exchangeService.MakerFee,
       exchangeService.TakerFee,
-      curBalance ?? exchangeService.GetBalance().Result)
+      curBalance ?? exchangeService.GetBalance().GetAwaiter().GetResult())
   {
     _instance = exchangeService;
   }
