@@ -248,10 +248,10 @@ public static partial class Trader
 
       // Buy ..
       .Select(allocQuoteDiff =>
-         @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote))));
+         @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote)))
 
-    // Continue to verify buy order ended, within same task to optimize performance.
-    //.ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap());
+        // Continue to verify buy order ended, within same task to optimize performance.
+        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap());
 
     return await Task.WhenAll(buyTasks);
   }
