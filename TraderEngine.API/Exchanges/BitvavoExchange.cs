@@ -102,19 +102,23 @@ public class BitvavoExchange : IExchange
 
     var balance = new Balance(QuoteSymbol);
 
-    IEnumerable<Task<Allocation>> priceTasks = result.Select(async allocationDto =>
-    {
-      var market = new MarketReqDto(QuoteSymbol, allocationDto.Symbol);
+    IEnumerable<Task<Allocation>> priceTasks = result
+      .Select(allocationDto =>
+        (dto: allocationDto, amount: decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder)))
+      // Filter out assets of which the amount is 0.
+      .Where(alloc => alloc.amount > 0)
+      .Select(async alloc =>
+      {
+        var market = new MarketReqDto(QuoteSymbol, alloc.dto.Symbol);
 
-      decimal price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
+        decimal price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
 
-      decimal available = decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder);
+        var allocation = new Allocation(market, price, alloc.amount);
 
-      var allocation = new Allocation(market, price, available);
+        return allocation;
+      });
 
-      return allocation;
-    });
-
+    // TODO: Error handling.
     Allocation[] allocations = await Task.WhenAll(priceTasks);
 
     foreach (Allocation allocation in allocations)
