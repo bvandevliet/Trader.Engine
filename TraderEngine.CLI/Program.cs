@@ -4,6 +4,7 @@ using Polly;
 using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Services;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Services;
 
@@ -38,8 +39,7 @@ public class Program
 
           httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
         })
-          .AddTransientHttpErrorPolicy(policy =>
-            policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
+          .ApplyDefaultPoolAndPolicyConfig();
 
         services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
 

@@ -29,6 +29,8 @@ public class BitvavoExchange : IExchange
   public BitvavoExchange(HttpClient httpClient)
   {
     _httpClient = httpClient;
+
+    _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
   }
 
   private string CreateSignature(long timestamp, string method, string url, object? body)
