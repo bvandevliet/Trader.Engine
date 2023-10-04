@@ -109,7 +109,7 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// Get a buy order object including the expected fee.
+  /// Get a buy order request dto.
   /// </summary>
   /// <param name="this"></param>
   /// <param name="curAlloc"></param>
@@ -127,7 +127,7 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// Get a sell order object including the expected fee.
+  /// Get a sell order request dto.
   /// </summary>
   /// <param name="this"></param>
   /// <param name="curAlloc"></param>
@@ -171,15 +171,20 @@ public static partial class Trader
     IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs = GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
 
     // The sell task loop ..
-    IEnumerable<Task<OrderDto>> sellTasks = allocQuoteDiffs
+    IEnumerable<Task<OrderDto>> sellTasks =
+      allocQuoteDiffs
+
       // We can't sell quote currency for quote currency.
       .Where(allocQuoteDiff => !allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+
       // Positive quote differences refer to oversized allocations,
       // and check if reached minimum order size.
       .Where(allocQuoteDiff => allocQuoteDiff.Value >= @this.MinimumOrderSize)
+
       // Sell ..
       .Select(allocQuoteDiff =>
         @this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
+
         // Continue to verify sell order ended, within same task to optimize performance.
         .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
 
@@ -230,18 +235,23 @@ public static partial class Trader
     decimal ratio = totalBuy == 0 ? 0 : Math.Min(totalBuy, curBalance.AmountQuote) / totalBuy;
 
     // The buy task loop, diffs are already filtered ..
-    IEnumerable<Task<OrderDto>> buyTasks = allocQuoteDiffs
+    IEnumerable<Task<OrderDto>> buyTasks =
+      allocQuoteDiffs
+
       // Scale to avoid potentially oversized buy order sizes.
       // First check eligibility as it is less expensive operation than the multiplication operation.
       .Select(allocQuoteDiff => (alloc: allocQuoteDiff.Key, amountQuote: allocQuoteDiff.Value <= -@this.MinimumOrderSize ? ratio * allocQuoteDiff.Value : 0))
+
       // Negative quote differences refer to undersized allocations,
       // and check if reached minimum order size.
       .Where(allocQuoteDiff => allocQuoteDiff.amountQuote <= -@this.MinimumOrderSize)
+
       // Buy ..
       .Select(allocQuoteDiff =>
          @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote))));
+
     // Continue to verify buy order ended, within same task to optimize performance.
-    //.ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
+    //.ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap());
 
     return await Task.WhenAll(buyTasks);
   }
