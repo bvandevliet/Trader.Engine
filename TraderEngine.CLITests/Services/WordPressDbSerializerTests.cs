@@ -24,7 +24,7 @@ public class WordPressDbSerializerTests
   };
 
   private static readonly string _serializedConfigDto =
-    "O:9:\"ConfigDto\":12:{s:13:\"QuoteCurrency\";s:3:\"EUR\";s:15:\"QuoteAllocation\";d:0;s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}s:15:\"TopRankingCount\";i:10;s:9:\"Smoothing\";d:5;s:7:\"NthRoot\";d:2;s:13:\"IntervalHours\";d:8;s:16:\"MinimumDiffQuote\";d:15;s:21:\"MinimumDiffAllocation\";d:1.5;s:17:\"AutomationEnabled\";b:1;s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}}";
+    "O:12:\"ConfigReqDto\":13:{s:13:\"QuoteCurrency\";s:3:\"EUR\";s:12:\"QuoteTakeout\";d:0;s:15:\"QuoteAllocation\";d:0;s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}s:15:\"TopRankingCount\";i:10;s:9:\"Smoothing\";d:5;s:7:\"NthRoot\";d:2;s:13:\"IntervalHours\";d:8;s:16:\"MinimumDiffQuote\";d:15;s:21:\"MinimumDiffAllocation\";d:1.5;s:17:\"AutomationEnabled\";b:1;s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}}";
 
   [TestMethod()]
   public void SerializeBasicTypesTest()
