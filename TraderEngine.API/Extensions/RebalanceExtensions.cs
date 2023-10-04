@@ -163,27 +163,18 @@ public static partial class Trader
   public static async Task<OrderDto[]> SellOveragesAndVerify(
     this IExchange @this, IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs)
   {
-    var sellTasks = new List<Task<OrderDto>>();
-
     // The sell task loop ..
-    foreach (KeyValuePair<Allocation, decimal> allocQuoteDiff in allocQuoteDiffs)
-    {
-      if (allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
-      {
-        // We can't sell quote currency for quote currency.
-        continue;
-      }
-
+    IEnumerable<Task<OrderDto>> sellTasks = allocQuoteDiffs
+      // We can't sell quote currency for quote currency.
+      .Where(allocQuoteDiff => !allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
       // Positive quote differences refer to oversized allocations,
       // and check if reached minimum order size.
-      if (allocQuoteDiff.Value >= @this.MinimumOrderSize)
-      {
-        // Sell ..
-        sellTasks.Add(@this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
-          // Continue to verify sell order ended, within same task to optimize performance.
-          .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
-      }
-    }
+      .Where(allocQuoteDiff => allocQuoteDiff.Value >= @this.MinimumOrderSize)
+      // Sell ..
+      .Select(allocQuoteDiff =>
+        @this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
+        // Continue to verify sell order ended, within same task to optimize performance.
+        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
 
     return await Task.WhenAll(sellTasks);
   }
@@ -251,24 +242,17 @@ public static partial class Trader
     // Multiplication ratio to avoid potentially oversized buy order sizes.
     decimal ratio = totalBuy == 0 ? 0 : Math.Min(totalBuy, curBalance.AmountQuote) / totalBuy;
 
-    var buyTasks = new List<Task<OrderDto>>();
-
     // The buy task loop, diffs are already filtered ..
-    foreach (KeyValuePair<Allocation, decimal> allocQuoteDiff in allocQuoteDiffs)
-    {
+    IEnumerable<Task<OrderDto>> buyTasks = allocQuoteDiffs
       // Scale to avoid potentially oversized buy order sizes.
       // First check eligibility as it is less expensive operation than the multiplication operation.
-      decimal amountQuote =
-        allocQuoteDiff.Value <= -@this.MinimumOrderSize ? ratio * allocQuoteDiff.Value : 0;
-
+      .Select(allocQuoteDiff => (alloc: allocQuoteDiff.Key, amountQuote: allocQuoteDiff.Value <= -@this.MinimumOrderSize ? ratio * allocQuoteDiff.Value : 0))
       // Negative quote differences refer to undersized allocations,
       // and check if reached minimum order size.
-      if (amountQuote <= -@this.MinimumOrderSize)
-      {
-        // Buy ..
-        buyTasks.Add(@this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.Key, Math.Abs(amountQuote))));
-      }
-    }
+      .Where(allocQuoteDiff => allocQuoteDiff.amountQuote <= -@this.MinimumOrderSize)
+      // Buy ..
+      .Select(allocQuoteDiff =>
+         @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote))));
 
     return await Task.WhenAll(buyTasks);
   }
