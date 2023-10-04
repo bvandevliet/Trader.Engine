@@ -261,16 +261,18 @@ public static partial class Trader
   /// </summary>
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
+  /// <param name="curBalance"></param>
   public static async Task<IEnumerable<OrderDto>> Rebalance(
     this IExchange @this,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs)
+    IEnumerable<AbsAllocReqDto> newAbsAllocs,
+    Balance? curBalance = null)
   {
     // Clear the path ..
     await @this.CancelAllOpenOrders();
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    OrderDto[] sellResults = await @this.SellOveragesAndVerify(newAbsAllocs);
+    OrderDto[] sellResults = await @this.SellOveragesAndVerify(newAbsAllocs, curBalance);
 
     // Then buy to increase undersized allocations.
     OrderDto[] buyResults = await @this.BuyUnderages(newAbsAllocs);

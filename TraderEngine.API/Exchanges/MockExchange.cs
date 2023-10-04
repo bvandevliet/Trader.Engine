@@ -183,5 +183,13 @@ public class SimExchange : MockExchange, IExchange
     _instance = exchangeService;
   }
 
+  public async Task ProcessOrders(IEnumerable<OrderDto> orders)
+  {
+    foreach (OrderDto order in orders)
+    {
+      await NewOrder(order);
+    }
+  }
+
   new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }
