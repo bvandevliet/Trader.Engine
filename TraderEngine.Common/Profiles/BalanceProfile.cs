@@ -8,6 +8,11 @@ internal class BalanceProfile : Profile
 {
   public BalanceProfile()
   {
-    CreateMap<Balance, BalanceDto>();
+    CreateMap<Balance, BalanceDto>()
+      .ForMember(
+        dest => dest.Allocations, opt => opt.MapFrom(
+          src => src.Allocations
+          .OrderBy(alloc => alloc.Market.BaseSymbol != src.QuoteSymbol)
+          .ThenByDescending(alloc => alloc.AmountQuote)));
   }
 }
