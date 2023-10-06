@@ -98,11 +98,13 @@ public class MockExchange : IExchange
       AmountQuote = order.AmountQuote,
     };
 
+    decimal price = curAlloc?.Price ?? 0;
+
     decimal amountQuote;
 
     if (order.Side == OrderSide.Buy)
     {
-      amountQuote = order.AmountQuote ?? (decimal)(order.Amount * curAlloc!.Price);
+      amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
       newAlloc.AmountQuote += amountQuote;
 
@@ -112,7 +114,7 @@ public class MockExchange : IExchange
     }
     else
     {
-      amountQuote = order.AmountQuote ?? (decimal)(order.Amount * curAlloc!.Price);
+      amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
       newAlloc.AmountQuote -= amountQuote;
 
@@ -121,7 +123,7 @@ public class MockExchange : IExchange
       returnOrder.Amount = order.Amount;
     }
 
-    returnOrder.AmountFilled = amountQuote / curAlloc!.Price;
+    returnOrder.AmountFilled = price == 0 ? 0 : amountQuote / price;
     returnOrder.AmountQuoteFilled = amountQuote;
     returnOrder.FeePaid = amountQuote * TakerFee;
 
