@@ -1,7 +1,5 @@
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
-using Polly;
-using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.Extensions;
@@ -27,6 +25,7 @@ public class Program
 
         services.AddSingleton<SqlConnectionFactory>();
 
+        services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
@@ -43,8 +42,16 @@ public class Program
 
         services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
-        // Hosted service as ordinary Singleton.
-        services.AddSingleton<WorkerService>();
+        // Hosted service with HttpClient for API.
+        services.AddHttpClient<WorkerService>((x, httpClient) =>
+        {
+          AddressSettings addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
+
+          httpClient.BaseAddress = new($"{addressSettings.TRADER_API}/api/");
+
+          httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
+        })
+          .ApplyDefaultPoolAndPolicyConfig();
       })
       .Build();
 

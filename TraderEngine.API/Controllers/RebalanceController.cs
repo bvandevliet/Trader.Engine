@@ -47,7 +47,7 @@ public class RebalanceController : ControllerBase
     });
   }
 
-  [HttpPost("rebalance/{exchangeName}")]
+  [HttpPost("execute/{exchangeName}")]
   public async Task<ActionResult<RebalanceDto>> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
     IExchange exchange = _exchangeFactory.GetService(exchangeName);
