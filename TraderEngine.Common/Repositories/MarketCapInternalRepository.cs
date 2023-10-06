@@ -8,7 +8,7 @@ using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.DTOs.Database;
 using TraderEngine.Common.Factories;
 
-namespace TraderEngine.Common.Services;
+namespace TraderEngine.Common.Repositories;
 
 public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInternalRepository
 {

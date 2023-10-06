@@ -3,10 +3,10 @@ using Microsoft.Net.Http.Headers;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
-using TraderEngine.CLI.Services;
+using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
-using TraderEngine.Common.Services;
+using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.CLI;
 
@@ -44,7 +44,7 @@ public class Program
         services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
         // Hosted service as ordinary Singleton.
-        services.AddSingleton<Worker>();
+        services.AddSingleton<WorkerService>();
       })
       .Build();
 
@@ -61,7 +61,7 @@ public class Program
     {
       logger.LogInformation("{time}: Application is starting up ..", DateTime.Now.ToString("u"));
 
-      host.Services.GetRequiredService<Worker>().RunAsync().GetAwaiter().GetResult();
+      host.Services.GetRequiredService<WorkerService>().RunAsync().GetAwaiter().GetResult();
     }
     catch (Exception ex)
     {

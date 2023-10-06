@@ -2,7 +2,7 @@ using System.Collections;
 using System.Globalization;
 using System.Reflection;
 
-namespace TraderEngine.CLI.Services;
+namespace TraderEngine.CLI.Helpers;
 
 public static class WordPressDbSerializer
 {

@@ -1,7 +1,7 @@
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 
-namespace TraderEngine.CLI.Services;
+namespace TraderEngine.CLI.Repositories;
 
 /// <summary>
 /// Retrieves latest market cap data from external service.

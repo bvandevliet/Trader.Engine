@@ -1,19 +1,20 @@
 using Microsoft.Extensions.Logging;
+using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.DTOs.API.Response;
-using TraderEngine.Common.Services;
+using TraderEngine.Common.Repositories;
 
-namespace TraderEngine.CLI.Services;
+namespace TraderEngine.CLI;
 
-public class Worker
+public class WorkerService
 {
   private readonly Program.AppArgs _appArgs;
-  private readonly ILogger<Worker> _logger;
+  private readonly ILogger<WorkerService> _logger;
   private readonly IMarketCapExternalRepository _marketCapExtRepo;
   private readonly IMarketCapInternalRepository _marketCapIntRepo;
 
-  public Worker(
+  public WorkerService(
     Program.AppArgs appArgs,
-    ILogger<Worker> logger,
+    ILogger<WorkerService> logger,
     IMarketCapExternalRepository marketCapExtRepo,
     IMarketCapInternalRepository marketCapIntRepo)
   {

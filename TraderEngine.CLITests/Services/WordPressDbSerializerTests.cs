@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using TraderEngine.CLI.Helpers;
 using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.CLI.Services.Tests;

@@ -4,7 +4,7 @@ using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
-using TraderEngine.Common.Services;
+using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.API;
 
