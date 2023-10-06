@@ -74,16 +74,18 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// A task that will complete when verified that the given <paramref name="order"/> is ended.
+  /// A task that will complete when verified that the given <paramref name="orderTask"/> task has ended.
   /// If the given order is not completed within given amount of <paramref name="checks"/>, it will be cancelled.
   /// Every new check is performed one second after the previous has been resolved.
   /// </summary>
   /// <param name="this"></param>
-  /// <param name="order"></param>
+  /// <param name="orderTask"></param>
   /// <param name="checks"></param>
-  /// <returns>Completes when verified that the given <paramref name="order"/> is ended.</returns>
-  public static async Task<OrderDto> VerifyOrderEnded(this IExchange @this, OrderDto order, int checks = 60)
+  /// <returns>Completes when verified that the given <paramref name="orderTask"/> is ended.</returns>
+  public static async Task<OrderDto> VerifyOrderEnded(this IExchange @this, Task<OrderDto> orderTask, int checks = 60)
   {
+    OrderDto order = await orderTask;
+
     while (
       checks > 0 &&
       order.Id != null &&
@@ -186,7 +188,7 @@ public static partial class Trader
         @this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
 
         // Continue to verify sell order ended, within same task to optimize performance.
-        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
+        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask)).Unwrap());
 
     return await Task.WhenAll(sellTasks);
   }
@@ -251,7 +253,7 @@ public static partial class Trader
          @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote)))
 
         // Continue to verify buy order ended, within same task to optimize performance.
-        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap());
+        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask)).Unwrap());
 
     return await Task.WhenAll(buyTasks);
   }
