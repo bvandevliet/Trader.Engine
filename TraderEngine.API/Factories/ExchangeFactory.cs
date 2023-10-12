@@ -9,27 +9,28 @@ namespace TraderEngine.API.Factories;
 /// </summary>
 public class ExchangeFactory : INamedTypeFactory<IExchange>
 {
-    private readonly IServiceProvider _serviceProvider;
-    private readonly IDictionary<string, Type> _exchangeTypes;
+  private readonly IServiceProvider _serviceProvider;
+  private readonly IDictionary<string, Type> _exchangeTypes;
 
-    public ExchangeFactory(
-      IServiceProvider serviceProvider,
-      IEnumerable<Type> exchangeTypes)
+  public ExchangeFactory(
+    IServiceProvider serviceProvider,
+    IEnumerable<Type> exchangeTypes)
+  {
+    _serviceProvider = serviceProvider;
+    _exchangeTypes = exchangeTypes.ToDictionary(GetExchangeName, x => x, StringComparer.OrdinalIgnoreCase);
+  }
+
+  public IExchange GetService(string name)
+  {
+    if (_exchangeTypes.TryGetValue(name, out Type? exchangeType)
+      && _serviceProvider.GetService(exchangeType) is IExchange exchange)
     {
-        _serviceProvider = serviceProvider;
-        _exchangeTypes = exchangeTypes.ToDictionary(GetExchangeName, x => x, StringComparer.OrdinalIgnoreCase);
+      return exchange;
     }
 
-    public IExchange GetService(string name)
-    {
-        if (_exchangeTypes.TryGetValue(name, out Type? exchangeType))
-        {
-            return (IExchange)_serviceProvider.GetService(exchangeType)!;
-        }
+    throw new ArgumentException($"Exchange '{name}' not found.");
+  }
 
-        throw new ArgumentException($"Exchange '{name}' not found.");
-    }
-
-    private static string GetExchangeName(Type exchangeType) =>
-      exchangeType.Name.Replace("Exchange", string.Empty);
+  private static string GetExchangeName(Type exchangeType) =>
+    exchangeType.Name.Replace("Exchange", string.Empty);
 }
