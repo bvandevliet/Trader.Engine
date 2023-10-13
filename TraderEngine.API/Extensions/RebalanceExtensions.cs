@@ -15,7 +15,7 @@ public static partial class Trader
   /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
   /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
-  public static IEnumerable<KeyValuePair<Allocation, decimal>> GetAllocationQuoteDiffs(IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance curBalance)
+  public static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance curBalance)
   {
     // Initialize absolute asset allocation List,
     // being filled using a multi-purpose foreach to eliminate redundant iterations.
@@ -48,7 +48,11 @@ public static partial class Trader
       // Determine new quote amount.
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
-      yield return new KeyValuePair<Allocation, decimal>(curAlloc, curAlloc.AmountQuote - newAmountQuote);
+      yield return new AllocDiffReqDto(
+        curAlloc.Market,
+        curAlloc.Price,
+        curAlloc.Amount,
+        curAlloc.AmountQuote - newAmountQuote);
     }
 
     // Loop through absolute asset allocations and determine yet missing quote diffs.
@@ -69,7 +73,11 @@ public static partial class Trader
       // Determine new quote amount.
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
-      yield return new KeyValuePair<Allocation, decimal>(curAlloc, -newAmountQuote);
+      yield return new AllocDiffReqDto(
+        curAlloc.Market,
+        curAlloc.Price,
+        curAlloc.Amount,
+        -newAmountQuote);
     }
   }
 
@@ -156,29 +164,31 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="allocQuoteDiffs"/>.
+  /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="allocDiffs"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
   /// <param name="this"></param>
-  /// <param name="allocQuoteDiffs"></param>
+  /// <param name="allocDiffs"></param>
   /// <returns></returns>
   public static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs)
+    this IExchange @this, IEnumerable<AllocDiffReqDto> allocDiffs)
   {
     // The sell task loop ..
     IEnumerable<Task<OrderDto>> sellTasks =
-      allocQuoteDiffs
+      allocDiffs
 
       // We can't sell quote currency for quote currency.
-      .Where(allocQuoteDiff => !allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
 
       // Positive quote differences refer to oversized allocations,
       // and check if reached minimum order size.
-      .Where(allocQuoteDiff => allocQuoteDiff.Value >= @this.MinimumOrderSize)
+      .Where(allocDiff => allocDiff.AmountQuoteDiff >= @this.MinimumOrderSize)
 
       // Sell ..
-      .Select(allocQuoteDiff =>
-        @this.NewOrder(@this.ConstructSellOrder(allocQuoteDiff.Key, allocQuoteDiff.Value))
+      .Select(allocDiff =>
+        @this.NewOrder(@this.ConstructSellOrder(
+          new Allocation(allocDiff.Market, allocDiff.Price, allocDiff.Amount),
+          allocDiff.AmountQuoteDiff))
 
         // Continue to verify sell order ended, within same task to optimize performance.
         .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
@@ -201,9 +211,9 @@ public static partial class Trader
     curBalance ??= await @this.GetBalance();
 
     // Get enumerable since we're iterating it just once.
-    IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs = GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
+    IEnumerable<AllocDiffReqDto> allocDiffs = GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
 
-    return await @this.SellOveragesAndVerify(allocQuoteDiffs);
+    return await @this.SellOveragesAndVerify(allocDiffs);
   }
 
   /// <summary>
@@ -222,26 +232,26 @@ public static partial class Trader
 
     // Initialize quote diff List,
     // being filled using a multi-purpose foreach to eliminate redundant iterations.
-    List<KeyValuePair<Allocation, decimal>> allocQuoteDiffs = new();
+    List<AllocDiffReqDto> allocDiffs = new();
 
     // Absolute sum of all negative quote differences,
     // being summed up using a multi-purpose foreach to eliminate redundant iterations.
     decimal totalBuy = 0;
 
     // Multi-purpose foreach to eliminate redundant iterations.
-    foreach (KeyValuePair<Allocation, decimal> allocQuoteDiff in GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
+    foreach (AllocDiffReqDto allocDiff in GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
     {
       // Negative quote differences refer to undersized allocations.
-      if (allocQuoteDiff.Value < 0)
+      if (allocDiff.AmountQuoteDiff < 0)
       {
         // Add to absolute sum of all negative quote differences.
-        totalBuy -= allocQuoteDiff.Value;
+        totalBuy -= allocDiff.AmountQuoteDiff;
 
         // We can't buy quote currency with quote currency.
-        if (!allocQuoteDiff.Key.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+        if (!allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
         {
           // Add to quote diff List.
-          allocQuoteDiffs.Add(allocQuoteDiff);
+          allocDiffs.Add(allocDiff);
         }
       }
     }
@@ -251,19 +261,23 @@ public static partial class Trader
 
     // The buy task loop, diffs are already filtered ..
     IEnumerable<Task<OrderDto>> buyTasks =
-      allocQuoteDiffs
+      allocDiffs
 
       // Scale to avoid potentially oversized buy order sizes.
-      // First check eligibility as it is less expensive operation than the multiplication operation.
-      .Select(allocQuoteDiff => (alloc: allocQuoteDiff.Key, amountQuote: allocQuoteDiff.Value <= -@this.MinimumOrderSize ? ratio * allocQuoteDiff.Value : 0))
+      .Select(allocDiff =>
+      {
+        allocDiff.AmountQuoteDiff = ratio * allocDiff.AmountQuoteDiff; return allocDiff;
+      })
 
       // Negative quote differences refer to undersized allocations,
       // and check if reached minimum order size.
-      .Where(allocQuoteDiff => allocQuoteDiff.amountQuote <= -@this.MinimumOrderSize)
+      .Where(allocDiff => allocDiff.AmountQuoteDiff <= -@this.MinimumOrderSize)
 
       // Buy ..
-      .Select(allocQuoteDiff =>
-         @this.NewOrder(@this.ConstructBuyOrder(allocQuoteDiff.alloc, Math.Abs(allocQuoteDiff.amountQuote)))
+      .Select(allocDiff =>
+         @this.NewOrder(@this.ConstructBuyOrder(
+           new Allocation(allocDiff.Market, allocDiff.Price, allocDiff.Amount),
+           Math.Abs(allocDiff.AmountQuoteDiff)))
 
         // Continue to verify buy order ended, within same task to optimize performance.
         .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap());
@@ -300,20 +314,18 @@ public static partial class Trader
   /// </summary>
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
-  /// <param name="allocQuoteDiffs"></param>
+  /// <param name="allocDiffs"></param>
   public static async Task<IEnumerable<OrderDto>> Rebalance(
     this IExchange @this,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
-    IEnumerable<KeyValuePair<Allocation, decimal>> allocQuoteDiffs)
+    IEnumerable<AllocDiffReqDto> allocDiffs)
   {
     // Clear the path ..
     await @this.CancelAllOpenOrders();
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    OrderDto[] sellResults = null != allocQuoteDiffs
-      ? await @this.SellOveragesAndVerify(allocQuoteDiffs)
-      : await @this.SellOveragesAndVerify(newAbsAllocs);
+    OrderDto[] sellResults = await @this.SellOveragesAndVerify(allocDiffs);
 
     // Then buy to increase undersized allocations.
     OrderDto[] buyResults = await @this.BuyUnderages(newAbsAllocs);
