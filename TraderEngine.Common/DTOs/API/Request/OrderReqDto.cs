@@ -50,21 +50,4 @@ public class OrderReqDto
   /// Only for limit orders. Determines how long orders remain active.
   /// </summary>
   public TimeInForce TimeInForce { get; set; } = TimeInForce.GTC;
-
-  public OrderReqDto()
-  {
-  }
-
-  /// <param name="market"><inheritdoc cref="Market"/></param>
-  /// <param name="side"><inheritdoc cref="Side"/></param>
-  /// <param name="type"><inheritdoc cref="Type"/></param>
-  public OrderReqDto(
-    MarketReqDto market,
-    OrderSide side,
-    OrderType type)
-  {
-    Market = market;
-    Side = side;
-    Type = type;
-  }
 }

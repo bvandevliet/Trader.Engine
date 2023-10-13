@@ -117,11 +117,11 @@ public static partial class Trader
   /// <returns></returns>
   public static OrderReqDto ConstructBuyOrder(this IExchange @this, Allocation curAlloc, decimal amountQuote)
   {
-    return new OrderReqDto(
-      curAlloc.Market,
-      Common.Enums.OrderSide.Buy,
-      Common.Enums.OrderType.Market)
+    return new OrderReqDto()
     {
+      Market = curAlloc.Market,
+      Side = Common.Enums.OrderSide.Buy,
+      Type = Common.Enums.OrderType.Market,
       AmountQuote = amountQuote,
     };
   }
@@ -135,10 +135,12 @@ public static partial class Trader
   /// <returns></returns>
   public static OrderReqDto ConstructSellOrder(this IExchange @this, Allocation curAlloc, decimal amountQuote)
   {
-    var order = new OrderReqDto(
-      curAlloc.Market,
-      Common.Enums.OrderSide.Sell,
-      Common.Enums.OrderType.Market);
+    var order = new OrderReqDto()
+    {
+      Market = curAlloc.Market,
+      Side = Common.Enums.OrderSide.Sell,
+      Type = Common.Enums.OrderType.Market,
+    };
 
     // Prevent dust.
     if (curAlloc.AmountQuote - amountQuote <= @this.MinimumOrderSize)
