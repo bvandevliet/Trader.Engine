@@ -2,85 +2,13 @@ using TraderEngine.API.Exchanges;
 using TraderEngine.API.Extensions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions;
 
 public static partial class Trader
 {
-  /// <summary>
-  /// Get current deviation in quote currency when comparing absolute new allocations in
-  /// <paramref name="newAbsAllocs"/> against current allocations in <paramref name="curBalance"/>.
-  /// </summary>
-  /// <param name="newAbsAllocs"></param>
-  /// <param name="curBalance"></param>
-  /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
-  public static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance curBalance)
-  {
-    // Initialize absolute asset allocation List,
-    // being filled using a multi-purpose foreach to eliminate redundant iterations.
-    List<AbsAllocReqDto> newAbsAllocsList = new();
-
-    // Sum of all absolute allocation values.
-    // being summed up using a multi-purpose foreach to eliminate redundant iterations.
-    decimal totalAbsAlloc = 0;
-
-    // Multi-purpose foreach to eliminate redundant iterations.
-    foreach (AbsAllocReqDto absAssetAlloc in newAbsAllocs)
-    {
-      // Add to sum of all absolute allocation values.
-      totalAbsAlloc += absAssetAlloc.AbsAlloc;
-
-      // Add to absolute asset allocation List.
-      newAbsAllocsList.Add(absAssetAlloc);
-    }
-
-    // Loop through current allocations and determine quote diffs.
-    foreach (Allocation curAlloc in curBalance.Allocations)
-    {
-      // Find associated absolute allocation.
-      decimal absAlloc =
-        newAbsAllocsList.Find(absAssetAlloc => absAssetAlloc.BaseSymbol.Equals(curAlloc.Market.BaseSymbol))?.AbsAlloc ?? 0;
-
-      // Determine relative allocation.
-      decimal relAlloc = totalAbsAlloc == 0 ? 0 : absAlloc / totalAbsAlloc;
-
-      // Determine new quote amount.
-      decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
-
-      yield return new AllocDiffReqDto(
-        curAlloc.Market,
-        curAlloc.Price,
-        curAlloc.Amount,
-        curAlloc.AmountQuote - newAmountQuote);
-    }
-
-    // Loop through absolute asset allocations and determine yet missing quote diffs.
-    foreach (AbsAllocReqDto absAssetAlloc in newAbsAllocsList)
-    {
-      if (null != curBalance.GetAllocation(absAssetAlloc.BaseSymbol))
-      {
-        // Already covered in previous foreach.
-        continue;
-      }
-
-      // Define current allocation, which is zero here.
-      Allocation curAlloc = new(new MarketReqDto(curBalance.QuoteSymbol, absAssetAlloc.BaseSymbol), 0, 0);
-
-      // Determine relative allocation.
-      decimal relAlloc = totalAbsAlloc == 0 ? 0 : absAssetAlloc.AbsAlloc / totalAbsAlloc;
-
-      // Determine new quote amount.
-      decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
-
-      yield return new AllocDiffReqDto(
-        curAlloc.Market,
-        curAlloc.Price,
-        curAlloc.Amount,
-        -newAmountQuote);
-    }
-  }
-
   /// <summary>
   /// A task that will complete when verified that the given <paramref name="order"/> has ended.
   /// If the given order is not completed within given amount of <paramref name="checks"/>, it will be cancelled.
@@ -211,7 +139,7 @@ public static partial class Trader
     curBalance ??= await @this.GetBalance();
 
     // Get enumerable since we're iterating it just once.
-    IEnumerable<AllocDiffReqDto> allocDiffs = GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
+    IEnumerable<AllocDiffReqDto> allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
 
     return await @this.SellOveragesAndVerify(allocDiffs);
   }
@@ -239,7 +167,7 @@ public static partial class Trader
     decimal totalBuy = 0;
 
     // Multi-purpose foreach to eliminate redundant iterations.
-    foreach (AllocDiffReqDto allocDiff in GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
+    foreach (AllocDiffReqDto allocDiff in RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
     {
       // Negative quote differences refer to undersized allocations.
       if (allocDiff.AmountQuoteDiff < 0)
