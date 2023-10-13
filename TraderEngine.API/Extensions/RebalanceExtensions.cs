@@ -152,7 +152,7 @@ public static partial class Trader
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
   /// <returns></returns>
-  public static async Task<OrderDto[]> BuyUnderages(
+  public static async Task<OrderDto[]> BuyUnderagesAndVerify(
     this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
   {
     // Fetch balance if not provided.
@@ -232,7 +232,7 @@ public static partial class Trader
     OrderDto[] sellResults = await @this.SellOveragesAndVerify(newAbsAllocs, curBalance);
 
     // Then buy to increase undersized allocations.
-    OrderDto[] buyResults = await @this.BuyUnderages(newAbsAllocs);
+    OrderDto[] buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
 
     return sellResults.Concat(buyResults);
   }
@@ -256,7 +256,7 @@ public static partial class Trader
     OrderDto[] sellResults = await @this.SellOveragesAndVerify(allocDiffs);
 
     // Then buy to increase undersized allocations.
-    OrderDto[] buyResults = await @this.BuyUnderages(newAbsAllocs);
+    OrderDto[] buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
 
     return sellResults.Concat(buyResults);
   }
