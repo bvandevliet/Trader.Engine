@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Diagnostics;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
-using TraderEngine.API.Services;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Repositories;
+using TraderEngine.Common.Services;
 
 namespace TraderEngine.API;
 
@@ -32,7 +32,7 @@ public class Program
 
     builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-    builder.Services.AddTransient<SqlConnectionFactory>();
+    builder.Services.AddScoped<SqlConnectionFactory>();
 
     builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
 

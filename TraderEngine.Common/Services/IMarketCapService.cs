@@ -1,7 +1,7 @@
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 
-namespace TraderEngine.API.Services;
+namespace TraderEngine.Common.Services;
 
 /// <summary>
 /// Aggregates internal market cap data.
@@ -27,6 +27,7 @@ public interface IMarketCapService
   /// <summary>
   /// Get the latest market cap data of top ranked base currencies for the specified quote currency,
   /// smoothing out volatility using an Exponential Moving Average of given amount of smoothing days.
+  /// This method uses caching and within its lifetime it is acceptable to call it many times.
   /// </summary>
   /// <param name="quoteSymbol"></param>
   /// <param name="smoothing"></param>

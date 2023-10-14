@@ -92,13 +92,33 @@ public static partial class Trader
   }
 
   /// <summary>
+  /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
+  /// Completes when verified that all triggered sell orders are ended.
+  /// </summary>
+  /// <param name="this"></param>
+  /// <param name="newAbsAllocs"></param>
+  /// <param name="curBalance"></param>
+  /// <returns></returns>
+  internal static async Task<OrderDto[]> SellOveragesAndVerify(
+    this IExchange @this, List<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
+  {
+    // Fetch balance if not provided.
+    curBalance ??= await @this.GetBalance();
+
+    // Get enumerable since we're iterating it just once.
+    IEnumerable<AllocDiffReqDto> allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
+
+    return await @this.SellOveragesAndVerify(allocDiffs);
+  }
+
+  /// <summary>
   /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="allocDiffs"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
   /// <param name="this"></param>
   /// <param name="allocDiffs"></param>
   /// <returns></returns>
-  public static async Task<OrderDto[]> SellOveragesAndVerify(
+  internal static async Task<OrderDto[]> SellOveragesAndVerify(
     this IExchange @this, IEnumerable<AllocDiffReqDto> allocDiffs)
   {
     // The sell task loop ..
@@ -125,26 +145,6 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
-  /// Completes when verified that all triggered sell orders are ended.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="newAbsAllocs"></param>
-  /// <param name="curBalance"></param>
-  /// <returns></returns>
-  public static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
-  {
-    // Fetch balance if not provided.
-    curBalance ??= await @this.GetBalance();
-
-    // Get enumerable since we're iterating it just once.
-    IEnumerable<AllocDiffReqDto> allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
-
-    return await @this.SellOveragesAndVerify(allocDiffs);
-  }
-
-  /// <summary>
   /// Buy to increase undersized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
   /// <see cref="Allocation"/> differences are scaled relative to available quote currency.
   /// Completes when all triggered buy orders are posted.
@@ -152,8 +152,8 @@ public static partial class Trader
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
   /// <returns></returns>
-  public static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
+  internal static async Task<OrderDto[]> BuyUnderagesAndVerify(
+    this IExchange @this, List<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
@@ -185,7 +185,7 @@ public static partial class Trader
     }
 
     // Multiplication ratio to avoid potentially oversized buy order sizes.
-    decimal ratio = totalBuy == 0 ? 0 : Math.Min(totalBuy, curBalance.AmountQuote) / totalBuy;
+    decimal ratio = totalBuy == 0 ? 0 : Math.Min(totalBuy, curBalance.AmountQuoteAvailable) / totalBuy;
 
     // The buy task loop, diffs are already filtered ..
     IEnumerable<Task<OrderDto>> buyTasks =
@@ -221,7 +221,7 @@ public static partial class Trader
   /// <param name="curBalance"></param>
   public static async Task<IEnumerable<OrderDto>> Rebalance(
     this IExchange @this,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
+    List<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null)
   {
     // Clear the path ..
@@ -245,7 +245,7 @@ public static partial class Trader
   /// <param name="allocDiffs"></param>
   public static async Task<IEnumerable<OrderDto>> Rebalance(
     this IExchange @this,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
+    List<AbsAllocReqDto> newAbsAllocs,
     IEnumerable<AllocDiffReqDto> allocDiffs)
   {
     // Clear the path ..

@@ -14,7 +14,7 @@ public class Balance
   public event EventHandler? OnAmountQuoteTotalReset;
 
   /// <summary>
-  /// Triggered when <see cref="AmountQuote"/> has changed.
+  /// Triggered when <see cref="AmountQuoteAvailable"/> has changed.
   /// </summary>
   public event EventHandler? OnAmountQuoteAvailableReset;
 
@@ -31,16 +31,16 @@ public class Balance
 
   private decimal? _amountQuote;
   /// <summary>
-  /// Amount of quote currency.
+  /// Amount of quote currency available.
   /// </summary>
-  public decimal AmountQuote
+  public decimal AmountQuoteAvailable
   {
     get => _amountQuote ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
   }
 
   private decimal? _amountQuoteTotal;
   /// <summary>
-  /// Total value of balance in quote currency.
+  /// Total value of portfolio in quote currency.
   /// </summary>
   public decimal AmountQuoteTotal
   {

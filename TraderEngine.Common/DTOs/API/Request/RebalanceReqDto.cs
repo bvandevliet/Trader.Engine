@@ -12,8 +12,8 @@ public class RebalanceReqDto
 
   /// <inheritdoc cref="AbsAllocReqDto"/>
   [Required]
-  public IEnumerable<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
+  public List<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
 
   /// <inheritdoc cref="AllocDiffReqDto"/>
-  public IEnumerable<AllocDiffReqDto>? AllocDiffs { get; set; } = null;
+  public List<AllocDiffReqDto>? AllocDiffs { get; set; } = null;
 }

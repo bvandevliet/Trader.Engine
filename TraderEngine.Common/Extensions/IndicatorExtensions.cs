@@ -1,8 +1,8 @@
 using Skender.Stock.Indicators;
-using TraderEngine.API.Extensions;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Extensions;
 
-namespace TraderEngine.API.Extensions;
+namespace TraderEngine.Common.Extensions;
 
 public static partial class IndicatorExtensions
 {
@@ -25,6 +25,6 @@ public static partial class IndicatorExtensions
 
     return !marketCaps.Any()
       ? 0
-      : marketCaps.GetEma(Math.Min(marketCaps.Count(), lookbackPeriods)).Last().Ema ?? 0;
+      : marketCaps.GetEma(lookbackPeriods).Last().Ema ?? 0;
   }
 }

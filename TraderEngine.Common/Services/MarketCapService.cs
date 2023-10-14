@@ -1,17 +1,22 @@
-using TraderEngine.API.Extensions;
+using Microsoft.Extensions.Logging;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Repositories;
 
-namespace TraderEngine.API.Services;
+namespace TraderEngine.Common.Services;
 
+/// <summary>
+/// Register as either scoped or transient for proper internal caching.
+/// </summary>
 public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 {
   private readonly ILogger<MarketCapService> _logger;
   private readonly IMarketCapInternalRepository _marketCapInternalRepo;
 
-  private readonly object _cacheLock = new();
+  private readonly object _listLatestCacheLock = new();
+  private readonly Dictionary<string, List<IEnumerable<MarketCapDataDto>>> _listHistoricalManyCache = new();
   private readonly Dictionary<string, List<MarketCapDataDto>> _listLatestSmoothedCache = new();
 
   public MarketCapService(
@@ -19,7 +24,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     IMarketCapInternalRepository marketCapInternalRepo)
   {
     _logger = logger;
-    _marketCapInternalRepo = marketCapInternalRepo ?? throw new ArgumentNullException(nameof(marketCapInternalRepo));
+    _marketCapInternalRepo = marketCapInternalRepo;
   }
 
   /// <summary>
@@ -96,23 +101,36 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     }
   }
 
-  public async Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7)
+  public Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7)
   {
-    // Concat the cache indexer string.
-    string cacheHash = $"{quoteSymbol}-{smoothing}";
-
-    // Check if exists in cache to avoid expensive re-calculations.
-    if (!_listLatestSmoothedCache.ContainsKey(cacheHash))
+    return Task.Run(() =>
     {
-      // Execute the expensive calculations in an async manner.
-      await Task.Run(() =>
+      // Concat the smoothing cache indexer string.
+      string smoothingCacheHash = $"{quoteSymbol}-{smoothing}";
+
+      // Check if exists in cache to avoid expensive re-calculations.
+      if (!_listLatestSmoothedCache.ContainsKey(smoothingCacheHash))
       {
         // Avoid race condition.
-        lock (_cacheLock)
+        lock (_listLatestCacheLock)
         {
+          // Concat the historical cache indexer string.
+          int days = Math.Max(50, smoothing + 1);
+          string historicalCacheHash = $"{quoteSymbol}-{days}";
+
+          // Check if exists in cache to avoid unneeded database querying.
+          if (!_listHistoricalManyCache.ContainsKey(historicalCacheHash))
+          {
+            _listHistoricalManyCache.Add(
+              historicalCacheHash, ListHistoricalMany(quoteSymbol, days).ToEnumerable().ToList());
+          }
+
           // Generate a list containing only the last EMA value for each asset.
           List<MarketCapDataDto> listLatestSmoothed =
-            ListHistoricalMany(quoteSymbol, smoothing + 1)
+            _listHistoricalManyCache[historicalCacheHash]
+
+            // Only process what's relevant.
+            .Take(smoothing + 1)
             .Select(marketCaps =>
             {
               // Enumerate once, then just iterate.
@@ -130,17 +148,15 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
             // Sort by EMA value.
             .OrderByDescending(marketCap => marketCap.MarketCap)
-
-            // Enumerate once, add the static list to cache.
-            .ToEnumerable().ToList();
+            .ToList();
 
           // Add to cache.
-          _listLatestSmoothedCache.Add(cacheHash, listLatestSmoothed);
+          _listLatestSmoothedCache.Add(smoothingCacheHash, listLatestSmoothed);
         }
-      });
-    }
+      }
 
-    // Return from cache.
-    return _listLatestSmoothedCache[cacheHash];
+      // Return from cache.
+      return _listLatestSmoothedCache[smoothingCacheHash];
+    });
   }
 }
