@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions.Tests;
@@ -42,7 +43,7 @@ public class TraderTests
   {
     Balance curBalance = await _exchangeService.GetBalance();
 
-    var allocDiffs = Trader.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
 
     Assert.AreEqual(5, allocDiffs.Count);
 
@@ -69,7 +70,7 @@ public class TraderTests
 
     Balance curBalance = await _exchangeService.GetBalance();
 
-    var allocDiffs = Trader.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
 
     Assert.AreEqual(5, allocDiffs.Count);
 
