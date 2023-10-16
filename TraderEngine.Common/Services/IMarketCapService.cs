@@ -27,10 +27,11 @@ public interface IMarketCapService
   /// <summary>
   /// Get the latest market cap data of top ranked base currencies for the specified quote currency,
   /// smoothing out volatility using an Exponential Moving Average of given amount of smoothing days.
-  /// This method uses caching and within its lifetime it is acceptable to call it many times.
+  /// This method can use caching for re-use within its lifetime.
   /// </summary>
   /// <param name="quoteSymbol"></param>
   /// <param name="smoothing"></param>
+  /// <param name="caching"></param>
   /// <returns></returns>
-  Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7);
+  Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing, bool caching = false);
 }

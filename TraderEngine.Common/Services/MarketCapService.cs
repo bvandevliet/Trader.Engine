@@ -101,8 +101,35 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     }
   }
 
-  public Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7)
+  public Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing, bool caching = false)
   {
+    // Generates a list containing only the last EMA value for each asset.
+    Func<IEnumerable<IEnumerable<MarketCapDataDto>>, IEnumerable<MarketCapDataDto>> smooth = historicalMany =>
+    {
+      return
+        historicalMany
+
+        // Only process what's relevant.
+        .Take(smoothing + 1)
+        .Select(marketCaps =>
+        {
+          // Enumerate once, then just iterate.
+          var marketCapsList = marketCaps.ToList();
+
+          // Get last market cap record.
+          MarketCapDataDto marketCap = marketCapsList.Last();
+
+          // Update market cap value with EMA value.
+          marketCap.MarketCap = marketCapsList.TryGetEmaValue(smoothing);
+
+          // Return altered record.
+          return marketCap;
+        })
+
+        // Sort by EMA value.
+        .OrderByDescending(marketCap => marketCap.MarketCap);
+    };
+
     return Task.Run(() =>
     {
       // Concat the smoothing cache indexer string.
@@ -111,47 +138,32 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Check if exists in cache to avoid expensive re-calculations.
       if (!_listLatestSmoothedCache.ContainsKey(smoothingCacheHash))
       {
+        if (!caching)
+        {
+          return smooth(ListHistoricalMany(quoteSymbol, smoothing + 1).ToEnumerable());
+        }
+
         // Avoid race condition.
         lock (_listLatestCacheLock)
         {
-          // Concat the historical cache indexer string.
+          // Minimum of 50 records to leverage caching.
           int days = Math.Max(50, smoothing + 1);
+
+          // Concat the historical cache indexer string.
           string historicalCacheHash = $"{quoteSymbol}-{days}";
 
           // Check if exists in cache to avoid unneeded database querying.
-          if (!_listHistoricalManyCache.ContainsKey(historicalCacheHash))
+          if (caching && !_listHistoricalManyCache.ContainsKey(historicalCacheHash))
           {
             _listHistoricalManyCache.Add(
               historicalCacheHash, ListHistoricalMany(quoteSymbol, days).ToEnumerable().ToList());
           }
 
-          // Generate a list containing only the last EMA value for each asset.
-          List<MarketCapDataDto> listLatestSmoothed =
-            _listHistoricalManyCache[historicalCacheHash]
-
-            // Only process what's relevant.
-            .Take(smoothing + 1)
-            .Select(marketCaps =>
-            {
-              // Enumerate once, then just iterate.
-              var marketCapsList = marketCaps.ToList();
-
-              // Get last market cap record.
-              MarketCapDataDto marketCap = marketCapsList.Last();
-
-              // Update market cap value with EMA value.
-              marketCap.MarketCap = marketCapsList.TryGetEmaValue(smoothing);
-
-              // Return altered record.
-              return marketCap;
-            })
-
-            // Sort by EMA value.
-            .OrderByDescending(marketCap => marketCap.MarketCap)
-            .ToList();
+          IEnumerable<MarketCapDataDto> listLatestSmoothed =
+            smooth(_listHistoricalManyCache[historicalCacheHash]);
 
           // Add to cache.
-          _listLatestSmoothedCache.Add(smoothingCacheHash, listLatestSmoothed);
+          _listLatestSmoothedCache.Add(smoothingCacheHash, listLatestSmoothed.ToList());
         }
       }
 
