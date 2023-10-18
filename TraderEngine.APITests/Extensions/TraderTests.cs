@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions.Tests;
@@ -38,19 +39,19 @@ public class TraderTests
   }
 
   [TestMethod()]
-  public async Task AllocQuoteDiffsTest()
+  public async Task AllocDiffsTest()
   {
     Balance curBalance = await _exchangeService.GetBalance();
 
-    var allocQuoteDiffs = Trader.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
 
-    Assert.AreEqual(5, allocQuoteDiffs.Count);
+    Assert.AreEqual(5, allocDiffs.Count);
 
-    Assert.AreEqual(-005, (double)Math.Round(allocQuoteDiffs[0].Value, 1));
-    Assert.AreEqual(0040, (double)Math.Round(allocQuoteDiffs[1].Value, 1));
-    Assert.AreEqual(0015, (double)Math.Round(allocQuoteDiffs[2].Value, 1));
-    Assert.AreEqual(0225, (double)Math.Round(allocQuoteDiffs[3].Value, 1));
-    Assert.AreEqual(-275, (double)Math.Round(allocQuoteDiffs[4].Value, 1));
+    Assert.AreEqual(-005, (double)Math.Round(allocDiffs[0].AmountQuoteDiff, 1));
+    Assert.AreEqual(0040, (double)Math.Round(allocDiffs[1].AmountQuoteDiff, 1));
+    Assert.AreEqual(0015, (double)Math.Round(allocDiffs[2].AmountQuoteDiff, 1));
+    Assert.AreEqual(0225, (double)Math.Round(allocDiffs[3].AmountQuoteDiff, 1));
+    Assert.AreEqual(-275, (double)Math.Round(allocDiffs[4].AmountQuoteDiff, 1));
   }
 
   [TestMethod()]
@@ -69,14 +70,14 @@ public class TraderTests
 
     Balance curBalance = await _exchangeService.GetBalance();
 
-    var allocQuoteDiffs = Trader.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
 
-    Assert.AreEqual(5, allocQuoteDiffs.Count);
+    Assert.AreEqual(5, allocDiffs.Count);
 
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[0].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[1].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[2].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[3].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[4].Value));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[0].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[1].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[2].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[3].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[4].AmountQuoteDiff));
   }
 }

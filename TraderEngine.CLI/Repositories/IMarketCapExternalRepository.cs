@@ -6,7 +6,7 @@ namespace TraderEngine.CLI.Repositories;
 /// <summary>
 /// Retrieves latest market cap data from external service.
 /// </summary>
-public interface IMarketCapExternalRepository
+internal interface IMarketCapExternalRepository
 {
   /// <summary>
   /// Get current market cap data for the specified market.

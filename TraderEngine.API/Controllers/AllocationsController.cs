@@ -5,6 +5,7 @@ using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Services;
 
 namespace TraderEngine.API.Controllers;
 
@@ -39,11 +40,14 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpGet("balanced")]
-  public Task<ActionResult<IEnumerable<AbsAllocReqDto>>> BalancedAllocations(ConfigReqDto configReqDto)
+  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(ConfigReqDto configReqDto)
   {
     // Not injected in ctor because it's only used here.
-    //var marketCapService = _serviceProvider.GetRequiredService<IMarketCapService>();
+    IMarketCapService marketCapService = _serviceProvider.GetRequiredService<IMarketCapService>();
 
-    throw new NotImplementedException();
+    IEnumerable<AbsAllocReqDto> marketCapLatest =
+      await marketCapService.BalancedAllocations(configReqDto, false);
+
+    return Ok(marketCapLatest);
   }
 }

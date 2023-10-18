@@ -1,7 +1,7 @@
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 
-namespace TraderEngine.API.Services;
+namespace TraderEngine.Common.Services;
 
 /// <summary>
 /// Aggregates internal market cap data.
@@ -27,9 +27,20 @@ public interface IMarketCapService
   /// <summary>
   /// Get the latest market cap data of top ranked base currencies for the specified quote currency,
   /// smoothing out volatility using an Exponential Moving Average of given amount of smoothing days.
+  /// This method can use caching for re-use within its lifetime.
   /// </summary>
   /// <param name="quoteSymbol"></param>
   /// <param name="smoothing"></param>
+  /// <param name="caching"></param>
   /// <returns></returns>
-  Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7);
+  Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing, bool caching = false);
+
+  /// <summary>
+  /// Get the top ranked balanced allocations for the specified configuration.
+  /// This method can use caching for re-use within its lifetime.
+  /// </summary>
+  /// <param name="configReqDto"></param>
+  /// <param name="caching"></param>
+  /// <returns></returns>
+  Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(ConfigReqDto configReqDto, bool caching = false);
 }
