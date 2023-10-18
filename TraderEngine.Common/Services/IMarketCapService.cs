@@ -34,4 +34,13 @@ public interface IMarketCapService
   /// <param name="caching"></param>
   /// <returns></returns>
   Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing, bool caching = false);
+
+  /// <summary>
+  /// Get the top ranked balanced allocations for the specified configuration.
+  /// This method can use caching for re-use within its lifetime.
+  /// </summary>
+  /// <param name="configReqDto"></param>
+  /// <param name="caching"></param>
+  /// <returns></returns>
+  Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(ConfigReqDto configReqDto, bool caching = false);
 }

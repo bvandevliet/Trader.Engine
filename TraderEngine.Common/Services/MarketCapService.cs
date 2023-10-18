@@ -34,7 +34,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
   /// <param name="records"></param>
   /// <param name="days"></param>
   /// <returns></returns>
-  private IEnumerable<MarketCapDataDto> GetCandidates(IEnumerable<MarketCapDataDto> records)
+  private static IEnumerable<MarketCapDataDto> GetCandidates(IEnumerable<MarketCapDataDto> records)
   {
     // Updated timestamp of last winner record.
     DateTime? prevUpdated = null;
@@ -124,10 +124,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
           // Return altered record.
           return marketCap;
-        })
-
-        // Sort by EMA value.
-        .OrderByDescending(marketCap => marketCap.MarketCap);
+        });
     };
 
     return Task.Run(() =>
@@ -170,5 +167,36 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Return from cache.
       return _listLatestSmoothedCache[smoothingCacheHash];
     });
+  }
+
+  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(ConfigReqDto configReqDto, bool caching = false)
+  {
+    IEnumerable<MarketCapDataDto> marketCapLatest =
+      await ListLatest(configReqDto.QuoteCurrency, configReqDto.Smoothing, caching);
+
+    return
+      marketCapLatest
+
+      // Handle ignored tags.
+      .Where(marketCap => !marketCap.Tags.Intersect(configReqDto.TagsToIgnore).Any())
+
+      // Apply weighting and dampening.
+      .Select(marketCap =>
+      {
+        decimal weighting =
+          configReqDto.AltWeightingFactors.GetValueOrDefault(marketCap.Market.BaseSymbol, 1);
+
+        return new AbsAllocReqDto()
+        {
+          BaseSymbol = marketCap.Market.BaseSymbol,
+          AbsAlloc = weighting * (decimal)Math.Pow(marketCap.MarketCap, 1 / configReqDto.NthRoot),
+        };
+      })
+
+      // Sort by Market Cap EMA value.
+      .OrderByDescending(alloc => alloc.AbsAlloc)
+
+      // Take the top count.
+      .Take(configReqDto.TopRankingCount);
   }
 }
