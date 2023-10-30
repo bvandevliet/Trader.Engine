@@ -45,9 +45,9 @@ public class AllocationsController : ControllerBase
     // Not injected in ctor because it's only used here.
     IMarketCapService marketCapService = _serviceProvider.GetRequiredService<IMarketCapService>();
 
-    IEnumerable<AbsAllocReqDto> marketCapLatest =
+    IEnumerable<AbsAllocReqDto> balancedAllocations =
       await marketCapService.BalancedAllocations(configReqDto, false);
 
-    return Ok(marketCapLatest);
+    return Ok(balancedAllocations);
   }
 }
