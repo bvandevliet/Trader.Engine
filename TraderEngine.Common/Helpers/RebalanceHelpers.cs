@@ -14,7 +14,7 @@ public static class RebalanceHelpers
   /// <param name="curBalance"></param>
   /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
   // TODO: Make DRY !!
-  public static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(List<AbsAllocReqDto> newAbsAllocs, Balance curBalance)
+  public static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance curBalance)
   {
     // Initialize absolute asset allocation List,
     // being filled using a multi-purpose foreach to eliminate redundant iterations.
@@ -88,7 +88,7 @@ public static class RebalanceHelpers
   /// <param name="curBalance"></param>
   /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
   // TODO: Make DRY !!
-  public static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(List<AbsAllocReqDto> newAbsAllocs, BalanceDto curBalance)
+  public static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(IEnumerable<AbsAllocReqDto> newAbsAllocs, BalanceDto curBalance)
   {
     // Initialize absolute asset allocation List,
     // being filled using a multi-purpose foreach to eliminate redundant iterations.
