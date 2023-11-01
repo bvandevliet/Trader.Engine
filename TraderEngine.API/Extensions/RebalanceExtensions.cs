@@ -100,7 +100,7 @@ public static partial class Trader
   /// <param name="curBalance"></param>
   /// <returns></returns>
   internal static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, List<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
@@ -153,7 +153,7 @@ public static partial class Trader
   /// <param name="newAbsAllocs"></param>
   /// <returns></returns>
   internal static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, List<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
@@ -219,9 +219,9 @@ public static partial class Trader
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
-  public static async Task<IEnumerable<OrderDto>> Rebalance(
+  public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
-    List<AbsAllocReqDto> newAbsAllocs,
+    IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null)
   {
     // Clear the path ..
@@ -234,7 +234,13 @@ public static partial class Trader
     // Then buy to increase undersized allocations.
     OrderDto[] buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
 
-    return sellResults.Concat(buyResults);
+    // Combined results.
+    OrderDto[] orderResults = new OrderDto[sellResults.Length + buyResults.Length];
+
+    Array.Copy(sellResults, 0, orderResults, 0, sellResults.Length);
+    Array.Copy(buyResults, 0, orderResults, sellResults.Length, buyResults.Length);
+
+    return orderResults;
   }
 
   /// <summary>
@@ -243,9 +249,9 @@ public static partial class Trader
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="allocDiffs"></param>
-  public static async Task<IEnumerable<OrderDto>> Rebalance(
+  public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
-    List<AbsAllocReqDto> newAbsAllocs,
+    IEnumerable<AbsAllocReqDto> newAbsAllocs,
     IEnumerable<AllocDiffReqDto> allocDiffs)
   {
     // Clear the path ..
@@ -258,6 +264,12 @@ public static partial class Trader
     // Then buy to increase undersized allocations.
     OrderDto[] buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
 
-    return sellResults.Concat(buyResults);
+    // Combined results.
+    OrderDto[] orderResults = new OrderDto[sellResults.Length + buyResults.Length];
+
+    Array.Copy(sellResults, 0, orderResults, 0, sellResults.Length);
+    Array.Copy(buyResults, 0, orderResults, sellResults.Length, buyResults.Length);
+
+    return orderResults;
   }
 }
