@@ -13,17 +13,17 @@ namespace TraderEngine.API.Controllers;
 public class AllocationsController : ControllerBase
 {
   private readonly IMapper _mapper;
-  private readonly IServiceProvider _serviceProvider;
   private readonly ExchangeFactory _exchangeFactory;
+  private readonly Func<IMarketCapService> _marketCapService;
 
   public AllocationsController(
-    IMapper mapper,
     IServiceProvider serviceProvider,
+    IMapper mapper,
     ExchangeFactory exchangeFactory)
   {
     _mapper = mapper;
-    _serviceProvider = serviceProvider;
     _exchangeFactory = exchangeFactory;
+    _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
   }
 
   [HttpPost("current/{exchangeName}")]
@@ -42,11 +42,8 @@ public class AllocationsController : ControllerBase
   [HttpGet("balanced")]
   public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(ConfigReqDto configReqDto)
   {
-    // Not injected in ctor because it's only used here.
-    IMarketCapService marketCapService = _serviceProvider.GetRequiredService<IMarketCapService>();
-
     IEnumerable<AbsAllocReqDto> balancedAllocations =
-      await marketCapService.BalancedAllocations(configReqDto, false);
+      await _marketCapService().BalancedAllocations(configReqDto, false);
 
     return Ok(balancedAllocations);
   }
