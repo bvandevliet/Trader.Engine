@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Options;
 using Microsoft.Net.Http.Headers;
+using MySqlConnector;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.Extensions;
@@ -23,9 +24,10 @@ public class Program
 
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-        services.AddSingleton<SqlConnectionFactory>();
+        services.AddSingleton<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
         services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
+
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>

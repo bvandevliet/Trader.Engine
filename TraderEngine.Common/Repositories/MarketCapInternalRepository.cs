@@ -19,11 +19,11 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
     IMapper mapper,
-    SqlConnectionFactory sqlConnections)
+    INamedTypeFactory<MySqlConnection> sqlConnectionFactory)
   {
     _logger = logger;
     _mapper = mapper;
-    _mySqlConnection = sqlConnections.GetService("MySql");
+    _mySqlConnection = sqlConnectionFactory.GetService("MySql");
   }
 
   /// <summary>
