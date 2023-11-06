@@ -116,7 +116,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
       listHistorical.GroupBy(record => record.BaseSymbol);
 
     // For each unique asset base symbol, return its historical market cap.
-    foreach (IGrouping<string, MarketCapDataDto> assetGroup in assetGroups)
+    foreach (var assetGroup in assetGroups)
     {
       var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
 
