@@ -106,7 +106,7 @@ public static partial class Trader
     curBalance ??= await @this.GetBalance();
 
     // Get enumerable since we're iterating it just once.
-    IEnumerable<AllocDiffReqDto> allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
 
     return await @this.SellOveragesAndVerify(allocDiffs);
   }
@@ -167,7 +167,7 @@ public static partial class Trader
     decimal totalBuy = 0;
 
     // Multi-purpose foreach to eliminate redundant iterations.
-    foreach (AllocDiffReqDto allocDiff in RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
+    foreach (var allocDiff in RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
     {
       // Negative quote differences refer to undersized allocations.
       if (allocDiff.AmountQuoteDiff < 0)
@@ -229,13 +229,13 @@ public static partial class Trader
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    OrderDto[] sellResults = await @this.SellOveragesAndVerify(newAbsAllocs, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(newAbsAllocs, curBalance);
 
     // Then buy to increase undersized allocations.
-    OrderDto[] buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
+    var buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
 
     // Combined results.
-    OrderDto[] orderResults = new OrderDto[sellResults.Length + buyResults.Length];
+    var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
 
     Array.Copy(sellResults, 0, orderResults, 0, sellResults.Length);
     Array.Copy(buyResults, 0, orderResults, sellResults.Length, buyResults.Length);
@@ -259,13 +259,13 @@ public static partial class Trader
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    OrderDto[] sellResults = await @this.SellOveragesAndVerify(allocDiffs);
+    var sellResults = await @this.SellOveragesAndVerify(allocDiffs);
 
     // Then buy to increase undersized allocations.
-    OrderDto[] buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
+    var buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs);
 
     // Combined results.
-    OrderDto[] orderResults = new OrderDto[sellResults.Length + buyResults.Length];
+    var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
 
     Array.Copy(sellResults, 0, orderResults, 0, sellResults.Length);
     Array.Copy(buyResults, 0, orderResults, sellResults.Length, buyResults.Length);

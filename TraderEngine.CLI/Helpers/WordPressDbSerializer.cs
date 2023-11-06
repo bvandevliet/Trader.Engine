@@ -48,7 +48,7 @@ public static class WordPressDbSerializer
       return $"O:8:\"DateTime\":3:{{s:4:\"date\";s:{formattedDate.Length}:\"{formattedDate}\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:{tzKind.Length}:\"{tzKind}\";}}";
     }
 
-    Type type = value.GetType();
+    var type = value.GetType();
 
     if (type.IsArray)
     {
@@ -68,9 +68,9 @@ public static class WordPressDbSerializer
 
       int index = 0;
 
-      foreach (var item in enumerable)
+      foreach (object? item in enumerable)
       {
-        Type itemType = item.GetType();
+        var itemType = item.GetType();
 
         if (itemType.IsGenericType && itemType.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
         {
@@ -88,8 +88,8 @@ public static class WordPressDbSerializer
     }
     else if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>))
     {
-      PropertyInfo keyProperty = type.GetProperty("Key")!;
-      PropertyInfo valueProperty = type.GetProperty("Value")!;
+      var keyProperty = type.GetProperty("Key")!;
+      var valueProperty = type.GetProperty("Value")!;
 
       object key = keyProperty.GetValue(value)!;
       object val = valueProperty.GetValue(value)!;
@@ -101,9 +101,9 @@ public static class WordPressDbSerializer
       var properties = type.GetProperties();
       var elements = new List<string>();
 
-      foreach (PropertyInfo property in properties)
+      foreach (var propertyInfo in properties)
       {
-        elements.Add($"s:{property.Name.Length}:\"{property.Name}\";{Serialize(property.GetValue(value)!)}");
+        elements.Add($"s:{propertyInfo.Name.Length}:\"{propertyInfo.Name}\";{Serialize(propertyInfo.GetValue(value)!)}");
       }
 
       return $"O:{type.Name.Length}:\"{type.Name}\":{elements.Count}:{{{string.Join("", elements)}}}";
@@ -150,17 +150,17 @@ public static class WordPressDbSerializer
 
       int elementsCount = int.Parse(value[2..(endIndex - 2)]);
 
-      Type[] genArgs = type.GenericTypeArguments;
+      var genArgs = type.GenericTypeArguments;
 
       bool isAssoc = genArgs.Length == 2;
 
-      Type keyType =
+      var keyType =
         genArgs.Length <= 1 ? typeof(int) : genArgs[0];
-      Type valType =
+      var valType =
         type.HasElementType ? type.GetElementType()! :
         genArgs.Length == 1 ? genArgs[0] : genArgs[1];
 
-      Type dictionaryType = typeof(Dictionary<,>).MakeGenericType(keyType, valType);
+      var dictionaryType = typeof(Dictionary<,>).MakeGenericType(keyType, valType);
 
       object instance = Activator.CreateInstance(dictionaryType)!;
 
@@ -187,7 +187,7 @@ public static class WordPressDbSerializer
 
       object listValues = dictionaryType.GetProperty("Values")!.GetValue(instance)!;
 
-      MethodInfo toListMethod = type.IsArray
+      var toListMethod = type.IsArray
         ? typeof(Enumerable).GetMethod("ToArray")!.MakeGenericMethod(valType)
         : typeof(Enumerable).GetMethod("ToList")!.MakeGenericMethod(valType);
 
@@ -220,13 +220,13 @@ public static class WordPressDbSerializer
 
         endIndex += keyEnd;
 
-        PropertyInfo property = type.GetProperty(keyName)!;
+        var propertyInfo = type.GetProperty(keyName)!;
 
-        object? val = Deserialize(value[endIndex..], property.PropertyType, out int valEnd);
+        object? val = Deserialize(value[endIndex..], propertyInfo.PropertyType, out int valEnd);
 
         endIndex += valEnd;
 
-        property.SetValue(instance, val);
+        propertyInfo.SetValue(instance, val);
       }
 
       // To account for closing '}'.

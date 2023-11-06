@@ -41,7 +41,7 @@ public class Program
 
     builder.Services.AddHttpClient<IExchange>().ApplyDefaultPoolAndPolicyConfig();
 
-    foreach (Type exchange in _exchanges) { builder.Services.AddScoped(exchange); }
+    foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
 
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 

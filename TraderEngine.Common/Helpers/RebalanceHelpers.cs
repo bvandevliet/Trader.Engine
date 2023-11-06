@@ -25,7 +25,7 @@ public static class RebalanceHelpers
     decimal totalAbsAlloc = 0;
 
     // Multi-purpose foreach to eliminate redundant iterations.
-    foreach (AbsAllocReqDto absAssetAlloc in newAbsAllocs)
+    foreach (var absAssetAlloc in newAbsAllocs)
     {
       // Add to sum of all absolute allocation values.
       totalAbsAlloc += absAssetAlloc.AbsAlloc;
@@ -35,7 +35,7 @@ public static class RebalanceHelpers
     }
 
     // Loop through current allocations and determine quote diffs.
-    foreach (Allocation curAlloc in curBalance.Allocations)
+    foreach (var curAlloc in curBalance.Allocations)
     {
       // Find associated absolute allocation.
       decimal absAlloc =
@@ -55,7 +55,7 @@ public static class RebalanceHelpers
     }
 
     // Loop through absolute asset allocations and determine yet missing quote diffs.
-    foreach (AbsAllocReqDto absAssetAlloc in newAbsAllocsList)
+    foreach (var absAssetAlloc in newAbsAllocsList)
     {
       if (null != curBalance.GetAllocation(absAssetAlloc.BaseSymbol))
       {
@@ -99,7 +99,7 @@ public static class RebalanceHelpers
     decimal totalAbsAlloc = 0;
 
     // Multi-purpose foreach to eliminate redundant iterations.
-    foreach (AbsAllocReqDto absAssetAlloc in newAbsAllocs)
+    foreach (var absAssetAlloc in newAbsAllocs)
     {
       // Add to sum of all absolute allocation values.
       totalAbsAlloc += absAssetAlloc.AbsAlloc;
@@ -109,7 +109,7 @@ public static class RebalanceHelpers
     }
 
     // Loop through current allocations and determine quote diffs.
-    foreach (AllocationDto curAlloc in curBalance.Allocations)
+    foreach (var curAlloc in curBalance.Allocations)
     {
       // Find associated absolute allocation.
       decimal absAlloc =
@@ -129,7 +129,7 @@ public static class RebalanceHelpers
     }
 
     // Loop through absolute asset allocations and determine yet missing quote diffs.
-    foreach (AbsAllocReqDto absAssetAlloc in newAbsAllocsList)
+    foreach (var absAssetAlloc in newAbsAllocsList)
     {
       if (null != curBalance.Allocations.Find(alloc => alloc.Market.BaseSymbol.Equals(absAssetAlloc.BaseSymbol)))
       {

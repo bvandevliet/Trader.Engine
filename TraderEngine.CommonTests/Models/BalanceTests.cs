@@ -208,7 +208,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var baseCurrency = "BTC";
+    string baseCurrency = "BTC";
 
     var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
     var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
@@ -230,7 +230,7 @@ public class BalanceTests
   {
     var balance = new BalanceWrapper(_quoteSymbol);
 
-    var baseCurrency = "BTC";
+    string baseCurrency = "BTC";
 
     var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
     var alloc2 = new Allocation(new MarketReqDto(baseCurrency, _quoteSymbol), 0, 0);

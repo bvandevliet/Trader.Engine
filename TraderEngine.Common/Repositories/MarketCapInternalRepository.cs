@@ -73,7 +73,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   {
     int rowsAffected = 0;
 
-    foreach (MarketCapDataDto marketCap in marketCaps)
+    foreach (var marketCap in marketCaps)
     {
       rowsAffected += await Insert(marketCap);
     }
@@ -112,8 +112,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
       });
 
     // Group by asset base symbol.
-    IEnumerable<IGrouping<string, MarketCapDataDb>> assetGroups =
-      listHistorical.GroupBy(record => record.BaseSymbol);
+    var assetGroups = listHistorical.GroupBy(record => record.BaseSymbol);
 
     // For each unique asset base symbol, return its historical market cap.
     foreach (var assetGroup in assetGroups)

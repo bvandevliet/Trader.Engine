@@ -124,7 +124,7 @@ public class BitvavoExchange : IExchange
     // TODO: Error handling.
     Allocation[] allocations = await Task.WhenAll(priceTasks);
 
-    foreach (Allocation allocation in allocations)
+    foreach (var allocation in allocations)
     {
       balance.AddAllocation(allocation);
     }

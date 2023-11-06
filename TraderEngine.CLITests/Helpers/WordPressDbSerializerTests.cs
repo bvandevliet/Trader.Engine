@@ -137,7 +137,7 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void SerializeCustomTypesTest()
   {
-    var result = WordPressDbSerializer.Serialize(_configDto);
+    string result = WordPressDbSerializer.Serialize(_configDto);
 
     result.Should().Be(_serializedConfigDto);
   }

@@ -42,7 +42,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     // Potential winner record.
     MarketCapDataDto? candidate = null;
 
-    foreach (MarketCapDataDto record in records)
+    foreach (var record in records)
     {
     start:
 
@@ -88,14 +88,14 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
   {
-    IEnumerable<MarketCapDataDto> records = await _marketCapInternalRepo.ListHistorical(market, days);
+    var records = await _marketCapInternalRepo.ListHistorical(market, days);
 
     return GetCandidates(records);
   }
 
   public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
   {
-    await foreach (IEnumerable<MarketCapDataDto> marketCaps in _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, days))
+    await foreach (var marketCaps in _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, days))
     {
       yield return GetCandidates(marketCaps);
     }
@@ -104,7 +104,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
   public Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing, bool caching = false)
   {
     // Generates a list containing only the last EMA value for each asset.
-    Func<IEnumerable<IEnumerable<MarketCapDataDto>>, IEnumerable<MarketCapDataDto>> smooth = historicalMany =>
+    IEnumerable<MarketCapDataDto> smooth(IEnumerable<IEnumerable<MarketCapDataDto>> historicalMany)
     {
       return
         historicalMany
@@ -117,7 +117,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
           var marketCapsList = marketCaps.ToList();
 
           // Get last market cap record.
-          MarketCapDataDto marketCap = marketCapsList.Last();
+          var marketCap = marketCapsList.Last();
 
           // Update market cap value with EMA value.
           marketCap.MarketCap = marketCapsList.TryGetEmaValue(smoothing);
@@ -125,7 +125,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
           // Return altered record.
           return marketCap;
         });
-    };
+    }
 
     return Task.Run(() =>
     {
@@ -156,8 +156,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
               historicalCacheHash, ListHistoricalMany(quoteSymbol, days).ToEnumerable().ToList());
           }
 
-          IEnumerable<MarketCapDataDto> listLatestSmoothed =
-            smooth(_listHistoricalManyCache[historicalCacheHash]);
+          var listLatestSmoothed = smooth(_listHistoricalManyCache[historicalCacheHash]);
 
           // Add to cache.
           _listLatestSmoothedCache.Add(smoothingCacheHash, listLatestSmoothed.ToList());
@@ -171,8 +170,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
   public async Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(ConfigReqDto configReqDto, bool caching = false)
   {
-    IEnumerable<MarketCapDataDto> marketCapLatest =
-      await ListLatest(configReqDto.QuoteCurrency, configReqDto.Smoothing, caching);
+    var marketCapLatest = await ListLatest(configReqDto.QuoteCurrency, configReqDto.Smoothing, caching);
 
     return
       marketCapLatest
