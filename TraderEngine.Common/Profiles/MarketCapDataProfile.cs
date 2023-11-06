@@ -28,6 +28,6 @@ internal class MarketCapDataProfile : Profile
       .ReverseMap()
       .ForMember(
         dest => dest.Tags, opt => opt.MapFrom(
-          src => JsonSerializer.Deserialize<List<string>>(src.Tags, jsonOptions)));
+          src => JsonSerializer.Deserialize<List<string>>(src.Tags ?? "[]", jsonOptions)));
   }
 }
