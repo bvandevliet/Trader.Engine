@@ -1,9 +1,8 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TraderEngine.CLI.Helpers;
 using TraderEngine.Common.DTOs.API.Request;
 
-namespace TraderEngine.CLI.Services.Tests;
+namespace TraderEngine.CLI.Helpers.Tests;
 
 [TestClass()]
 public class WordPressDbSerializerTests
@@ -138,7 +137,7 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void SerializeCustomTypesTest()
   {
-    var result = WordPressDbSerializer.Serialize(_configDto);
+    string result = WordPressDbSerializer.Serialize(_configDto);
 
     result.Should().Be(_serializedConfigDto);
   }

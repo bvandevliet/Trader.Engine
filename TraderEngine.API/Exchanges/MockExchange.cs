@@ -187,7 +187,7 @@ public class SimExchange : MockExchange, IExchange
 
   public async Task ProcessOrders(IEnumerable<OrderDto> orders)
   {
-    foreach (OrderDto order in orders)
+    foreach (var order in orders)
     {
       await NewOrder(order);
     }

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics;
+using MySqlConnector;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.Extensions;
@@ -32,7 +33,7 @@ public class Program
 
     builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-    builder.Services.AddScoped<SqlConnectionFactory>();
+    builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
     builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
@@ -40,7 +41,7 @@ public class Program
 
     builder.Services.AddHttpClient<IExchange>().ApplyDefaultPoolAndPolicyConfig();
 
-    foreach (Type exchange in _exchanges) { builder.Services.AddScoped(exchange); }
+    foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
 
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 

@@ -124,7 +124,7 @@ public class BitvavoExchange : IExchange
     // TODO: Error handling.
     Allocation[] allocations = await Task.WhenAll(priceTasks);
 
-    foreach (Allocation allocation in allocations)
+    foreach (var allocation in allocations)
     {
       balance.AddAllocation(allocation);
     }
@@ -157,7 +157,7 @@ public class BitvavoExchange : IExchange
     using var request = CreateRequestMsg(
       HttpMethod.Get, $"ticker/price?market={market.BaseSymbol}-{market.QuoteSymbol}");
 
-    var response = await _httpClient.SendAsync(request);
+    using var response = await _httpClient.SendAsync(request);
 
     if (!response.IsSuccessStatusCode)
     {

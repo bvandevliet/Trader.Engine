@@ -55,15 +55,29 @@ public class RebalanceController : ControllerBase
     exchange.ApiKey = rebalanceReqDto.Exchange.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.Exchange.ApiSecret;
 
+    IEnumerable<OrderDto> orders;
+    Balance newBalance;
+
+    // If allocation diffs are provided, there is no need to get the current balance.
+    if (null != rebalanceReqDto.AllocDiffs)
+    {
+      orders = await exchange.Rebalance(rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.AllocDiffs);
+
+      newBalance = await exchange.GetBalance();
+    }
+    // Else, get the current balance and calculate the new balance using the simulated exchange to reduce API calls.
+    else
+    {
     Balance curBalance = await exchange.GetBalance();
+
+      orders = await exchange.Rebalance(rebalanceReqDto.NewAbsAllocs, curBalance);
 
     var simExchange = new SimExchange(exchange, curBalance);
 
-    IEnumerable<OrderDto> orders = await exchange.Rebalance(rebalanceReqDto.NewAbsAllocs, curBalance);
-
     await simExchange.ProcessOrders(orders);
 
-    Balance newBalance = await simExchange.GetBalance();
+      newBalance = await simExchange.GetBalance();
+    }
 
     return Ok(new RebalanceDto()
     {
