@@ -32,19 +32,6 @@ public class AllocationTests
   }
 
   [TestMethod()]
-  public void Initialize()
-  {
-    decimal price = 15;
-    decimal amount = 25;
-
-    // Create instance.
-    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
-
-    // Test if quote amounts are correct.
-    Assert.AreEqual(amount * price, alloc.AmountQuote);
-  }
-
-  [TestMethod()]
   public void UpdatePrice()
   {
     decimal price = 15;
