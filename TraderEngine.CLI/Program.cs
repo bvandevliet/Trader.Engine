@@ -6,6 +6,7 @@ using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Repositories;
+using TraderEngine.Common.Services;
 
 namespace TraderEngine.CLI;
 
@@ -28,11 +29,13 @@ public class Program
 
         services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
 
+        services.Configure<CmsDbSettings>(builder.Configuration.GetSection("CmsDbSettings"));
+
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {
-          CoinMarketCapSettings cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
+          var cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
 
           httpClient.BaseAddress = new("https://pro-api.coinmarketcap.com/v1/");
 
@@ -42,12 +45,24 @@ public class Program
         })
           .ApplyDefaultPoolAndPolicyConfig();
 
+        services.AddHttpClient<ICryptographyService, CryptographyService>((x, httpClient) =>
+        {
+          var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
+
+          httpClient.BaseAddress = new($"{addressSettings.TRADER_CRYPTO}/api/");
+
+          //httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "text/plain");
+        })
+          .ApplyDefaultPoolAndPolicyConfig();
+
         services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
+
+        services.AddSingleton<IApiCredentialsRepository, WordPressApiCredRepository>();
 
         // Hosted service with HttpClient for API.
         services.AddHttpClient<WorkerService>((x, httpClient) =>
         {
-          AddressSettings addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
+          var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
 
           httpClient.BaseAddress = new($"{addressSettings.TRADER_API}/api/");
 

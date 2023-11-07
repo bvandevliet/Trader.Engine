@@ -45,6 +45,19 @@ services:
     environment:
       - TZ=Europe/Amsterdam
       - Addresses__TRADER_API=http://traderengine.api
+      - Addresses__TRADER_CRYPTO=http://traderengine.cryptography
       - CoinMarketCap__API_KEY=${CMC_API_KEY}
       - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};
       - ConnectionStrings__CMS=server=traderengine.mariadb;port=3306;database=${CMS_DATABASE};uid=${CMS_USERNAME};pwd=${CMS_PASSWORD};
+      - CmsDbSettings__TablePrefix=wp_
+
+  traderengine.cryptography:
+    container_name: traderengine.cryptography
+    image: bvandevliet/cryptography:linux-arm64-v8
+    restart: unless-stopped
+    tty: true
+    volumes:
+      - ./.volumes/secrets:/app/secrets
+    environment:
+      - TZ=Europe/Amsterdam
+      - AllowedHosts=*
