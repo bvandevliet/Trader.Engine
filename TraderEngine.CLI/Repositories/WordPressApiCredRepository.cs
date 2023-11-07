@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using MySqlConnector;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Helpers;
+using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Services;
 
@@ -27,7 +28,7 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
     _cryptographyService = cryptographyService;
   }
 
-  public async Task<ApiCredentials> GetApiCred(int userId, string exchangeName)
+  public async Task<ApiCredReqDto> GetApiCred(int userId, string exchangeName)
   {
     // Get encrypted API credentials from WordPress database.
     string userApiCred = await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
@@ -50,10 +51,18 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
       string apiKey = await _cryptographyService.Decrypt(encryptedApiKey);
       string apiSecret = await _cryptographyService.Decrypt(encryptedApiSecret);
 
-      return new ApiCredentials(apiKey, apiSecret);
+      return new ApiCredReqDto()
+      {
+        ApiKey = apiKey,
+        ApiSecret = apiSecret,
+      };
     }
 
     // Return empty API credentials if none found.
-    return new ApiCredentials();
+    return new ApiCredReqDto()
+    {
+      ApiKey = string.Empty,
+      ApiSecret = string.Empty,
+    };
   }
 }

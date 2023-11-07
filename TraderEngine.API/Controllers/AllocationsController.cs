@@ -27,12 +27,12 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("current/{exchangeName}")]
-  public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ExchangeReqDto exchangeReqDto)
+  public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredentials)
   {
     IExchange exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = exchangeReqDto.ApiKey;
-    exchange.ApiSecret = exchangeReqDto.ApiSecret;
+    exchange.ApiKey = apiCredentials.ApiKey;
+    exchange.ApiSecret = apiCredentials.ApiSecret;
 
     Balance balance = await exchange.GetBalance();
 

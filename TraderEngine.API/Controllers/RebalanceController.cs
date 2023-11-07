@@ -28,8 +28,8 @@ public class RebalanceController : ControllerBase
   {
     IExchange exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = rebalanceReqDto.Exchange.ApiKey;
-    exchange.ApiSecret = rebalanceReqDto.Exchange.ApiSecret;
+    exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
     Balance curBalance = await exchange.GetBalance();
 
@@ -52,8 +52,8 @@ public class RebalanceController : ControllerBase
   {
     IExchange exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = rebalanceReqDto.Exchange.ApiKey;
-    exchange.ApiSecret = rebalanceReqDto.Exchange.ApiSecret;
+    exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
     IEnumerable<OrderDto> orders;
     Balance newBalance;
