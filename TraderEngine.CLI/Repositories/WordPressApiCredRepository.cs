@@ -12,7 +12,7 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
 {
   private readonly ILogger<WordPressApiCredRepository> _logger;
   private readonly MySqlConnection _mySqlConnection;
-  private readonly CmsDbSettings _cmdDbSettings;
+  private readonly CmsDbSettings _cmsDbSettings;
   private readonly ICryptographyService _cryptographyService;
 
   public WordPressApiCredRepository(
@@ -23,7 +23,7 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
   {
     _logger = logger;
     _mySqlConnection = sqlConnectionFactory.GetService("CMS");
-    _cmdDbSettings = cmsDbOptions.Value;
+    _cmsDbSettings = cmsDbOptions.Value;
     _cryptographyService = cryptographyService;
   }
 
@@ -31,7 +31,7 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
   {
     // Get encrypted API credentials from WordPress database.
     string userApiCred = await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
-      $"SELECT meta_value FROM {_cmdDbSettings.TablePrefix}usermeta\n" +
+      $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE user_id = @UserId AND meta_key = @MetaKey\n" +
       "LIMIT 1;",
       new
