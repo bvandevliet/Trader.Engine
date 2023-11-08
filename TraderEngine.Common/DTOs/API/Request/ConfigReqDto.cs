@@ -21,8 +21,8 @@ public class ConfigReqDto
   [Range(0, 70)]
   public int TopRankingCount { get; set; } = 10;
 
-  [Range(1, 40)]
-  public int Smoothing { get; set; } = 4;
+  [Range(1, 72)]
+  public int Smoothing { get; set; } = 8;
 
   [Range(1, 25)]
   public double NthRoot { get; set; } = 2.5;

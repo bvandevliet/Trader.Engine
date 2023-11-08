@@ -27,80 +27,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     _marketCapInternalRepo = marketCapInternalRepo;
   }
 
-  /// <summary>
-  /// Finds a record for each day in the provided records
-  /// as long as the record is within the allowed tolerance.
-  /// </summary>
-  /// <param name="records"></param>
-  /// <param name="days"></param>
-  /// <returns></returns>
-  private static IEnumerable<MarketCapDataDto> GetCandidates(IEnumerable<MarketCapDataDto> records)
-  {
-    // Updated timestamp of last winner record.
-    DateTime? prevUpdated = null;
-
-    // Potential winner record.
-    MarketCapDataDto? candidate = null;
-
-    foreach (var record in records)
-    {
-    start:
-
-      // Offset in minutes between current iteration record and last winner record.
-      double offsetMinutes = OffsetMinutes(record.Updated, prevUpdated);
-
-      // Test if current iteration record is within one day from last winner record.
-      bool isWithinDayTimespan = offsetMinutes + earlierTolerance >= -1440 - laterTolerance;
-
-      // Test if current iteration record is within and nearly one day from last winner record.
-      bool isWithinDailySequence = isWithinDayTimespan && offsetMinutes - laterTolerance <= -1440 + earlierTolerance;
-
-      // If current iteration record is within one day from last winner record,
-      // mark it as potential candidate.
-      if (isWithinDayTimespan)
-      {
-        candidate = record;
-
-        // If is NOT first iteration AND current iteration record is NOT exactly one day from last winner record,
-        // continue iterating for candidates.
-        if (null != prevUpdated && !isWithinDailySequence) { continue; }
-      }
-
-      if (null != candidate)
-      {
-        // This candidate is a winner record.
-        yield return candidate;
-
-        // Store updated timestamp.
-        prevUpdated = candidate.Updated;
-
-        // Reset candidate to ensure it's only returned once.
-        candidate = null;
-
-        // If winner record came from previous iteration, then re-process current iteration record.
-        if (!isWithinDayTimespan) { goto start; }
-      }
-
-      // Bail as soon as the daily sequence gets interrupted.
-      else { break; }
-    }
-  }
-
-  public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
-  {
-    var records = await _marketCapInternalRepo.ListHistorical(market, days);
-
-    return GetCandidates(records);
-  }
-
-  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
-  {
-    await foreach (var marketCaps in _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, days))
-    {
-      yield return GetCandidates(marketCaps);
-    }
-  }
-
   public Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing, bool caching = false)
   {
     // Generates a list containing only the last EMA value for each asset.
@@ -108,9 +34,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     {
       return
         historicalMany
-
-        // Only process what's relevant.
-        .Take(smoothing + 1)
         .Select(marketCaps =>
         {
           // Enumerate once, then just iterate.
@@ -129,31 +52,34 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
     return Task.Run(() =>
     {
+      if (!caching)
+      {
+        var listHistoricalMany = _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, smoothing + 1).ToEnumerable();
+
+        return smooth(listHistoricalMany);
+      }
+
       // Concat the smoothing cache indexer string.
       string smoothingCacheHash = $"{quoteSymbol}-{smoothing}";
 
-      // Check if exists in cache to avoid expensive re-calculations.
-      if (!_listLatestSmoothedCache.ContainsKey(smoothingCacheHash))
+      // Avoid race condition.
+      lock (_listLatestCacheLock)
       {
-        if (!caching)
+        // Check if exists in cache to avoid expensive re-calculations.
+        if (!_listLatestSmoothedCache.ContainsKey(smoothingCacheHash))
         {
-          return smooth(ListHistoricalMany(quoteSymbol, smoothing + 1).ToEnumerable());
-        }
-
-        // Avoid race condition.
-        lock (_listLatestCacheLock)
-        {
-          // Minimum of 50 records to leverage caching.
-          int days = Math.Max(50, smoothing + 1);
+          // Minimum of 48 + 1 records to leverage caching.
+          int hours = Math.Max(48, smoothing) + 1;
 
           // Concat the historical cache indexer string.
-          string historicalCacheHash = $"{quoteSymbol}-{days}";
+          string historicalCacheHash = $"{quoteSymbol}-{hours}";
 
           // Check if exists in cache to avoid unneeded database querying.
-          if (caching && !_listHistoricalManyCache.ContainsKey(historicalCacheHash))
+          if (!_listHistoricalManyCache.ContainsKey(historicalCacheHash))
           {
-            _listHistoricalManyCache.Add(
-              historicalCacheHash, ListHistoricalMany(quoteSymbol, days).ToEnumerable().ToList());
+            var listHistoricalMany = _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, hours).ToEnumerable();
+
+            _listHistoricalManyCache.Add(historicalCacheHash, listHistoricalMany.ToList());
           }
 
           var listLatestSmoothed = smooth(_listHistoricalManyCache[historicalCacheHash]);

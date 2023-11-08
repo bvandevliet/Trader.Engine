@@ -83,7 +83,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     return rowsAffected;
   }
 
-  public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
+  public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int hours = 24)
   {
     var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
@@ -93,14 +93,15 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
       {
         market.QuoteSymbol,
         market.BaseSymbol,
-        Updated = DateTime.UtcNow.AddDays(-(days + earlierTolerance / 1440)),
+        Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
       });
 
     return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
   }
 
-  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
+  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int hours = 24)
   {
+    // Fetch recent records to determine relevant assets.
     var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol\n" +
@@ -108,7 +109,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
       new
       {
         quoteSymbol,
-        Updated = DateTime.UtcNow.AddDays(-(1 + earlierTolerance / 1440)),
+        Updated = DateTime.UtcNow.AddHours(-(Math.Min(3, hours) + earlierTolerance / 60)),
       });
 
     // Group by asset base symbol.
@@ -119,7 +120,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     {
       var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
 
-      yield return await ListHistorical(market, days);
+      yield return await ListHistorical(market, hours);
     }
   }
 }
