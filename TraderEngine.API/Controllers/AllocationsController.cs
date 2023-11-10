@@ -39,7 +39,7 @@ public class AllocationsController : ControllerBase
     return Ok(_mapper.Map<BalanceDto>(balance));
   }
 
-  [HttpGet("balanced")]
+  [HttpPost("balanced")]
   public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(ConfigReqDto configReqDto)
   {
     IEnumerable<AbsAllocReqDto> balancedAllocations =
