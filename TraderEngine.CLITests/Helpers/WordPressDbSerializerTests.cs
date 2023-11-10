@@ -9,7 +9,7 @@ public class WordPressDbSerializerTests
 {
   private static readonly ConfigReqDto _configDto = new()
   {
-    QuoteCurrency = "EUR",
+    QuoteTakeout = 0,
     QuoteAllocation = 0,
     AltWeightingFactors = new() { { "BTC", .9m }, { "DOGE", 0 }, },
     TagsToIgnore = new() { "stablecoin", "meme", },
@@ -24,8 +24,7 @@ public class WordPressDbSerializerTests
   };
 
   private static readonly string _serializedConfigDto =
-    "O:12:\"ConfigReqDto\":13:{" +
-    "s:13:\"QuoteCurrency\";s:3:\"EUR\";" +
+    "O:12:\"ConfigReqDto\":12:{" +
     "s:12:\"QuoteTakeout\";d:0;" +
     "s:15:\"QuoteAllocation\";d:0;" +
     "s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}" +

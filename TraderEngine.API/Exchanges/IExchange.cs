@@ -9,7 +9,7 @@ public interface IExchange
 {
   string QuoteSymbol { get; }
 
-  decimal MinimumOrderSize { get; }
+  decimal MinOrderSizeInQuote { get; }
 
   decimal MakerFee { get; }
 
@@ -21,16 +21,16 @@ public interface IExchange
 
   Task<Balance> GetBalance();
 
-  // TODO: ASIGN TYPE !!
+  // TODO: ASSIGN TYPE !!
   Task<object> DepositHistory();
 
-  // TODO: ASIGN TYPE !!
+  // TODO: ASSIGN TYPE !!
   Task<object> WithdrawHistory();
 
-  // TODO: ASIGN TYPE !!
+  // TODO: ASSIGN TYPE !!
   Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit);
 
-  Task<bool> IsTradable(MarketReqDto market);
+  Task<MarketDataDto> GetMarket(MarketReqDto market);
 
   Task<decimal> GetPrice(MarketReqDto market);
 

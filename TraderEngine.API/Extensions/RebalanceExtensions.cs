@@ -79,7 +79,7 @@ public static partial class Trader
     };
 
     // Prevent dust.
-    if (curAlloc.AmountQuote - amountQuote <= @this.MinimumOrderSize)
+    if (curAlloc.AmountQuote - amountQuote <= @this.MinOrderSizeInQuote)
     {
       order.Amount = curAlloc.Amount;
     }
@@ -130,7 +130,7 @@ public static partial class Trader
 
       // Positive quote differences refer to oversized allocations,
       // and check if reached minimum order size.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff >= @this.MinimumOrderSize)
+      .Where(allocDiff => allocDiff.AmountQuoteDiff >= @this.MinOrderSizeInQuote)
 
       // Sell ..
       .Select(allocDiff =>
@@ -199,7 +199,7 @@ public static partial class Trader
 
       // Negative quote differences refer to undersized allocations,
       // and check if reached minimum order size.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff <= -@this.MinimumOrderSize)
+      .Where(allocDiff => allocDiff.AmountQuoteDiff <= -@this.MinOrderSizeInQuote)
 
       // Buy ..
       .Select(allocDiff =>

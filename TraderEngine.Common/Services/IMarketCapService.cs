@@ -23,8 +23,9 @@ public interface IMarketCapService
   /// Get the top ranked balanced allocations for the specified <paramref name="configReqDto"/>.
   /// This method can use caching for re-use within its lifetime.
   /// </summary>
+  /// <param name="quoteSymbol"></param>
   /// <param name="configReqDto"></param>
   /// <param name="caching"></param>
   /// <returns></returns>
-  Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(ConfigReqDto configReqDto, bool caching = false);
+  Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(string quoteSymbol, ConfigReqDto configReqDto, bool caching = false);
 }

@@ -94,9 +94,9 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     });
   }
 
-  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(ConfigReqDto configReqDto, bool caching = false)
+  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(string quoteSymbol, ConfigReqDto configReqDto, bool caching = false)
   {
-    var marketCapLatest = await ListLatest(configReqDto.QuoteCurrency, configReqDto.Smoothing, caching);
+    var marketCapLatest = await ListLatest(quoteSymbol, configReqDto.Smoothing, caching);
 
     return
       marketCapLatest

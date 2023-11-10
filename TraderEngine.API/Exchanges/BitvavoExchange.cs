@@ -1,3 +1,4 @@
+using AutoMapper;
 using Microsoft.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
@@ -13,10 +14,11 @@ namespace TraderEngine.API.Exchanges;
 public class BitvavoExchange : IExchange
 {
   private readonly HttpClient _httpClient;
+  private readonly IMapper _mapper;
 
   public string QuoteSymbol { get; } = "EUR";
 
-  public decimal MinimumOrderSize { get; } = 5;
+  public decimal MinOrderSizeInQuote { get; } = 5;
 
   public decimal MakerFee { get; } = .0015m;
 
@@ -26,11 +28,12 @@ public class BitvavoExchange : IExchange
 
   public string ApiSecret { get; set; } = string.Empty;
 
-  public BitvavoExchange(HttpClient httpClient)
+  public BitvavoExchange(HttpClient httpClient, IMapper mapper)
   {
     _httpClient = httpClient;
-
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
+
+    _mapper = mapper;
   }
 
   private string CreateSignature(long timestamp, string method, string url, object? body)
@@ -147,9 +150,28 @@ public class BitvavoExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<bool> IsTradable(MarketReqDto market)
+  public async Task<MarketDataDto> GetMarket(MarketReqDto market)
   {
-    return Task.FromResult(true);
+    using var request = CreateRequestMsg(
+      HttpMethod.Get, $"markets?market={market.BaseSymbol}-{market.QuoteSymbol}");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      // TODO: Handle.
+      throw new Exception(response.ReasonPhrase);
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<List<BitvavoMarketDataDto>>();
+
+    if (null == result)
+    {
+      // TODO: Handle.
+      throw new Exception("Failed to deserialize response.");
+    }
+
+    return _mapper.Map<IEnumerable<MarketDataDto>>(result).FirstOrDefault(new MarketDataDto());
   }
 
   public async Task<decimal> GetPrice(MarketReqDto market)
@@ -173,7 +195,7 @@ public class BitvavoExchange : IExchange
       throw new Exception("Failed to deserialize response.");
     }
 
-    return null == result ? 0 : decimal.Parse(result.Price);
+    return decimal.Parse(result.Price);
   }
 
   public Task<OrderDto> NewOrder(OrderReqDto order)

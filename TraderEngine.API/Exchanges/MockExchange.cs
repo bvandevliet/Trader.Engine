@@ -12,7 +12,7 @@ public class MockExchange : IExchange
 
   public string QuoteSymbol { get; }
 
-  public decimal MinimumOrderSize { get; }
+  public decimal MinOrderSizeInQuote { get; }
 
   public decimal MakerFee { get; }
 
@@ -26,19 +26,19 @@ public class MockExchange : IExchange
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
   /// <param name="quoteSymbol"><inheritdoc cref="QuoteSymbol"/></param>
-  /// <param name="minimumOrderSize"><inheritdoc cref="MinimumOrderSize"/></param>
+  /// <param name="minOrderSize"><inheritdoc cref="MinOrderSizeInQuote"/></param>
   /// <param name="makerFee"><inheritdoc cref="MakerFee"/></param>
   /// <param name="takerFee"><inheritdoc cref="TakerFee"/></param>
   /// <param name="curBalance"><inheritdoc cref="Balance"/></param>
   public MockExchange(
     string quoteSymbol,
-    decimal minimumOrderSize,
+    decimal minOrderSize,
     decimal makerFee,
     decimal takerFee,
     Balance curBalance)
   {
     QuoteSymbol = quoteSymbol;
-    MinimumOrderSize = minimumOrderSize;
+    MinOrderSizeInQuote = minOrderSize;
     MakerFee = makerFee;
     TakerFee = takerFee;
     _curBalance = curBalance;
@@ -68,9 +68,9 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<bool> IsTradable(MarketReqDto market)
+  public Task<MarketDataDto> GetMarket(MarketReqDto market)
   {
-    return Task.FromResult(true);
+    throw new NotImplementedException();
   }
 
   public Task<decimal> GetPrice(MarketReqDto market)
@@ -177,7 +177,7 @@ public class SimExchange : MockExchange, IExchange
   public SimExchange(IExchange exchangeService, Balance? curBalance = null)
     : base(
       exchangeService.QuoteSymbol,
-      exchangeService.MinimumOrderSize,
+      exchangeService.MinOrderSizeInQuote,
       exchangeService.MakerFee,
       exchangeService.TakerFee,
       curBalance ?? exchangeService.GetBalance().GetAwaiter().GetResult())
@@ -193,5 +193,7 @@ public class SimExchange : MockExchange, IExchange
     }
   }
 
+  new public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit) => _instance.GetCandles(market, interval, limit);
+  new public Task<MarketDataDto> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
   new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

@@ -40,10 +40,10 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("balanced")]
-  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(ConfigReqDto configReqDto)
+  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(string quoteSymbol, ConfigReqDto configReqDto)
   {
     IEnumerable<AbsAllocReqDto> balancedAllocations =
-      await _marketCapService().BalancedAllocations(configReqDto, false);
+      await _marketCapService().BalancedAllocations(quoteSymbol, configReqDto, false);
 
     return Ok(balancedAllocations);
   }

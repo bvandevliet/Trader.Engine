@@ -4,10 +4,6 @@ namespace TraderEngine.Common.DTOs.API.Request;
 
 public class ConfigReqDto
 {
-  // TODO: MAKE DEPENDENT ON EXCHANGE ONLY !!
-  [Required]
-  public string QuoteCurrency { get; set; } = null!;
-
   [Range(0, (double)decimal.MaxValue)]
   public decimal QuoteTakeout { get; set; } = 0;
 
