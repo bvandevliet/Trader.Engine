@@ -25,9 +25,9 @@ public class CryptographyService : ICryptographyService
     {
       response.EnsureSuccessStatusCode();
     }
-    catch (Exception ex)
+    catch (Exception)
     {
-      throw _logger.LogErrorReturnException(ex);
+      throw;
     }
 
     return await response.Content.ReadAsStringAsync();
@@ -41,9 +41,9 @@ public class CryptographyService : ICryptographyService
     {
       response.EnsureSuccessStatusCode();
     }
-    catch (Exception ex)
+    catch (Exception)
     {
-      throw _logger.LogErrorReturnException(ex);
+      throw;
     }
 
     return await response.Content.ReadAsStringAsync();
