@@ -36,5 +36,5 @@ public interface IMarketCapInternalRepository
   /// <param name="quoteSymbol"></param>
   /// <param name="hours"></param>
   /// <returns></returns>
-  IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int hours = 24);
+  Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24);
 }

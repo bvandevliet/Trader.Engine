@@ -29,21 +29,20 @@ public class AllocationsController : ControllerBase
   [HttpPost("current/{exchangeName}")]
   public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredentials)
   {
-    IExchange exchange = _exchangeFactory.GetService(exchangeName);
+    var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = apiCredentials.ApiKey;
     exchange.ApiSecret = apiCredentials.ApiSecret;
 
-    Balance balance = await exchange.GetBalance();
+    var balance = await exchange.GetBalance();
 
     return Ok(_mapper.Map<BalanceDto>(balance));
   }
 
-  [HttpPost("balanced")]
+  [HttpPost("balanced/{quoteSymbol}")]
   public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(string quoteSymbol, ConfigReqDto configReqDto)
   {
-    IEnumerable<AbsAllocReqDto> balancedAllocations =
-      await _marketCapService().BalancedAllocations(quoteSymbol, configReqDto, false);
+    var balancedAllocations = await _marketCapService().BalancedAllocations(quoteSymbol, configReqDto);
 
     return Ok(balancedAllocations);
   }

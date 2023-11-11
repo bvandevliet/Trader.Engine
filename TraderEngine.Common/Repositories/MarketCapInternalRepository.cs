@@ -99,28 +99,35 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
   }
 
-  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int hours = 24)
+  // TODO: CACHE RECENT RECORDS TO AVOID REPEATED QUERIES !!
+  public async Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24)
   {
     // Fetch recent records to determine relevant assets.
     var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
-      "WHERE QuoteSymbol = @QuoteSymbol\n" +
-      "AND Updated >= @Updated ORDER BY Updated DESC;",
+      "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol IN (\n" +
+      "  SELECT BaseSymbol FROM MarketCapData\n" +
+      "  WHERE QuoteSymbol = @QuoteSymbol\n" +
+      "  AND Updated >= @UpdatedRecent\n" +
+      "  GROUP BY BaseSymbol\n" +
+      "  ORDER BY Updated DESC)\n" +
+      "AND Updated >= @UpdatedSince ORDER BY Updated DESC;",
       new
       {
-        quoteSymbol,
-        Updated = DateTime.UtcNow.AddHours(-(Math.Min(3, hours) + earlierTolerance / 60)),
+        QuoteSymbol = quoteSymbol.ToUpper(),
+        UpdatedRecent = DateTime.UtcNow.AddHours(-(Math.Min(2, hours) + earlierTolerance / 60)),
+        UpdatedSince = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
       });
 
     // Group by asset base symbol.
     var assetGroups = listHistorical.GroupBy(record => record.BaseSymbol);
 
     // For each unique asset base symbol, return its historical market cap.
-    foreach (var assetGroup in assetGroups)
+    return assetGroups.Select(assetGroup =>
     {
       var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
 
-      yield return await ListHistorical(market, hours);
-    }
+      return _mapper.Map<IEnumerable<MarketCapDataDto>>(assetGroup.AsEnumerable());
+    });
   }
 }

@@ -27,8 +27,8 @@ public class MarketReqDto : IEquatable<MarketReqDto>
   /// <param name="baseSymbol"><inheritdoc cref="BaseSymbol"/></param>
   public MarketReqDto(string quoteSymbol, string baseSymbol)
   {
-    QuoteSymbol = quoteSymbol;
-    BaseSymbol = baseSymbol;
+    QuoteSymbol = quoteSymbol.ToUpper();
+    BaseSymbol = baseSymbol.ToUpper();
   }
 
   public override bool Equals(object? obj) =>
@@ -36,12 +36,12 @@ public class MarketReqDto : IEquatable<MarketReqDto>
 
   public bool Equals(MarketReqDto? obj) =>
     obj is not null
-      && QuoteSymbol == obj.QuoteSymbol
-      && BaseSymbol == obj.BaseSymbol;
+      && QuoteSymbol.Equals(obj.QuoteSymbol, StringComparison.OrdinalIgnoreCase)
+      && BaseSymbol.Equals(obj.BaseSymbol, StringComparison.OrdinalIgnoreCase);
 
   public override int GetHashCode() =>
-    $"{QuoteSymbol}{BaseSymbol}".GetHashCode();
+    $"{QuoteSymbol.ToUpper()}{BaseSymbol.ToUpper()}".GetHashCode();
 
   public static bool operator ==(MarketReqDto a, MarketReqDto b) => a.Equals(b);
-  public static bool operator !=(MarketReqDto a, MarketReqDto b) => !(a == b);
+  public static bool operator !=(MarketReqDto a, MarketReqDto b) => !a.Equals(b);
 }
