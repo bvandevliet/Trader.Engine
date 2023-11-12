@@ -23,23 +23,6 @@ public class RebalanceController : ControllerBase
     _exchangeFactory = exchangeFactory;
   }
 
-  [HttpPost("is-tradable/{exchangeName}/{market}")]
-  public async Task<ActionResult<bool>> IsTradable(string exchangeName, string market, ApiCredReqDto apiCredentials)
-  {
-    var exchange = _exchangeFactory.GetService(exchangeName);
-
-    exchange.ApiKey = apiCredentials.ApiKey;
-    exchange.ApiSecret = apiCredentials.ApiSecret;
-
-    string[] marketParts = market.Split('-');
-
-    var marketDto = new MarketReqDto(marketParts[1], marketParts[0]);
-
-    var marketData = await exchange.GetMarket(marketDto);
-
-    return null == marketData ? NotFound() : Ok(marketData.Status == "trading");
-  }
-
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<RebalanceDto>> SimulateRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {

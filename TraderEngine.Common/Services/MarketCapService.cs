@@ -42,7 +42,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       });
   }
 
-  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(string quoteSymbol, ConfigReqDto configReqDto)
+  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto)
   {
     var marketCapLatest = await ListLatest(quoteSymbol, configReqDto.Smoothing);
 

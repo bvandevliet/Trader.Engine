@@ -23,5 +23,5 @@ public interface IMarketCapService
   /// <param name="quoteSymbol"></param>
   /// <param name="configReqDto"></param>
   /// <returns></returns>
-  Task<IEnumerable<AbsAllocReqDto>> BalancedAllocations(string quoteSymbol, ConfigReqDto configReqDto);
+  Task<IEnumerable<AbsAllocReqDto>> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto);
 }
