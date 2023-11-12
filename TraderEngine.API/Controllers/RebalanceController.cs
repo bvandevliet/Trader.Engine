@@ -23,21 +23,38 @@ public class RebalanceController : ControllerBase
     _exchangeFactory = exchangeFactory;
   }
 
+  [HttpPost("is-tradable/{exchangeName}/{market}")]
+  public async Task<ActionResult<bool>> IsTradable(string exchangeName, string market, ApiCredReqDto apiCredentials)
+  {
+    var exchange = _exchangeFactory.GetService(exchangeName);
+
+    exchange.ApiKey = apiCredentials.ApiKey;
+    exchange.ApiSecret = apiCredentials.ApiSecret;
+
+    string[] marketParts = market.Split('-');
+
+    var marketDto = new MarketReqDto(marketParts[1], marketParts[0]);
+
+    var marketData = await exchange.GetMarket(marketDto);
+
+    return null == marketData ? NotFound() : Ok(marketData.Status == "trading");
+  }
+
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<RebalanceDto>> SimulateRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
-    IExchange exchange = _exchangeFactory.GetService(exchangeName);
+    var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
-    Balance curBalance = await exchange.GetBalance();
+    var curBalance = await exchange.GetBalance();
 
     var simExchange = new SimExchange(exchange, curBalance);
 
     IEnumerable<OrderDto> orders = await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs);
 
-    Balance newBalance = await simExchange.GetBalance();
+    var newBalance = await simExchange.GetBalance();
 
     return Ok(new RebalanceDto()
     {
@@ -50,13 +67,13 @@ public class RebalanceController : ControllerBase
   [HttpPost("execute/{exchangeName}")]
   public async Task<ActionResult<RebalanceDto>> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
-    IExchange exchange = _exchangeFactory.GetService(exchangeName);
+    var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
     IEnumerable<OrderDto> orders;
-    Balance newBalance;
+    Balance? newBalance;
 
     // If allocation diffs are provided, there is no need to get the current balance.
     if (null != rebalanceReqDto.AllocDiffs)
@@ -68,13 +85,13 @@ public class RebalanceController : ControllerBase
     // Else, get the current balance and calculate the new balance using the simulated exchange to reduce API calls.
     else
     {
-    Balance curBalance = await exchange.GetBalance();
+      var curBalance = await exchange.GetBalance();
 
       orders = await exchange.Rebalance(rebalanceReqDto.NewAbsAllocs, curBalance);
 
-    var simExchange = new SimExchange(exchange, curBalance);
+      var simExchange = new SimExchange(exchange, curBalance);
 
-    await simExchange.ProcessOrders(orders);
+      await simExchange.ProcessOrders(orders);
 
       newBalance = await simExchange.GetBalance();
     }

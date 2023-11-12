@@ -105,6 +105,11 @@ public static partial class Trader
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
 
+    if (null == curBalance)
+    {
+      return Array.Empty<OrderDto>();
+    }
+
     // Get enumerable since we're iterating it just once.
     var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
 
@@ -157,6 +162,11 @@ public static partial class Trader
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
+
+    if (null == curBalance)
+    {
+      return Array.Empty<OrderDto>();
+    }
 
     // Initialize quote diff List,
     // being filled using a multi-purpose foreach to eliminate redundant iterations.

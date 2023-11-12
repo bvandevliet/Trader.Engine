@@ -19,20 +19,20 @@ public interface IExchange
 
   internal string ApiSecret { get; set; }
 
-  Task<Balance> GetBalance();
+  Task<Balance?> GetBalance();
 
   // TODO: ASSIGN TYPE !!
-  Task<object> DepositHistory();
+  Task<object?> DepositHistory();
 
   // TODO: ASSIGN TYPE !!
-  Task<object> WithdrawHistory();
+  Task<object?> WithdrawHistory();
 
   // TODO: ASSIGN TYPE !!
-  Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit);
+  Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit);
 
-  Task<MarketDataDto> GetMarket(MarketReqDto market);
+  Task<MarketDataDto?> GetMarket(MarketReqDto market);
 
-  Task<decimal> GetPrice(MarketReqDto market);
+  Task<decimal?> GetPrice(MarketReqDto market);
 
   Task<OrderDto> NewOrder(OrderReqDto order);
 
@@ -40,9 +40,9 @@ public interface IExchange
 
   Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null);
 
-  Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null);
+  Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null);
+  Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<OrderDto>> SellAllPositions(string? baseSymbol = null);
+  Task<IEnumerable<OrderDto>?> SellAllPositions(string? baseSymbol = null);
 }

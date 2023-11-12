@@ -8,7 +8,7 @@ namespace TraderEngine.API.Exchanges;
 /// <inheritdoc cref="IExchange"/>
 public class MockExchange : IExchange
 {
-  protected Balance _curBalance;
+  protected Balance? _curBalance;
 
   public string QuoteSymbol { get; }
 
@@ -35,7 +35,7 @@ public class MockExchange : IExchange
     decimal minOrderSize,
     decimal makerFee,
     decimal takerFee,
-    Balance curBalance)
+    Balance? curBalance)
   {
     QuoteSymbol = quoteSymbol;
     MinOrderSizeInQuote = minOrderSize;
@@ -48,43 +48,43 @@ public class MockExchange : IExchange
   /// Null, if no initial <see cref="Balance"/> was given.
   /// </summary>
   /// <returns></returns>
-  public Task<Balance> GetBalance()
+  public Task<Balance?> GetBalance()
   {
     return Task.FromResult(_curBalance);
   }
 
-  public Task<object> DepositHistory()
+  public Task<object?> DepositHistory()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> WithdrawHistory()
+  public Task<object?> WithdrawHistory()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
+  public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
   {
     throw new NotImplementedException();
   }
 
-  public Task<MarketDataDto> GetMarket(MarketReqDto market)
+  public Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<decimal> GetPrice(MarketReqDto market)
+  public Task<decimal?> GetPrice(MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
   public Task<OrderDto> NewOrder(OrderReqDto order)
   {
-    Allocation? curAlloc = _curBalance.GetAllocation(order.Market.BaseSymbol);
+    Allocation? curAlloc = _curBalance?.GetAllocation(order.Market.BaseSymbol);
 
     Allocation newAlloc = curAlloc ?? new(order.Market);
 
-    Allocation? quoteAlloc = _curBalance.GetAllocation(QuoteSymbol);
+    Allocation? quoteAlloc = _curBalance?.GetAllocation(QuoteSymbol);
 
     Allocation newQuoteAlloc = quoteAlloc ?? new(QuoteSymbol, QuoteSymbol, 1);
 
@@ -129,12 +129,12 @@ public class MockExchange : IExchange
 
     if (null == curAlloc)
     {
-      _curBalance.AddAllocation(newAlloc);
+      _curBalance?.AddAllocation(newAlloc);
     }
 
     if (null == quoteAlloc)
     {
-      _curBalance.AddAllocation(newQuoteAlloc);
+      _curBalance?.AddAllocation(newQuoteAlloc);
     }
 
     return Task.FromResult(returnOrder);
@@ -150,17 +150,17 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
   {
-    return Task.FromResult(new List<OrderDto>().AsEnumerable());
+    return Task.FromResult(new List<OrderDto>().AsEnumerable())!;
   }
 
-  public Task<IEnumerable<OrderDto>> SellAllPositions(string? asset = null)
+  public Task<IEnumerable<OrderDto>?> SellAllPositions(string? asset = null)
   {
     throw new NotImplementedException();
   }
@@ -180,7 +180,7 @@ public class SimExchange : MockExchange, IExchange
       exchangeService.MinOrderSizeInQuote,
       exchangeService.MakerFee,
       exchangeService.TakerFee,
-      curBalance ?? exchangeService.GetBalance().GetAwaiter().GetResult())
+      curBalance ?? exchangeService.GetBalance()?.GetAwaiter().GetResult())
   {
     _instance = exchangeService;
   }
@@ -193,7 +193,7 @@ public class SimExchange : MockExchange, IExchange
     }
   }
 
-  new public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit) => _instance.GetCandles(market, interval, limit);
-  new public Task<MarketDataDto> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
-  new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
+  new public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit) => _instance.GetCandles(market, interval, limit);
+  new public Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
+  new public Task<decimal?> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

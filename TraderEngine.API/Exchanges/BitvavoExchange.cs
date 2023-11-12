@@ -3,6 +3,7 @@ using Microsoft.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -13,8 +14,9 @@ namespace TraderEngine.API.Exchanges;
 
 public class BitvavoExchange : IExchange
 {
-  private readonly HttpClient _httpClient;
+  private readonly ILogger<BitvavoExchange> _logger;
   private readonly IMapper _mapper;
+  private readonly HttpClient _httpClient;
 
   public string QuoteSymbol { get; } = "EUR";
 
@@ -28,12 +30,16 @@ public class BitvavoExchange : IExchange
 
   public string ApiSecret { get; set; } = string.Empty;
 
-  public BitvavoExchange(HttpClient httpClient, IMapper mapper)
+  public BitvavoExchange(
+    ILogger<BitvavoExchange> logger,
+    IMapper mapper,
+    HttpClient httpClient)
   {
+    _logger = logger;
+    _mapper = mapper;
+
     _httpClient = httpClient;
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
-
-    _mapper = mapper;
   }
 
   private string CreateSignature(long timestamp, string method, string url, object? body)
@@ -83,7 +89,7 @@ public class BitvavoExchange : IExchange
     return request;
   }
 
-  public async Task<Balance> GetBalance()
+  public async Task<Balance?> GetBalance()
   {
     using var request = CreateRequestMsg(HttpMethod.Get, "balance");
 
@@ -91,8 +97,10 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      // TODO: Handle.
-      throw new Exception(response.ReasonPhrase);
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
     }
 
     var result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
@@ -117,7 +125,13 @@ public class BitvavoExchange : IExchange
       {
         var market = new MarketReqDto(QuoteSymbol, alloc.dto.Symbol);
 
-        decimal price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
+        decimal? price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
+
+        // TODO: DO NOT THROW, BUT RETURN NULL AS BALANCE !!
+        if (null == price)
+        {
+          throw new Exception($"Failed to get price of {market.BaseSymbol}-{market.QuoteSymbol}.");
+        }
 
         var allocation = new Allocation(market, price, alloc.amount);
 
@@ -135,35 +149,49 @@ public class BitvavoExchange : IExchange
     return balance;
   }
 
-  public Task<object> DepositHistory()
+  public Task<object?> DepositHistory()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> WithdrawHistory()
+  public Task<object?> WithdrawHistory()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
+  public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
   {
     throw new NotImplementedException();
   }
 
-  public async Task<MarketDataDto> GetMarket(MarketReqDto market)
+  public async Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"markets?market={market.BaseSymbol}-{market.QuoteSymbol}");
+      HttpMethod.Get, $"markets?market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
 
     using var response = await _httpClient.SendAsync(request);
 
     if (!response.IsSuccessStatusCode)
     {
-      // TODO: Handle.
-      throw new Exception(response.ReasonPhrase);
+      var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+
+      if (error?["errorCode"]?.ToString() == "205")
+      {
+        _logger.LogWarning("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return new MarketDataDto();
+      }
+      else
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return null;
+      }
     }
 
-    var result = await response.Content.ReadFromJsonAsync<List<BitvavoMarketDataDto>>();
+    var result = await response.Content.ReadFromJsonAsync<BitvavoMarketDataDto>();
 
     if (null == result)
     {
@@ -171,20 +199,22 @@ public class BitvavoExchange : IExchange
       throw new Exception("Failed to deserialize response.");
     }
 
-    return _mapper.Map<IEnumerable<MarketDataDto>>(result).FirstOrDefault(new MarketDataDto());
+    return _mapper.Map<MarketDataDto>(result);
   }
 
-  public async Task<decimal> GetPrice(MarketReqDto market)
+  public async Task<decimal?> GetPrice(MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"ticker/price?market={market.BaseSymbol}-{market.QuoteSymbol}");
+      HttpMethod.Get, $"ticker/price?market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
 
     using var response = await _httpClient.SendAsync(request);
 
     if (!response.IsSuccessStatusCode)
     {
-      // TODO: Handle.
-      throw new Exception(response.ReasonPhrase);
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
     }
 
     var result = await response.Content.ReadFromJsonAsync<BitvavoTickerPriceDto>();
@@ -213,17 +243,17 @@ public class BitvavoExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
   {
-    return Task.FromResult((IEnumerable<OrderDto>)new List<OrderReqDto>());
+    return Task.FromResult((IEnumerable<OrderDto>?)new List<OrderReqDto>());
   }
 
-  public Task<IEnumerable<OrderDto>> SellAllPositions(string? asset = null)
+  public Task<IEnumerable<OrderDto>?> SellAllPositions(string? asset = null)
   {
     throw new NotImplementedException();
   }
