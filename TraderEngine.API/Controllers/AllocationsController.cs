@@ -79,6 +79,9 @@ public class AllocationsController : ControllerBase
     // Wait for all tasks to complete.
     var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
 
+    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
+      balancedReqDto.Config.QuoteTakeout / amountQuoteTotal + balancedReqDto.Config.QuoteAllocation / 100));
+
     // Sum of all absolute allocation values.
     decimal totalAbsAlloc = 0;
 
@@ -90,14 +93,15 @@ public class AllocationsController : ControllerBase
       {
         totalAbsAlloc += x.absAlloc.AbsAlloc;
 
+        x.absAlloc.AbsAlloc *= (1 - quoteRelAlloc);
+
         return x.absAlloc;
       })
       // As list since we're using a summed total.
       .ToList();
 
     // Add quote allocation.
-    absAllocsList.Add(new AbsAllocReqDto(quoteSymbol,
-      totalAbsAlloc / (1 - (balancedReqDto.Config.QuoteTakeout / amountQuoteTotal + balancedReqDto.Config.QuoteAllocation / 100)) - totalAbsAlloc));
+    absAllocsList.Add(new AbsAllocReqDto(quoteSymbol, totalAbsAlloc * quoteRelAlloc));
 
     return Ok(absAllocsList);
   }
