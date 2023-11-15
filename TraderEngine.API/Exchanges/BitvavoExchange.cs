@@ -127,9 +127,9 @@ public class BitvavoExchange : IExchange
 
         decimal? price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
 
-        // TODO: DO NOT THROW, BUT RETURN NULL AS BALANCE !!
         if (null == price)
         {
+          // TODO: DO NOT THROW, BUT RETURN NULL AS BALANCE !!
           throw new Exception($"Failed to get price of {market.BaseSymbol}-{market.QuoteSymbol}.");
         }
 
@@ -149,14 +149,56 @@ public class BitvavoExchange : IExchange
     return balance;
   }
 
-  public Task<object?> DepositHistory()
+  public async Task<decimal?> TotalDeposited()
   {
-    throw new NotImplementedException();
+    using var request = CreateRequestMsg(
+      HttpMethod.Get, $"depositHistory?symbol={QuoteSymbol}&start=0");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<JsonArray>();
+
+    if (null == result)
+    {
+      // TODO: Handle.
+      throw new Exception("Failed to deserialize response.");
+    }
+
+    return result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString()));
   }
 
-  public Task<object?> WithdrawHistory()
+  public async Task<decimal?> TotalWithdrawn()
   {
-    throw new NotImplementedException();
+    using var request = CreateRequestMsg(
+      HttpMethod.Get, $"withdrawalHistory?symbol={QuoteSymbol}&start=0");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<JsonArray>();
+
+    if (null == result)
+    {
+      // TODO: Handle.
+      throw new Exception("Failed to deserialize response.");
+    }
+
+    return result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString()));
   }
 
   public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)

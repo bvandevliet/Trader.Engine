@@ -21,11 +21,9 @@ public interface IExchange
 
   Task<Balance?> GetBalance();
 
-  // TODO: ASSIGN TYPE !!
-  Task<object?> DepositHistory();
+  Task<decimal?> TotalDeposited();
 
-  // TODO: ASSIGN TYPE !!
-  Task<object?> WithdrawHistory();
+  Task<decimal?> TotalWithdrawn();
 
   // TODO: ASSIGN TYPE !!
   Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit);

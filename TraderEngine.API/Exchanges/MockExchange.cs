@@ -53,12 +53,12 @@ public class MockExchange : IExchange
     return Task.FromResult(_curBalance);
   }
 
-  public Task<object?> DepositHistory()
+  public Task<decimal?> TotalDeposited()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object?> WithdrawHistory()
+  public Task<decimal?> TotalWithdrawn()
   {
     throw new NotImplementedException();
   }
