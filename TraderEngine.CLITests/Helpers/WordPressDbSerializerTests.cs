@@ -11,7 +11,7 @@ public class WordPressDbSerializerTests
   {
     QuoteTakeout = 0,
     QuoteAllocation = 0,
-    AltWeightingFactors = new() { { "BTC", .9m }, { "DOGE", 0 }, },
+    AltWeightingFactors = new() { { "BTC", .9 }, { "DOGE", 0 }, },
     TagsToIgnore = new() { "stablecoin", "meme", },
     TopRankingCount = 10,
     Smoothing = 8,
