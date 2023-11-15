@@ -270,9 +270,32 @@ public class BitvavoExchange : IExchange
     return decimal.Parse(result.Price);
   }
 
-  public Task<OrderDto> NewOrder(OrderReqDto order)
+  public async Task<OrderDto> NewOrder(OrderReqDto order)
   {
-    throw new NotImplementedException();
+    var orderDto = _mapper.Map<BitvavoOrderDto>(order);
+
+    using var request = CreateRequestMsg(HttpMethod.Post, "order", orderDto);
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      // TODO: Handle ??
+      throw new Exception("Failed to place order.");
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+
+    if (null == result)
+    {
+      // TODO: Handle.
+      throw new Exception("Failed to deserialize response.");
+    }
+
+    return _mapper.Map<OrderDto>(result);
   }
 
   public Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null)
@@ -290,9 +313,29 @@ public class BitvavoExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
+  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
   {
-    return Task.FromResult((IEnumerable<OrderDto>?)new List<OrderReqDto>());
+    using var request = CreateRequestMsg(HttpMethod.Delete, "orders");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<List<BitvavoOrderDto>>();
+
+    if (null == result)
+    {
+      // TODO: Handle.
+      throw new Exception("Failed to deserialize response.");
+    }
+
+    return _mapper.Map<IEnumerable<OrderDto>>(result);
   }
 
   public Task<IEnumerable<OrderDto>?> SellAllPositions(string? asset = null)

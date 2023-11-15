@@ -19,32 +19,32 @@ public class BitvavoOrderNewReqDto
   /// For limit orders, amount and price are required.
   /// For market orders either amount or amountQuote is required.
   /// </summary>
-  public string OrderType { get; set; } = null!;
+  public string OrderType { get; set; } = "market";
 
   /// <summary>
   /// Only for limit orders.
   /// Specifies the amount in quote currency that is paid/received for each unit of base currency.
   /// </summary>
-  public string Price { get; set; } = null!;
+  public string? Price { get; set; }
 
   /// <summary>
   /// Specifies the amount of the base asset that will be bought/sold.
   /// </summary>
-  public string Amount { get; set; } = null!;
+  public string? Amount { get; set; }
 
   /// <summary>
   /// Only for market orders.
   /// If amountQuote is specified, [amountQuote] of the quote currency will be bought/sold for the best price available.
   /// </summary>
-  public string AmountQuote { get; set; } = null!;
+  public string? AmountQuote { get; set; }
 
   /// <summary>
-  /// Enum: "GTC" "IOC" "FOK".Default: "GTC".
+  /// Enum: "GTC" "IOC" "FOK". Default: "GTC".
   /// Only for limit orders: Determines how long orders remain active.
   /// Possible values: Good-Til-Canceled (GTC), Immediate-Or-Cancel (IOC), Fill-Or-Kill (FOK). GTC orders will remain on the order book until they are filled or canceled. IOC orders will fill against existing orders, but will cancel any remaining amount after that.
   /// FOK orders will fill against existing orders in its entirety or will be canceled (if the entire order cannot be filled).
   /// </summary>
-  public string TimeInForce { get; set; } = null!;
+  public string TimeInForce { get; set; } = "GTC";
 
   /// <summary>
   /// Only for market orders.

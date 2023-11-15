@@ -58,7 +58,7 @@ public static partial class Trader
       Market = curAlloc.Market,
       Side = Common.Enums.OrderSide.Buy,
       Type = Common.Enums.OrderType.Market,
-      AmountQuote = amountQuote,
+      AmountQuote = Math.Floor(amountQuote * 100) / 100,
     };
   }
 
@@ -85,7 +85,7 @@ public static partial class Trader
     }
     else
     {
-      order.AmountQuote = amountQuote;
+      order.AmountQuote = Math.Ceiling(amountQuote * 100) / 100;
     }
 
     return order;
