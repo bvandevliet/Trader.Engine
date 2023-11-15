@@ -124,7 +124,7 @@ public static class WordPressDbSerializer
     {
       endIndex = value.IndexOf(';') + 1;
 
-      return value[(value.IndexOf('"') + 1)..(endIndex - 2)];
+      return Convert.ChangeType(value[(value.IndexOf('"') + 1)..(endIndex - 2)], type);
     }
     else if (value.StartsWith("i:"))
     {
@@ -193,6 +193,7 @@ public static class WordPressDbSerializer
 
       return toListMethod.Invoke(null, new object[] { listValues })!;
     }
+    // TODO: Add support for stdClass !!
     else if (value.StartsWith("O:"))
     {
       endIndex = value.IndexOf('{') + 1;
