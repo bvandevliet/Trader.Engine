@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Text.RegularExpressions;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -46,6 +47,10 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
   {
     var marketCapLatest = await ListLatest(quoteSymbol, configReqDto.Smoothing);
 
+    string ignoredTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $"^{tag}$"));
+
+    var ignoredTagsRegex = new Regex(ignoredTagsPattern, RegexOptions.IgnoreCase);
+
     return
       marketCapLatest
 
@@ -55,8 +60,8 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
         bool hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out double weighting);
 
         return new
-      {
-        MarketCapDataDto = marketCapDataDto,
+        {
+          MarketCapDataDto = marketCapDataDto,
           HasWeighting = hasWeighting,
           Weighting = hasWeighting ? weighting : 1,
         };
@@ -66,7 +71,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Where(marketCap => marketCap.Weighting > 0)
 
       // Handle ignored tags, but not if asset has a weighting configured.
-      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Intersect(configReqDto.TagsToIgnore).Any())
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoredTagsRegex.IsMatch(tag)))
 
       // Apply weighting and dampening.
       .Select(marketCap =>
