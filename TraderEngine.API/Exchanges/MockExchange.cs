@@ -106,7 +106,7 @@ public class MockExchange : IExchange
     {
       amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
-      newAlloc.AmountQuote += amountQuote;
+      newAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       newQuoteAlloc.AmountQuote -= amountQuote;
 
@@ -118,7 +118,7 @@ public class MockExchange : IExchange
 
       newAlloc.AmountQuote -= amountQuote;
 
-      newQuoteAlloc.AmountQuote += amountQuote;
+      newQuoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       returnOrder.Amount = order.Amount;
     }
@@ -140,12 +140,12 @@ public class MockExchange : IExchange
     return Task.FromResult(returnOrder);
   }
 
-  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }

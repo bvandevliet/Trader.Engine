@@ -23,22 +23,22 @@ public static partial class Trader
     while (
       checks > 0 &&
       order.Id != null &&
-      !order.Status.HasFlag(
-        Common.Enums.OrderStatus.Canceled |
-        Common.Enums.OrderStatus.Expired |
-        Common.Enums.OrderStatus.Rejected |
-        Common.Enums.OrderStatus.Filled))
+      order.Status
+        is not Common.Enums.OrderStatus.Canceled
+        and not Common.Enums.OrderStatus.Expired
+        and not Common.Enums.OrderStatus.Rejected
+        and not Common.Enums.OrderStatus.Filled)
     {
       await Task.Delay(1000);
 
-      order = await @this.GetOrder(order.Id!, order.Market) ?? order;
+      order = await @this.GetOrder(order.Id, order.Market) ?? order;
 
       checks--;
     }
 
     if (checks == 0)
     {
-      order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
+      //order = await @thsis.CancelOrder(order.Id!, order.Market) ?? order;
     }
 
     return order;
@@ -180,7 +180,7 @@ public static partial class Trader
     foreach (var allocDiff in RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
     {
       // Negative quote differences refer to undersized allocations.
-      if (allocDiff.AmountQuoteDiff < 0)
+      if (allocDiff.AmountQuoteDiff <= -@this.MinOrderSizeInQuote)
       {
         // Add to absolute sum of all negative quote differences.
         totalBuy -= allocDiff.AmountQuoteDiff;
@@ -202,10 +202,7 @@ public static partial class Trader
       allocDiffs
 
       // Scale to avoid potentially oversized buy order sizes.
-      .Select(allocDiff =>
-      {
-        allocDiff.AmountQuoteDiff = ratio * allocDiff.AmountQuoteDiff; return allocDiff;
-      })
+      .Select(allocDiff => { allocDiff.AmountQuoteDiff *= ratio; return allocDiff; })
 
       // Negative quote differences refer to undersized allocations,
       // and check if reached minimum order size.

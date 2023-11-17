@@ -34,9 +34,9 @@ public interface IExchange
 
   Task<OrderDto> NewOrder(OrderReqDto order);
 
-  Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null);
+  Task<OrderDto?> GetOrder(string orderId, MarketReqDto market);
 
-  Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null);
+  Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market);
 
   Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null);
 

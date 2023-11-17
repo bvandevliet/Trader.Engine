@@ -18,7 +18,37 @@ public class BitvavoProfile : Profile
         dest => dest.MinOrderSizeInBase, opt => opt.MapFrom(
           src => src.MinOrderInBaseAsset));
 
-    CreateMap<OrderReqDto, BitvavoOrderNewReqDto>();
-    CreateMap<BitvavoOrderDto, OrderDto>();
+    CreateMap<OrderReqDto, BitvavoOrderReqDto>()
+      .ForMember(
+        dest => dest.Market, opt => opt.MapFrom(
+          src => $"{src.Market.BaseSymbol}-{src.Market.QuoteSymbol}"))
+      .ForMember(
+        dest => dest.Side, opt => opt.MapFrom(
+          src => src.Side))
+      .ForMember(
+        dest => dest.OrderType, opt => opt.MapFrom(
+          src => src.Type));
+
+    CreateMap<BitvavoOrderDto, OrderDto>()
+      .ForMember(
+        dest => dest.Id, opt => opt.MapFrom(
+          src => src.OrderId))
+      .ForMember(
+        dest => dest.Market, opt => opt.MapFrom(
+          src => new MarketReqDto(
+            src.Market.Split('-', StringSplitOptions.TrimEntries)[1],
+            src.Market.Split('-', StringSplitOptions.TrimEntries)[0])))
+      .ForMember(
+        dest => dest.AmountFilled, opt => opt.MapFrom(
+          src => src.FilledAmount))
+      .ForMember(
+        dest => dest.AmountQuoteFilled, opt => opt.MapFrom(
+          src => src.FilledAmountQuote));
+    //.ForMember(
+    //  dest => dest.Created, opt => opt.MapFrom(
+    //    src => new DateTime((int)src.Created!)))
+    //.ForMember(
+    //  dest => dest.Updated, opt => opt.MapFrom(
+    //    src => new DateTime((int)src.Updated!)));
   }
 }

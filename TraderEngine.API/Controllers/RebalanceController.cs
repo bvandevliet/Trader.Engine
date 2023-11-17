@@ -35,13 +35,13 @@ public class RebalanceController : ControllerBase
 
     var simExchange = new SimExchange(exchange, curBalance);
 
-    IEnumerable<OrderDto> orders = await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs);
+    var orders = await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs);
 
     var newBalance = await simExchange.GetBalance();
 
     return Ok(new RebalanceDto()
     {
-      Orders = orders.ToList(),
+      Orders = orders,
       TotalFee = orders.Sum(order => order.FeePaid),
       NewBalance = _mapper.Map<BalanceDto>(newBalance),
     });
@@ -55,7 +55,8 @@ public class RebalanceController : ControllerBase
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
-    IEnumerable<OrderDto> orders;
+    OrderDto[] orders;
+
     Balance? newBalance;
 
     // If allocation diffs are provided, there is no need to get the current balance.

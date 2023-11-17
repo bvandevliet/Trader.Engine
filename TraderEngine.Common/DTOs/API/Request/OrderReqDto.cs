@@ -45,9 +45,4 @@ public class OrderReqDto
   /// </summary>
   // TODO: Require either (Amount and Price) or (AmountQuote) !!
   public decimal? AmountQuote { get; set; }
-
-  /// <summary>
-  /// Only for limit orders. Determines how long orders remain active.
-  /// </summary>
-  public TimeInForce TimeInForce { get; set; } = TimeInForce.GTC;
 }

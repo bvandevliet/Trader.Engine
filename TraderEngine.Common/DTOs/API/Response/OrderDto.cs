@@ -45,10 +45,10 @@ public class OrderDto : OrderReqDto
   /// <summary>
   /// Timestamp this order was created.
   /// </summary>
-  public DateTime Created { get; set; }
+  //public DateTime? Created { get; set; }
 
   /// <summary>
   /// Timestamp this order was updated.
   /// </summary>
-  public DateTime Updated { get; set; }
+  //public DateTime? Updated { get; set; }
 }

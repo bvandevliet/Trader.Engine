@@ -4,6 +4,8 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
+using TraderEngine.API.DTOs.Bitvavo.Request;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -42,45 +44,51 @@ public class BitvavoExchange : IExchange
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
   }
 
-  private string CreateSignature(long timestamp, string method, string url, object? body)
+  private string CreateSignature(long timestamp, string method, string url, string? payload)
   {
-    var inputStrBuilder = new StringBuilder();
+    var hashString = new StringBuilder();
 
-    inputStrBuilder.Append(timestamp).Append(method).Append(url);
+    hashString.Append(timestamp).Append(method).Append(url);
 
-    if (body != null)
+    if (payload != null)
     {
-      string bodyJson = JsonSerializer.Serialize(body);
-
-      inputStrBuilder.Append(bodyJson);
+      hashString.Append(payload);
     }
 
     using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(ApiSecret));
 
-    byte[] inputBytes = Encoding.UTF8.GetBytes(inputStrBuilder.ToString());
+    byte[] inputBytes = Encoding.UTF8.GetBytes(hashString.ToString());
 
     byte[] signatureBytes = hmac.ComputeHash(inputBytes);
 
-    var outputStrBuilder = new StringBuilder(signatureBytes.Length * 2);
-
-    foreach (byte b in signatureBytes)
-    {
-      outputStrBuilder.Append(b.ToString("x2"));
-    }
-
-    return outputStrBuilder.ToString();
+    return BitConverter.ToString(signatureBytes).Replace("-", "").ToLower();
   }
 
   private HttpRequestMessage CreateRequestMsg(HttpMethod method, string requestPath, object? body = null)
   {
     var request = new HttpRequestMessage(method, new Uri(_httpClient.BaseAddress!, requestPath));
 
+    string? payload = null;
+
+    if (null != body)
+    {
+      var jsonOptions = new JsonSerializerOptions
+      {
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+      };
+
+      payload = JsonSerializer.Serialize(body, body.GetType(), jsonOptions);
+
+      request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+    }
+
     request.Headers.Add(HeaderNames.Accept, "application/json");
     request.Headers.Add("bitvavo-access-window", "60000 ");
 
     long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    string signature = CreateSignature(timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, body);
+    string signature = CreateSignature(timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, payload);
 
     request.Headers.Add("bitvavo-access-key", ApiKey);
     request.Headers.Add("bitvavo-access-timestamp", timestamp.ToString());
@@ -272,9 +280,12 @@ public class BitvavoExchange : IExchange
 
   public async Task<OrderDto> NewOrder(OrderReqDto order)
   {
-    var orderDto = _mapper.Map<BitvavoOrderDto>(order);
+    var newOrderDto = _mapper.Map<BitvavoOrderReqDto>(order);
 
-    using var request = CreateRequestMsg(HttpMethod.Post, "order", orderDto);
+    newOrderDto.DisableMarketProtection = true;
+    newOrderDto.ResponseRequired = false;
+
+    using var request = CreateRequestMsg(HttpMethod.Post, "order", newOrderDto);
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -298,12 +309,33 @@ public class BitvavoExchange : IExchange
     return _mapper.Map<OrderDto>(result);
   }
 
-  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null)
+  public async Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
   {
-    throw new NotImplementedException();
+    using var request = CreateRequestMsg(
+      HttpMethod.Get, $"order?orderId={orderId}&market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+
+    if (null == result)
+    {
+      // TODO: Handle.
+      throw new Exception("Failed to deserialize response.");
+    }
+
+    return _mapper.Map<OrderDto>(result);
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }

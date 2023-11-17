@@ -1,10 +1,13 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace TraderEngine.API.DTOs.Bitvavo.Request;
 
-public class BitvavoOrderNewReqDto
+public class BitvavoOrderReqDto
 {
   /// <summary>
   /// Should be all capital letters with a dash sign in the middle. Example: BTC-EUR.
   /// </summary>
+  [Required]
   public string Market { get; set; } = null!;
 
   /// <summary>
@@ -12,6 +15,7 @@ public class BitvavoOrderNewReqDto
   /// When placing a buy order the base currency will be bought for the quote currency.
   /// When placing a sell order the base currency will be sold for the quote currency.
   /// </summary>
+  [Required]
   public string Side { get; set; } = null!;
 
   /// <summary>
@@ -44,7 +48,7 @@ public class BitvavoOrderNewReqDto
   /// Possible values: Good-Til-Canceled (GTC), Immediate-Or-Cancel (IOC), Fill-Or-Kill (FOK). GTC orders will remain on the order book until they are filled or canceled. IOC orders will fill against existing orders, but will cancel any remaining amount after that.
   /// FOK orders will fill against existing orders in its entirety or will be canceled (if the entire order cannot be filled).
   /// </summary>
-  public string TimeInForce { get; set; } = "GTC";
+  public string? TimeInForce { get; set; }
 
   /// <summary>
   /// Only for market orders.
@@ -52,7 +56,7 @@ public class BitvavoOrderNewReqDto
   /// the remainder of market orders will be canceled once the next fill price is 10% worse than the best fill price (best bid/ask at first match).
   /// If you wish to disable this protection, set this value to ‘true’.
   /// </summary>
-  public bool DisableMarketProtection { get; set; } = true;
+  public bool? DisableMarketProtection { get; set; }
 
   /// <summary>
   /// If this is set to 'true', all order information is returned.
