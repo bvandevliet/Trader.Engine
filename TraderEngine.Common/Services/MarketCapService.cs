@@ -50,17 +50,23 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       marketCapLatest
 
       // Determine weighting.
-      .Select(marketCapDataDto => new
+      .Select(marketCapDataDto =>
+      {
+        bool hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out double weighting);
+
+        return new
       {
         MarketCapDataDto = marketCapDataDto,
-        Weighting = configReqDto.AltWeightingFactors.GetValueOrDefault(marketCapDataDto.Market.BaseSymbol, 1),
+          HasWeighting = hasWeighting,
+          Weighting = hasWeighting ? weighting : 1,
+        };
       })
 
       // Skip zero-weighted assets.
       .Where(marketCap => marketCap.Weighting > 0)
 
-      // Handle ignored tags.
-      .Where(marketCap => !marketCap.MarketCapDataDto.Tags.Intersect(configReqDto.TagsToIgnore).Any())
+      // Handle ignored tags, but not if asset has a weighting configured.
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Intersect(configReqDto.TagsToIgnore).Any())
 
       // Apply weighting and dampening.
       .Select(marketCap =>
