@@ -42,7 +42,6 @@ public class RebalanceController : ControllerBase
     return Ok(new RebalanceDto()
     {
       Orders = orders,
-      TotalFee = orders.Sum(order => order.FeePaid),
       NewBalance = _mapper.Map<BalanceDto>(newBalance),
     });
   }
@@ -82,8 +81,7 @@ public class RebalanceController : ControllerBase
 
     return Ok(new RebalanceDto()
     {
-      Orders = orders.ToList(),
-      TotalFee = orders.Sum(order => order.FeePaid),
+      Orders = orders,
       NewBalance = _mapper.Map<BalanceDto>(newBalance),
     });
   }

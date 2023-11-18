@@ -23,11 +23,7 @@ public static partial class Trader
     while (
       checks > 0 &&
       order.Id != null &&
-      order.Status
-        is not Common.Enums.OrderStatus.Canceled
-        and not Common.Enums.OrderStatus.Expired
-        and not Common.Enums.OrderStatus.Rejected
-        and not Common.Enums.OrderStatus.Filled)
+      !order.HasEnded)
     {
       await Task.Delay(1000);
 

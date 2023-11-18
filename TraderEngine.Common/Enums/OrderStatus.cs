@@ -8,9 +8,10 @@ public enum OrderStatus
 {
   BrandNew,
   New,
-  Canceled,
-  Filled,
   PartiallyFilled,
+  Filled,
+  Canceled,
   Expired,
+  Failed,
   Rejected,
 }
