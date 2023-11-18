@@ -31,20 +31,17 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<WordPressUserDto> GetUserInfo(int userId)
   {
-    string dbUser = await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
+    return (await _mySqlConnection.QueryFirstOrDefaultAsync<WordPressUserDto>(
       $"SELECT user_login, display_name, user_email FROM {_cmsDbSettings.TablePrefix}users\n" +
-      "WHERE ID = @UserId LIMIT 1;", new { UserId = userId });
-
-    return WordPressDbSerializer.Deserialize<WordPressUserDto>(dbUser)!;
+      "WHERE ID = @UserId LIMIT 1;", new { UserId = userId }))!;
   }
 
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
-    string dbConfig = await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
+    string dbConfig = (await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
       $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE user_id = @UserId AND meta_key = 'trader_configuration'\n" +
-      "LIMIT 1;",
-      new { UserId = userId });
+      "LIMIT 1;", new { UserId = userId }))!;
 
     var wpConfig = WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig);
 
@@ -53,13 +50,13 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs()
   {
-    var dbConfigs = await _mySqlConnection.QueryAsync<KeyValuePair<int, string>>(
+    var dbConfigs = await _mySqlConnection.QueryAsync<(int user_id, string meta_value)>(
       $"SELECT user_id, meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE meta_key = 'trader_configuration';");
 
     return dbConfigs
-      .Select(dbConfig => new KeyValuePair<int, ConfigReqDto>(dbConfig.Key,
-      _mapper.Map<ConfigReqDto>(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.Value))));
+      .Select(dbConfig => new KeyValuePair<int, ConfigReqDto>(dbConfig.user_id,
+      _mapper.Map<ConfigReqDto>(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.meta_value))));
   }
 
   public Task SaveConfig(int userId, ConfigReqDto configReqDto)
