@@ -3,6 +3,7 @@ using Microsoft.Net.Http.Headers;
 using MySqlConnector;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
+using TraderEngine.CLI.Services;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Repositories;
@@ -33,6 +34,8 @@ public class Program
 
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
 
+        services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+
         services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
@@ -60,6 +63,8 @@ public class Program
         services.AddSingleton<IConfigRepository, WordPressConfigRepository>();
 
         services.AddSingleton<IApiCredentialsRepository, WordPressApiCredRepository>();
+
+        services.AddSingleton<IEmailNotificationService, EmailNotificationService>();
 
         // Hosted service with HttpClient for API.
         services.AddHttpClient<WorkerService>((x, httpClient) =>

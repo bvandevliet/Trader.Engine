@@ -28,6 +28,16 @@ public class WordPressConfigRepository : IConfigRepository
     _mySqlConnection = sqlConnectionFactory.GetService("CMS");
     _cmsDbSettings = cmsDbOptions.Value;
   }
+
+  public async Task<WordPressUserDto> GetUserInfo(int userId)
+  {
+    string dbUser = await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
+      $"SELECT user_login, display_name, user_email FROM {_cmsDbSettings.TablePrefix}users\n" +
+      "WHERE ID = @UserId LIMIT 1;", new { UserId = userId });
+
+    return WordPressDbSerializer.Deserialize<WordPressUserDto>(dbUser)!;
+  }
+
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
     string dbConfig = await _mySqlConnection.QueryFirstOrDefaultAsync<string>(

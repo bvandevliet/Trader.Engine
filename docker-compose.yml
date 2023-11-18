@@ -14,7 +14,7 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_USER=${MYSQL_USERNAME}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-       
+      
   traderengine.api:
     container_name: traderengine.api
     image: ${DOCKER_REGISTRY-}traderengine.api
@@ -49,7 +49,12 @@ services:
       - CoinMarketCap__API_KEY=${CMC_API_KEY}
       - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};
       - ConnectionStrings__CMS=server=traderengine.mariadb;port=3306;database=${CMS_DATABASE};uid=${CMS_USERNAME};pwd=${CMS_PASSWORD};
-      - CmsDbSettings__TablePrefix=wp_
+      - CmsDbSettings__TablePrefix=${CMS_TABLE_PREFIX}
+      - EmailSettings__SmtpServer=${SMTP_SERVER}
+      - EmailSettings__SmtpPort=${SMTP_PORT}
+      - EmailSettings__SmtpUsername=${SMTP_USERNAME}
+      - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
+      - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
 
   traderengine.cryptography:
     container_name: traderengine.cryptography
