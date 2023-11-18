@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Options;
-using Microsoft.Net.Http.Headers;
 using MySqlConnector;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
@@ -44,7 +43,7 @@ public class Program
 
           httpClient.BaseAddress = new("https://pro-api.coinmarketcap.com/v1/");
 
-          httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
+          httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
 
           httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
         })
@@ -73,7 +72,7 @@ public class Program
 
           httpClient.BaseAddress = new($"{addressSettings.TRADER_API}/api/");
 
-          httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "application/json");
+          httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
         })
           .ApplyDefaultPoolAndPolicyConfig();
       })

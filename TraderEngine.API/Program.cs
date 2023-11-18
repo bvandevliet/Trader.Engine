@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Diagnostics;
 using MySqlConnector;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
