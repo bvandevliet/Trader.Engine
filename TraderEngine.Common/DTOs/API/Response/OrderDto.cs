@@ -46,11 +46,13 @@ public class OrderDto : OrderReqDto
   /// <summary>
   /// Timestamp this order was created.
   /// </summary>
+  // TODO: MAKE THIS WORK, EVEN THOUGH WE DON'T NEED IT.
   //public DateTime? Created { get; set; }
 
   /// <summary>
   /// Timestamp this order was updated.
   /// </summary>
+  // TODO: MAKE THIS WORK, EVEN THOUGH WE DON'T NEED IT.
   //public DateTime? Updated { get; set; }
 
   public bool HasEnded => Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;

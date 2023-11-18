@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using System.Text.RegularExpressions;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;

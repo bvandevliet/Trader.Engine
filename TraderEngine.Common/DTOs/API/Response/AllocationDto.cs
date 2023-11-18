@@ -1,4 +1,3 @@
-using System.ComponentModel.DataAnnotations;
 using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.Common.DTOs.API.Response;

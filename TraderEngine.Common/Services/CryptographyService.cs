@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
-using TraderEngine.Common.Extensions;
 
 namespace TraderEngine.Common.Services;
 

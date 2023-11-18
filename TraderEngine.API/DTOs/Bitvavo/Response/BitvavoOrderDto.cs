@@ -79,10 +79,12 @@ public class BitvavoOrderDto
   /// <summary>
   /// Timestamp this order was created.
   /// </summary>
+  // TODO: MAKE THIS WORK, EVEN THOUGH WE DON'T NEED IT.
   //public int? Created { get; set; }
 
   /// <summary>
   /// Timestamp this order was updated.
   /// </summary>
+  // TODO: MAKE THIS WORK, EVEN THOUGH WE DON'T NEED IT.
   //public int? Updated { get; set; }
 }
