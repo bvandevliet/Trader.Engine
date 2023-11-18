@@ -1,10 +1,10 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Factories;
+using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Models;
-using TraderEngine.Common.Services;
 
 namespace TraderEngine.API.Controllers;
 

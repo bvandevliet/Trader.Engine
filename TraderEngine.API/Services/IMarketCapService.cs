@@ -1,7 +1,7 @@
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 
-namespace TraderEngine.Common.Services;
+namespace TraderEngine.API.Services;
 
 /// <summary>
 /// Aggregates internal market cap data.

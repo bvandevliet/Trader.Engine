@@ -6,7 +6,7 @@ using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Repositories;
 
-namespace TraderEngine.Common.Services;
+namespace TraderEngine.API.Services;
 
 public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 {
