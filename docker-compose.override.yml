@@ -23,3 +23,8 @@ services:
         - MODE=Debug
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+
+  traderengine.cryptography:
+    image: bvandevliet/cryptography:linux-amd64
+    ports:
+      - "5010:80"

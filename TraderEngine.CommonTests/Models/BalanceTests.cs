@@ -15,7 +15,7 @@ public class BalanceTests
     private bool _amountQuoteAvailableReset = false;
 
     /// <inheritdoc/>
-    public BalanceWrapper(string quoteCurrency) : base(quoteCurrency)
+    public BalanceWrapper(string quoteSymbol) : base(quoteSymbol)
     {
       OnAmountQuoteTotalReset += (oldValue, newValue) => _amountQuoteTotalReset = true;
       OnAmountQuoteAvailableReset += (oldValue, newValue) => _amountQuoteAvailableReset = true;

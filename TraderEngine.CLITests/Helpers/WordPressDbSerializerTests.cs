@@ -9,34 +9,33 @@ public class WordPressDbSerializerTests
 {
   private static readonly ConfigReqDto _configDto = new()
   {
-    QuoteCurrency = "EUR",
+    QuoteTakeout = 0,
     QuoteAllocation = 0,
-    AltWeightingFactors = new() { { "BTC", .9m }, { "DOGE", 0 }, },
+    AltWeightingFactors = new() { { "BTC", .9 }, { "DOGE", 0 }, },
     TagsToIgnore = new() { "stablecoin", "meme", },
     TopRankingCount = 10,
-    Smoothing = 5,
+    Smoothing = 8,
     NthRoot = 2,
     MinimumDiffQuote = 15,
     MinimumDiffAllocation = 1.5,
     AutomationEnabled = true,
-    IntervalHours = 8,
+    IntervalHours = 6,
     LastRebalance = new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
   };
 
   private static readonly string _serializedConfigDto =
-    "O:12:\"ConfigReqDto\":13:{" +
-    "s:13:\"QuoteCurrency\";s:3:\"EUR\";" +
+    "O:12:\"ConfigReqDto\":12:{" +
     "s:12:\"QuoteTakeout\";d:0;" +
     "s:15:\"QuoteAllocation\";d:0;" +
     "s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}" +
     "s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}" +
     "s:15:\"TopRankingCount\";i:10;" +
-    "s:9:\"Smoothing\";i:5;" +
+    "s:9:\"Smoothing\";i:8;" +
     "s:7:\"NthRoot\";d:2;" +
     "s:16:\"MinimumDiffQuote\";i:15;" +
     "s:21:\"MinimumDiffAllocation\";d:1.5;" +
     "s:17:\"AutomationEnabled\";b:1;" +
-    "s:13:\"IntervalHours\";i:8;" +
+    "s:13:\"IntervalHours\";i:6;" +
     "s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}}";
 
   [TestMethod()]

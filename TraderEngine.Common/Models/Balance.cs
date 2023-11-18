@@ -50,10 +50,10 @@ public class Balance
   /// <summary>
   /// Collection of <see cref="Allocation"/> instances and total quote amount values.
   /// </summary>
-  /// <param name="quoteCurrency"><inheritdoc cref="QuoteSymbol"/></param>
-  public Balance(string quoteCurrency)
+  /// <param name="quoteSymbol"><inheritdoc cref="QuoteSymbol"/></param>
+  public Balance(string quoteSymbol)
   {
-    QuoteSymbol = quoteCurrency;
+    QuoteSymbol = quoteSymbol;
 
     Allocations = _allocations.AsReadOnly();
   }

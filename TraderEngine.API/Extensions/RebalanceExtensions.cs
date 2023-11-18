@@ -23,22 +23,18 @@ public static partial class Trader
     while (
       checks > 0 &&
       order.Id != null &&
-      !order.Status.HasFlag(
-        Common.Enums.OrderStatus.Canceled |
-        Common.Enums.OrderStatus.Expired |
-        Common.Enums.OrderStatus.Rejected |
-        Common.Enums.OrderStatus.Filled))
+      !order.HasEnded)
     {
       await Task.Delay(1000);
 
-      order = await @this.GetOrder(order.Id!, order.Market) ?? order;
+      order = await @this.GetOrder(order.Id, order.Market) ?? order;
 
       checks--;
     }
 
     if (checks == 0)
     {
-      order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
+      //order = await @thsis.CancelOrder(order.Id!, order.Market) ?? order;
     }
 
     return order;
@@ -58,7 +54,7 @@ public static partial class Trader
       Market = curAlloc.Market,
       Side = Common.Enums.OrderSide.Buy,
       Type = Common.Enums.OrderType.Market,
-      AmountQuote = amountQuote,
+      AmountQuote = Math.Floor(amountQuote * 100) / 100,
     };
   }
 
@@ -79,13 +75,13 @@ public static partial class Trader
     };
 
     // Prevent dust.
-    if (curAlloc.AmountQuote - amountQuote <= @this.MinimumOrderSize)
+    if (curAlloc.AmountQuote - amountQuote <= @this.MinOrderSizeInQuote)
     {
       order.Amount = curAlloc.Amount;
     }
     else
     {
-      order.AmountQuote = amountQuote;
+      order.AmountQuote = Math.Ceiling(amountQuote * 100) / 100;
     }
 
     return order;
@@ -104,6 +100,11 @@ public static partial class Trader
   {
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
+
+    if (null == curBalance)
+    {
+      return Array.Empty<OrderDto>();
+    }
 
     // Get enumerable since we're iterating it just once.
     var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance);
@@ -130,7 +131,7 @@ public static partial class Trader
 
       // Positive quote differences refer to oversized allocations,
       // and check if reached minimum order size.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff >= @this.MinimumOrderSize)
+      .Where(allocDiff => allocDiff.AmountQuoteDiff >= @this.MinOrderSizeInQuote)
 
       // Sell ..
       .Select(allocDiff =>
@@ -158,6 +159,11 @@ public static partial class Trader
     // Fetch balance if not provided.
     curBalance ??= await @this.GetBalance();
 
+    if (null == curBalance)
+    {
+      return Array.Empty<OrderDto>();
+    }
+
     // Initialize quote diff List,
     // being filled using a multi-purpose foreach to eliminate redundant iterations.
     List<AllocDiffReqDto> allocDiffs = new();
@@ -170,7 +176,7 @@ public static partial class Trader
     foreach (var allocDiff in RebalanceHelpers.GetAllocationQuoteDiffs(newAbsAllocs, curBalance))
     {
       // Negative quote differences refer to undersized allocations.
-      if (allocDiff.AmountQuoteDiff < 0)
+      if (allocDiff.AmountQuoteDiff <= -@this.MinOrderSizeInQuote)
       {
         // Add to absolute sum of all negative quote differences.
         totalBuy -= allocDiff.AmountQuoteDiff;
@@ -192,14 +198,11 @@ public static partial class Trader
       allocDiffs
 
       // Scale to avoid potentially oversized buy order sizes.
-      .Select(allocDiff =>
-      {
-        allocDiff.AmountQuoteDiff = ratio * allocDiff.AmountQuoteDiff; return allocDiff;
-      })
+      .Select(allocDiff => { allocDiff.AmountQuoteDiff *= ratio; return allocDiff; })
 
       // Negative quote differences refer to undersized allocations,
       // and check if reached minimum order size.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff <= -@this.MinimumOrderSize)
+      .Where(allocDiff => allocDiff.AmountQuoteDiff <= -@this.MinOrderSizeInQuote)
 
       // Buy ..
       .Select(allocDiff =>

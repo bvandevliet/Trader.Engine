@@ -1,3 +1,4 @@
+using System.Text.Json;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
 
@@ -45,10 +46,14 @@ public class OrderDto : OrderReqDto
   /// <summary>
   /// Timestamp this order was created.
   /// </summary>
-  public DateTime Created { get; set; }
+  //public DateTime? Created { get; set; }
 
   /// <summary>
   /// Timestamp this order was updated.
   /// </summary>
-  public DateTime Updated { get; set; }
+  //public DateTime? Updated { get; set; }
+
+  public bool HasEnded => Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;
+
+  public override string ToString() => JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = true });
 }

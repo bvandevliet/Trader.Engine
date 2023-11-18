@@ -23,18 +23,18 @@ public interface IMarketCapInternalRepository
   Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps);
 
   /// <summary>
-  /// Get all historical market cap data for the specified market within given amount of days ago.
+  /// Get all historical market cap data for the specified <paramref name="market"/> within given amount of <paramref name="hours"/> ago.
   /// </summary>
   /// <param name="market"></param>
-  /// <param name="days"></param>
+  /// <param name="hours"></param>
   /// <returns></returns>
-  Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21);
+  Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int hours = 24);
 
   /// <summary>
-  /// Get all historical market cap data of top ranked base currencies for the specified quote currency within given amount of days ago.
+  /// Get all historical market cap data of top ranked base currencies for the specified <paramref name="quoteSymbol"/> within given amount of <paramref name="hours"/> ago.
   /// </summary>
   /// <param name="quoteSymbol"></param>
-  /// <param name="days"></param>
+  /// <param name="hours"></param>
   /// <returns></returns>
-  IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21);
+  Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24);
 }

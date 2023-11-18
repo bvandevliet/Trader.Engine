@@ -4,10 +4,6 @@ namespace TraderEngine.Common.DTOs.API.Request;
 
 public class ConfigReqDto
 {
-  // TODO: MAKE DEPENDENT ON EXCHANGE ONLY !!
-  [Required]
-  public string QuoteCurrency { get; set; } = null!;
-
   [Range(0, (double)decimal.MaxValue)]
   public decimal QuoteTakeout { get; set; } = 0;
 
@@ -15,15 +11,15 @@ public class ConfigReqDto
   public decimal QuoteAllocation { get; set; } = 0;
 
   //[Range(0, 10)]
-  public Dictionary<string, decimal> AltWeightingFactors { get; set; } = new();
+  public Dictionary<string, double> AltWeightingFactors { get; set; } = new();
 
   public List<string> TagsToIgnore { get; set; } = new() { "stablecoin" };
 
-  [Range(0, 70)]
+  [Range(1, 70)]
   public int TopRankingCount { get; set; } = 10;
 
-  [Range(1, 40)]
-  public int Smoothing { get; set; } = 4;
+  [Range(1, 72)]
+  public int Smoothing { get; set; } = 8;
 
   [Range(1, 25)]
   public double NthRoot { get; set; } = 2.5;

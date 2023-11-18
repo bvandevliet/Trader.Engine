@@ -2,11 +2,8 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
-public class ExchangeReqDto
+public class ApiCredReqDto
 {
-  //[Required]
-  //public string ExchangeName { get; set; } = null!;
-
   [Required]
   public string ApiKey { get; set; } = null!;
 

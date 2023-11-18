@@ -12,7 +12,7 @@ public class MockExchange : IExchange
 
   public string QuoteSymbol { get; }
 
-  public decimal MinimumOrderSize { get; }
+  public decimal MinOrderSizeInQuote { get; }
 
   public decimal MakerFee { get; }
 
@@ -26,19 +26,19 @@ public class MockExchange : IExchange
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
   /// <param name="quoteSymbol"><inheritdoc cref="QuoteSymbol"/></param>
-  /// <param name="minimumOrderSize"><inheritdoc cref="MinimumOrderSize"/></param>
+  /// <param name="minOrderSize"><inheritdoc cref="MinOrderSizeInQuote"/></param>
   /// <param name="makerFee"><inheritdoc cref="MakerFee"/></param>
   /// <param name="takerFee"><inheritdoc cref="TakerFee"/></param>
   /// <param name="curBalance"><inheritdoc cref="Balance"/></param>
   public MockExchange(
     string quoteSymbol,
-    decimal minimumOrderSize,
+    decimal minOrderSize,
     decimal makerFee,
     decimal takerFee,
     Balance curBalance)
   {
     QuoteSymbol = quoteSymbol;
-    MinimumOrderSize = minimumOrderSize;
+    MinOrderSizeInQuote = minOrderSize;
     MakerFee = makerFee;
     TakerFee = takerFee;
     _curBalance = curBalance;
@@ -53,24 +53,24 @@ public class MockExchange : IExchange
     return Task.FromResult(_curBalance);
   }
 
-  public Task<object> DepositHistory()
+  public Task<decimal> TotalDeposited()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> WithdrawHistory()
+  public Task<decimal> TotalWithdrawn()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
+  public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
   {
     throw new NotImplementedException();
   }
 
-  public Task<bool> IsTradable(MarketReqDto market)
+  public Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
-    return Task.FromResult(true);
+    throw new NotImplementedException();
   }
 
   public Task<decimal> GetPrice(MarketReqDto market)
@@ -80,11 +80,11 @@ public class MockExchange : IExchange
 
   public Task<OrderDto> NewOrder(OrderReqDto order)
   {
-    Allocation? curAlloc = _curBalance.GetAllocation(order.Market.BaseSymbol);
+    Allocation? curAlloc = _curBalance?.GetAllocation(order.Market.BaseSymbol);
 
     Allocation newAlloc = curAlloc ?? new(order.Market);
 
-    Allocation? quoteAlloc = _curBalance.GetAllocation(QuoteSymbol);
+    Allocation? quoteAlloc = _curBalance?.GetAllocation(QuoteSymbol);
 
     Allocation newQuoteAlloc = quoteAlloc ?? new(QuoteSymbol, QuoteSymbol, 1);
 
@@ -106,7 +106,7 @@ public class MockExchange : IExchange
     {
       amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
-      newAlloc.AmountQuote += amountQuote;
+      newAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       newQuoteAlloc.AmountQuote -= amountQuote;
 
@@ -118,7 +118,7 @@ public class MockExchange : IExchange
 
       newAlloc.AmountQuote -= amountQuote;
 
-      newQuoteAlloc.AmountQuote += amountQuote;
+      newQuoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       returnOrder.Amount = order.Amount;
     }
@@ -129,38 +129,38 @@ public class MockExchange : IExchange
 
     if (null == curAlloc)
     {
-      _curBalance.AddAllocation(newAlloc);
+      _curBalance?.AddAllocation(newAlloc);
     }
 
     if (null == quoteAlloc)
     {
-      _curBalance.AddAllocation(newQuoteAlloc);
+      _curBalance?.AddAllocation(newQuoteAlloc);
     }
 
     return Task.FromResult(returnOrder);
   }
 
-  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
   {
-    return Task.FromResult(new List<OrderDto>().AsEnumerable());
+    return Task.FromResult(new List<OrderDto>().AsEnumerable())!;
   }
 
-  public Task<IEnumerable<OrderDto>> SellAllPositions(string? asset = null)
+  public Task<IEnumerable<OrderDto>?> SellAllPositions(string? asset = null)
   {
     throw new NotImplementedException();
   }
@@ -177,7 +177,7 @@ public class SimExchange : MockExchange, IExchange
   public SimExchange(IExchange exchangeService, Balance? curBalance = null)
     : base(
       exchangeService.QuoteSymbol,
-      exchangeService.MinimumOrderSize,
+      exchangeService.MinOrderSizeInQuote,
       exchangeService.MakerFee,
       exchangeService.TakerFee,
       curBalance ?? exchangeService.GetBalance().GetAwaiter().GetResult())
@@ -193,5 +193,7 @@ public class SimExchange : MockExchange, IExchange
     }
   }
 
+  new public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit) => _instance.GetCandles(market, interval, limit);
+  new public Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
   new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

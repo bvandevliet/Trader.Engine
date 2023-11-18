@@ -1,11 +1,10 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
+using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Models;
-using TraderEngine.Common.Services;
 
 namespace TraderEngine.API.Controllers;
 
@@ -27,24 +26,76 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("current/{exchangeName}")]
-  public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ExchangeReqDto exchangeReqDto)
+  public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredentials)
   {
-    IExchange exchange = _exchangeFactory.GetService(exchangeName);
+    var exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = exchangeReqDto.ApiKey;
-    exchange.ApiSecret = exchangeReqDto.ApiSecret;
+    exchange.ApiKey = apiCredentials.ApiKey;
+    exchange.ApiSecret = apiCredentials.ApiSecret;
 
-    Balance balance = await exchange.GetBalance();
+    var balance = await exchange.GetBalance();
 
     return Ok(_mapper.Map<BalanceDto>(balance));
   }
 
-  [HttpPost("balanced")]
-  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAllocations(ConfigReqDto configReqDto)
+  [HttpPost("balanced/{exchangeName}")]
+  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
-    IEnumerable<AbsAllocReqDto> balancedAllocations =
-      await _marketCapService().BalancedAllocations(configReqDto, false);
+    var exchange = _exchangeFactory.GetService(exchangeName);
 
-    return Ok(balancedAllocations);
+    exchange.ApiKey = balanceReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = balanceReqDto.ExchangeApiCred.ApiSecret;
+
+    // Get current balance object if needed.
+    Balance? curBalance =
+      null == balanceReqDto.QuoteSymbol || null == balanceReqDto.AmountQuoteTotal
+      ? await exchange.GetBalance() : null;
+
+    string quoteSymbol =
+      curBalance?.QuoteSymbol ?? balanceReqDto.QuoteSymbol ?? curBalance!.QuoteSymbol;
+    decimal amountQuoteTotal =
+      curBalance?.AmountQuoteTotal ?? balanceReqDto.AmountQuoteTotal ?? curBalance!.AmountQuoteTotal;
+
+    // Get absolute balanced allocations.
+    var absAllocs = await _marketCapService()
+      .BalancedAbsAllocs(quoteSymbol, balanceReqDto.Config);
+
+    // Get absolute balanced allocation tasks, to check if tradable.
+    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
+    {
+      var marketDto = new MarketReqDto(quoteSymbol, absAlloc.BaseSymbol);
+
+      return new { absAlloc, marketData = await exchange.GetMarket(marketDto) };
+    });
+
+    // Wait for all tasks to complete.
+    var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
+
+    // Relative quote allocation.
+    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
+      balanceReqDto.Config.QuoteTakeout / amountQuoteTotal + balanceReqDto.Config.QuoteAllocation / 100));
+
+    // Sum of all absolute allocation values.
+    decimal totalAbsAlloc = 0;
+
+    // Absolute allocations to be used for rebalancing.
+    var absAllocsList = allocsMarketData
+      // Filter for assets that are tradable.
+      .Where(x => x.marketData?.Status == "trading")
+      .Select(x =>
+      {
+        totalAbsAlloc += x.absAlloc.AbsAlloc;
+
+        x.absAlloc.AbsAlloc *= (1 - quoteRelAlloc);
+
+        return x.absAlloc;
+      })
+      // As list since we're using a summed total.
+      .ToList();
+
+    // Add quote allocation.
+    absAllocsList.Add(new AbsAllocReqDto(quoteSymbol, totalAbsAlloc * quoteRelAlloc));
+
+    return Ok(absAllocsList);
   }
 }
