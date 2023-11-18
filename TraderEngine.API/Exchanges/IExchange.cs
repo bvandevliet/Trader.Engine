@@ -19,18 +19,18 @@ public interface IExchange
 
   internal string ApiSecret { get; set; }
 
-  Task<Balance?> GetBalance();
+  Task<Balance> GetBalance();
 
-  Task<decimal?> TotalDeposited();
+  Task<decimal> TotalDeposited();
 
-  Task<decimal?> TotalWithdrawn();
+  Task<decimal> TotalWithdrawn();
 
   // TODO: ASSIGN TYPE !!
   Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit);
 
   Task<MarketDataDto?> GetMarket(MarketReqDto market);
 
-  Task<decimal?> GetPrice(MarketReqDto market);
+  Task<decimal> GetPrice(MarketReqDto market);
 
   Task<OrderDto> NewOrder(OrderReqDto order);
 

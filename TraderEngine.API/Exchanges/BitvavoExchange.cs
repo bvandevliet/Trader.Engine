@@ -97,7 +97,7 @@ public class BitvavoExchange : IExchange
     return request;
   }
 
-  public async Task<Balance?> GetBalance()
+  public async Task<Balance> GetBalance()
   {
     using var request = CreateRequestMsg(HttpMethod.Get, "balance");
 
@@ -105,17 +105,16 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
+      _logger.LogCritical("{url} returned {code} {reason} : {response}",
         request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-      return null;
+      throw new Exception("Error while requesting balance.");
     }
 
     var result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 
@@ -133,20 +132,14 @@ public class BitvavoExchange : IExchange
       {
         var market = new MarketReqDto(QuoteSymbol, alloc.dto.Symbol);
 
-        decimal? price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
-
-        if (null == price)
-        {
-          // TODO: DO NOT THROW, BUT RETURN NULL AS BALANCE !!
-          throw new Exception($"Failed to get price of {market.BaseSymbol}-{market.QuoteSymbol}.");
-        }
+        decimal price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
 
         var allocation = new Allocation(market, price, alloc.amount);
 
         return allocation;
       });
 
-    // TODO: Error handling.
+    // TODO: HANDLE ERRORS ??
     Allocation[] allocations = await Task.WhenAll(priceTasks);
 
     foreach (var allocation in allocations)
@@ -157,7 +150,7 @@ public class BitvavoExchange : IExchange
     return balance;
   }
 
-  public async Task<decimal?> TotalDeposited()
+  public async Task<decimal> TotalDeposited()
   {
     using var request = CreateRequestMsg(
       HttpMethod.Get, $"depositHistory?symbol={QuoteSymbol}&start=0");
@@ -166,24 +159,23 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
+      _logger.LogCritical("{url} returned {code} {reason} : {response}",
         request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-      return null;
+      throw new Exception("Error while requesting deposit history.");
     }
 
     var result = await response.Content.ReadFromJsonAsync<JsonArray>();
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 
     return result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString()));
   }
 
-  public async Task<decimal?> TotalWithdrawn()
+  public async Task<decimal> TotalWithdrawn()
   {
     using var request = CreateRequestMsg(
       HttpMethod.Get, $"withdrawalHistory?symbol={QuoteSymbol}&start=0");
@@ -192,17 +184,16 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
+      _logger.LogCritical("{url} returned {code} {reason} : {response}",
         request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-      return null;
+      throw new Exception("Error while requesting withdrawal history.");
     }
 
     var result = await response.Content.ReadFromJsonAsync<JsonArray>();
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 
@@ -230,7 +221,10 @@ public class BitvavoExchange : IExchange
         _logger.LogWarning("{url} returned {code} {reason} : {response}",
           request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-        return new MarketDataDto();
+        return new MarketDataDto()
+        {
+          Status = "unavailable",
+        };
       }
       else
       {
@@ -245,14 +239,13 @@ public class BitvavoExchange : IExchange
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 
     return _mapper.Map<MarketDataDto>(result);
   }
 
-  public async Task<decimal?> GetPrice(MarketReqDto market)
+  public async Task<decimal> GetPrice(MarketReqDto market)
   {
     using var request = CreateRequestMsg(
       HttpMethod.Get, $"ticker/price?market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
@@ -261,17 +254,16 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
+      _logger.LogCritical("{url} returned {code} {reason} : {response}",
         request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-      return null;
+      throw new Exception("Error while requesting price.");
     }
 
     var result = await response.Content.ReadFromJsonAsync<BitvavoTickerPriceDto>();
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 
@@ -285,28 +277,41 @@ public class BitvavoExchange : IExchange
     newOrderDto.DisableMarketProtection = true;
     newOrderDto.ResponseRequired = false;
 
-    using var request = CreateRequestMsg(HttpMethod.Post, "order", newOrderDto);
+    var failedOrder = (OrderDto)order;
 
-    using var response = await _httpClient.SendAsync(request);
+    failedOrder.Status = OrderStatus.Failed;
+    failedOrder.AmountRemaining = order.Amount ?? default;
+    failedOrder.AmountQuoteRemaining = order.AmountQuote ?? default;
 
-    if (!response.IsSuccessStatusCode)
+    try
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      using var request = CreateRequestMsg(HttpMethod.Post, "order", newOrderDto);
 
-      // TODO: Handle ??
-      throw new Exception("Failed to place order.");
+      using var response = await _httpClient.SendAsync(request);
+
+      if (!response.IsSuccessStatusCode)
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return failedOrder;
+      }
+
+      var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+
+      if (null == result)
+      {
+        throw new Exception("Failed to deserialize response.");
+      }
+
+      return _mapper.Map<OrderDto>(result);
     }
-
-    var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
-
-    if (null == result)
+    catch (Exception ex)
     {
-      // TODO: Handle.
-      throw new Exception("Failed to deserialize response.");
-    }
+      _logger.LogError(ex, "Failed to place order.");
 
-    return _mapper.Map<OrderDto>(result);
+      return failedOrder;
+    }
   }
 
   public async Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
@@ -328,7 +333,6 @@ public class BitvavoExchange : IExchange
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 
@@ -363,7 +367,6 @@ public class BitvavoExchange : IExchange
 
     if (null == result)
     {
-      // TODO: Handle.
       throw new Exception("Failed to deserialize response.");
     }
 

@@ -47,17 +47,9 @@ public class AllocationsController : ControllerBase
     exchange.ApiSecret = balanceReqDto.ExchangeApiCred.ApiSecret;
 
     // Get current balance object if needed.
-    Balance? curBalance = null;
-    if (null == balanceReqDto.QuoteSymbol || null == balanceReqDto.AmountQuoteTotal)
-    {
-      curBalance = await exchange.GetBalance();
-
-      if (null == curBalance)
-      {
-        // TODO: MAKE 502 !!
-        return BadRequest("Required data not provided and could not be determined from exchange.");
-      }
-    }
+    Balance? curBalance =
+      null == balanceReqDto.QuoteSymbol || null == balanceReqDto.AmountQuoteTotal
+      ? await exchange.GetBalance() : null;
 
     string quoteSymbol =
       curBalance?.QuoteSymbol ?? balanceReqDto.QuoteSymbol ?? curBalance!.QuoteSymbol;
@@ -79,6 +71,7 @@ public class AllocationsController : ControllerBase
     // Wait for all tasks to complete.
     var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
 
+    // Relative quote allocation.
     decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
       balanceReqDto.Config.QuoteTakeout / amountQuoteTotal + balanceReqDto.Config.QuoteAllocation / 100));
 
