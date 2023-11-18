@@ -11,6 +11,6 @@ internal class WordPressProfiles : Profile
     SourceMemberNamingConvention = LowerUnderscoreNamingConvention.Instance;
     DestinationMemberNamingConvention = PascalCaseNamingConvention.Instance;
 
-    CreateMap<WordPressConfig, ConfigReqDto>().ReverseMap();
+    CreateMap<WordPressConfigDto, ConfigReqDto>().ReverseMap();
   }
 }
