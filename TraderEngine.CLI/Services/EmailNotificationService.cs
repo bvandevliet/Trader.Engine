@@ -27,7 +27,7 @@ internal class EmailNotificationService : IEmailNotificationService
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string htmlString =
-      $"<p>Dear {HttpUtility.HtmlEncode("")},</p>" +
+      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
       $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
       $" and executed successfully.</p>" +
       $"<p>The below {rebalanceDto.Orders.Length} orders were executed:</p>" +
@@ -55,7 +55,7 @@ internal class EmailNotificationService : IEmailNotificationService
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string htmlString =
-      $"<p>Dear {HttpUtility.HtmlEncode("")},</p>" +
+      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
       $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
       $" but failed.</p>" +
       $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
@@ -81,7 +81,7 @@ internal class EmailNotificationService : IEmailNotificationService
     int userId, DateTime timestamp, Exception exception)
   {
     string htmlString =
-      $"<p>Dear {HttpUtility.HtmlEncode("")},</p>" +
+      $"<p>Hi {HttpUtility.HtmlEncode("")},</p>" +
       $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
       $" but failed with an exception:</p>" +
       $"<p>{exception.Message}:</p>" +
