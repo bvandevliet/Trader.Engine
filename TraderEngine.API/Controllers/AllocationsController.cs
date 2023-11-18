@@ -39,16 +39,16 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("balanced/{exchangeName}")]
-  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balancedReqDto)
+  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
     var exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = balancedReqDto.ExchangeApiCred.ApiKey;
-    exchange.ApiSecret = balancedReqDto.ExchangeApiCred.ApiSecret;
+    exchange.ApiKey = balanceReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = balanceReqDto.ExchangeApiCred.ApiSecret;
 
     // Get current balance object if needed.
     Balance? curBalance = null;
-    if (null == balancedReqDto.QuoteSymbol || null == balancedReqDto.AmountQuoteTotal)
+    if (null == balanceReqDto.QuoteSymbol || null == balanceReqDto.AmountQuoteTotal)
     {
       curBalance = await exchange.GetBalance();
 
@@ -60,13 +60,13 @@ public class AllocationsController : ControllerBase
     }
 
     string quoteSymbol =
-      curBalance?.QuoteSymbol ?? balancedReqDto.QuoteSymbol ?? curBalance!.QuoteSymbol;
+      curBalance?.QuoteSymbol ?? balanceReqDto.QuoteSymbol ?? curBalance!.QuoteSymbol;
     decimal amountQuoteTotal =
-      curBalance?.AmountQuoteTotal ?? balancedReqDto.AmountQuoteTotal ?? curBalance!.AmountQuoteTotal;
+      curBalance?.AmountQuoteTotal ?? balanceReqDto.AmountQuoteTotal ?? curBalance!.AmountQuoteTotal;
 
     // Get absolute balanced allocations.
     var absAllocs = await _marketCapService()
-      .BalancedAbsAllocs(quoteSymbol, balancedReqDto.Config);
+      .BalancedAbsAllocs(quoteSymbol, balanceReqDto.Config);
 
     // Get absolute balanced allocation tasks, to check if tradable.
     var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
@@ -80,7 +80,7 @@ public class AllocationsController : ControllerBase
     var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
 
     decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
-      balancedReqDto.Config.QuoteTakeout / amountQuoteTotal + balancedReqDto.Config.QuoteAllocation / 100));
+      balanceReqDto.Config.QuoteTakeout / amountQuoteTotal + balanceReqDto.Config.QuoteAllocation / 100));
 
     // Sum of all absolute allocation values.
     decimal totalAbsAlloc = 0;
