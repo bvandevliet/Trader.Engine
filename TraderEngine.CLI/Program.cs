@@ -33,6 +33,8 @@ public class Program
 
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
 
+        services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
+
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {
           var cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
@@ -55,7 +57,7 @@ public class Program
         })
           .ApplyDefaultPoolAndPolicyConfig();
 
-        services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
+        services.AddSingleton<IConfigRepository, WordPressConfigRepository>();
 
         services.AddSingleton<IApiCredentialsRepository, WordPressApiCredRepository>();
 
