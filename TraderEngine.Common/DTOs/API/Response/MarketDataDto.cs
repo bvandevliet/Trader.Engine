@@ -1,11 +1,13 @@
+using TraderEngine.Common.Enums;
+
 namespace TraderEngine.Common.DTOs.API.Response;
 
 public class MarketDataDto
 {
   /// <summary>
-  /// Status of the market. Can be "trading", "halted", "auction" or "unavailable".
+  /// Status of the market.
   /// </summary>
-  public string Status { get; set; } = "unavailable"; // TODO: MAKE ACTUAL ENUM !!
+  public MarketStatus Status { get; set; } = MarketStatus.Unavailable;
 
   /// <summary>
   /// Determines how many significant digits are allowed.

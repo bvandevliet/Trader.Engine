@@ -223,7 +223,7 @@ public class BitvavoExchange : IExchange
 
         return new MarketDataDto()
         {
-          Status = "unavailable",
+          Status = MarketStatus.Unavailable,
         };
       }
       else

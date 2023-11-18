@@ -4,6 +4,7 @@ using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Controllers;
@@ -81,7 +82,7 @@ public class AllocationsController : ControllerBase
     // Absolute allocations to be used for rebalancing.
     var absAllocsList = allocsMarketData
       // Filter for assets that are tradable.
-      .Where(x => x.marketData?.Status == "trading")
+      .Where(x => x.marketData?.Status == MarketStatus.Trading)
       .Select(x =>
       {
         totalAbsAlloc += x.absAlloc.AbsAlloc;
