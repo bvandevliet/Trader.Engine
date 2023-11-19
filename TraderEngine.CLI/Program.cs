@@ -53,7 +53,7 @@ public class Program
         {
           var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
 
-          httpClient.BaseAddress = new($"{addressSettings.TRADER_CRYPTO}/api/");
+          httpClient.BaseAddress = new($"{addressSettings.TRADER_CRYPTO}/");
 
           //httpClient.DefaultRequestHeaders.Add(HeaderNames.Accept, "text/plain");
         })
@@ -70,7 +70,7 @@ public class Program
         {
           var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
 
-          httpClient.BaseAddress = new($"{addressSettings.TRADER_API}/api/");
+          httpClient.BaseAddress = new($"{addressSettings.TRADER_API}/");
 
           httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
         })

@@ -18,7 +18,7 @@ public class CryptographyService : ICryptographyService
 
   public async Task<string> Encrypt(string plainText)
   {
-    using var response = await _httpClient.PostAsJsonAsync("encrypt", plainText);
+    using var response = await _httpClient.PostAsJsonAsync("api/encrypt", plainText);
 
     try
     {
@@ -34,7 +34,7 @@ public class CryptographyService : ICryptographyService
 
   public async Task<string> Decrypt(string cipherText)
   {
-    using var response = await _httpClient.PostAsJsonAsync("decrypt", cipherText);
+    using var response = await _httpClient.PostAsJsonAsync("api/decrypt", cipherText);
 
     try
     {
