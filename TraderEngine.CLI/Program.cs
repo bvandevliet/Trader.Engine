@@ -15,10 +15,13 @@ public class Program
   static void Main(string[] args)
   {
     IHost host = Host.CreateDefaultBuilder(args)
+#if DEBUG
+      // Add private appsettings.json file when debugging.
       .ConfigureAppConfiguration(config =>
       {
         config.AddJsonFile("appsettings.Private.json", optional: true, reloadOnChange: true);
       })
+#endif
       .ConfigureServices((builder, services) =>
       {
         services.AddSingleton(x => new AppArgs(args));
