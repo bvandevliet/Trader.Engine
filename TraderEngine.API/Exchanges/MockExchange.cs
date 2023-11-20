@@ -189,6 +189,19 @@ public class SimExchange : MockExchange, IExchange
   {
     foreach (var order in orders)
     {
+      // If the order is a buy, we need to add the fee to the amount, since fee is handled by the NewOrder method.
+      if (order.Side == OrderSide.Buy)
+      {
+        order.Amount = order.AmountFilled > 0 ? order.AmountFilled * (1 / TakerFee) : order.Amount;
+        order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled * (1 / TakerFee) : order.AmountQuote;
+      }
+      // For sell orders, we don't need to add the fee, since it's already subtracted from the amount.
+      else
+      {
+        order.Amount = order.AmountFilled > 0 ? order.AmountFilled : order.Amount;
+        order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled : order.AmountQuote;
+      }
+
       await NewOrder(order);
     }
   }
