@@ -106,6 +106,7 @@ public class MockExchange : IExchange
     {
       amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
+      // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
       newAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       newQuoteAlloc.AmountQuote -= amountQuote;
@@ -118,6 +119,7 @@ public class MockExchange : IExchange
 
       newAlloc.AmountQuote -= amountQuote;
 
+      // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
       newQuoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       returnOrder.Amount = order.Amount;
