@@ -65,8 +65,7 @@ public class Program
 
         services.AddSingleton<IEmailNotificationService, EmailNotificationService>();
 
-        // Hosted service with HttpClient for API.
-        services.AddHttpClient<WorkerService>((x, httpClient) =>
+        services.AddHttpClient<IApiClient, ApiClient>((x, httpClient) =>
         {
           var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
 
@@ -75,6 +74,9 @@ public class Program
           httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
         })
           .ApplyDefaultPoolAndPolicyConfig();
+
+        // Hosted service as singleton.
+        services.AddSingleton<WorkerService>();
       })
       .Build();
 

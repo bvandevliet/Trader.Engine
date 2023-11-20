@@ -1,5 +1,4 @@
 using AutoMapper;
-using System.Net.Http.Json;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
@@ -15,32 +14,32 @@ internal class WorkerService
   private readonly Program.AppArgs _appArgs;
   private readonly ILogger<WorkerService> _logger;
   private readonly IMapper _mapper;
-  private readonly HttpClient _httpClient;
   private readonly IMarketCapExternalRepository _marketCapExtRepo;
   private readonly IMarketCapInternalRepository _marketCapIntRepo;
   private readonly IApiCredentialsRepository _keyRepo;
   private readonly IConfigRepository _configRepo;
+  private readonly IApiClient _apiClient;
   private readonly IEmailNotificationService _emailNotification;
 
   public WorkerService(
     Program.AppArgs appArgs,
     ILogger<WorkerService> logger,
     IMapper mapper,
-    HttpClient httpClient,
     IMarketCapExternalRepository marketCapExtRepo,
     IMarketCapInternalRepository marketCapIntRepo,
     IApiCredentialsRepository keyRepo,
     IConfigRepository configRepo,
+    IApiClient apiClient,
     IEmailNotificationService emailNotification)
   {
     _appArgs = appArgs;
     _logger = logger;
     _mapper = mapper;
-    _httpClient = httpClient;
     _marketCapExtRepo = marketCapExtRepo;
     _marketCapIntRepo = marketCapIntRepo;
     _keyRepo = keyRepo;
     _configRepo = configRepo;
+    _apiClient = apiClient;
     _emailNotification = emailNotification;
   }
 
@@ -61,7 +60,7 @@ internal class WorkerService
 
         var now = DateTime.UtcNow;
 
-        Parallel.ForEach(userConfigs, async userConfig =>
+        await Task.WhenAll(userConfigs.Select(async userConfig =>
         {
           try
           {
@@ -117,7 +116,7 @@ internal class WorkerService
 
             await _emailNotification.SendAutomationException(userConfig.Key, now, exception);
           }
-        });
+        }));
       }
     }
     catch (Exception exception)
@@ -126,66 +125,36 @@ internal class WorkerService
     }
   }
 
-  // TODO: BREAK UP INTO MULTIPLE SINGLE-PURPOSE METHODS !!
   public async Task<RebalanceDto> RunAutomation(
     string exchangeName, ConfigReqDto configReqDto, ApiCredReqDto apiCred)
   {
-    // Request current balance.
-    using var curBalanceResp = await _httpClient
-      .PostAsJsonAsync($"api/allocations/current/{exchangeName}", apiCred);
-
-    // TODO: ERROR HANDLING ??
-    if (!curBalanceResp.IsSuccessStatusCode)
-    {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
-        $"api/allocations/current/{exchangeName}", (int)curBalanceResp.StatusCode,
-        curBalanceResp.ReasonPhrase, await curBalanceResp.Content.ReadAsStringAsync());
-
-      throw new Exception("Error while requesting current balance.");
-    }
-
-    // Read current balance DTO.
-    var curBalanceDto = (await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>())!;
-
-    // Get current balance object.
-    var curBalance = _mapper.Map<Balance>(curBalanceDto);
+    // Get current balance DTO.
+    var curBalanceDto = await _apiClient.CurrentBalance(exchangeName, apiCred);
 
     // Construct balance request DTO.
     var balanceReqDto = new BalanceReqDto()
     {
-      QuoteSymbol = curBalance.QuoteSymbol,
-      AmountQuoteTotal = curBalance.AmountQuoteTotal,
+      QuoteSymbol = curBalanceDto.QuoteSymbol,
+      AmountQuoteTotal = curBalanceDto.AmountQuoteTotal,
       Config = configReqDto,
       ExchangeApiCred = apiCred,
     };
 
-    // Request absolute balanced allocations.
-    using var absAllocsResp = await _httpClient
-      .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balanceReqDto);
-
-    // TODO: ERROR HANDLING ??
-    if (!absAllocsResp.IsSuccessStatusCode)
-    {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
-        $"api/allocations/balanced/{exchangeName}", (int)absAllocsResp.StatusCode,
-        absAllocsResp.ReasonPhrase, await absAllocsResp.Content.ReadAsStringAsync());
-
-      throw new Exception("Error while requesting balanced allocations.");
-    }
-
-    // Read absolute balanced allocations DTO.
-    var absAllocs = (await absAllocsResp.Content.ReadFromJsonAsync<List<AbsAllocReqDto>>())!;
+    // Get absolute balanced allocations DTO.
+    var absAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balanceReqDto);
 
     // Get relative allocation diffs, as list since we're iterating it more than once.
     var allocDiffs = RebalanceHelpers
-      .GetAllocationQuoteDiffs(absAllocs, curBalance)
+      .GetAllocationQuoteDiffs(absAllocs, curBalanceDto)
       .ToList();
 
     // Test if eligible.
     if (!allocDiffs.Any(allocDiff =>
+      (
       // .. if any of the allocation diffs exceed the minimum order size.
-      (Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
-      Math.Abs(allocDiff.AmountQuoteDiff) / curBalance.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)
+        Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
+        Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100
+      )
       // .. or if the asset should not be allocated at all.
       || (allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
     {
@@ -205,21 +174,7 @@ internal class WorkerService
       AllocDiffs = allocDiffs,
     };
 
-    // Execute rebalance.
-    using var rebalanceResp = await _httpClient
-      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", rebalanceReqDto);
-
-    // TODO: ERROR HANDLING ??
-    if (!rebalanceResp.IsSuccessStatusCode)
-    {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
-        $"api/rebalance/execute/{exchangeName}", (int)rebalanceResp.StatusCode,
-        rebalanceResp.ReasonPhrase, await rebalanceResp.Content.ReadAsStringAsync());
-
-      throw new Exception("Error while requesting rebalance execution.");
-    }
-
-    // Return resulting rebalance DTO.
-    return (await rebalanceResp.Content.ReadFromJsonAsync<RebalanceDto>())!;
+    // Execute and return resulting rebalance DTO.
+    return await _apiClient.ExecuteRebalance(exchangeName, rebalanceReqDto);
   }
 }
