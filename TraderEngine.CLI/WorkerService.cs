@@ -91,16 +91,22 @@ internal class WorkerService
             // If no orders were placed, return.
             if (rebalanceDto.Orders.Length == 0)
             {
+              _logger.LogInformation("No orders were placed for user '{userId}'.", userConfig.Key);
+
               return;
             }
 
             // If any of the orders have not ended, return.
             if (rebalanceDto.Orders.Any(order => !order.HasEnded))
             {
+              _logger.LogWarning("Not all orders have ended for user '{userId}'.", userConfig.Key);
+
               await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto);
 
               return;
             }
+
+            _logger.LogInformation("Automation completed for user '{userId}' ..", userConfig.Key);
 
             // Update last rebalance timestamp.
             configReqDto.LastRebalance = now;

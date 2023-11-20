@@ -100,7 +100,7 @@ public class Program
     }
     catch (Exception ex)
     {
-      logger.LogError(ex, ex.Message);
+      logger.LogCritical(ex, ex.Message);
     }
     finally
     {
