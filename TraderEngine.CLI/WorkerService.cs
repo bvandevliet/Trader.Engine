@@ -47,7 +47,7 @@ internal class WorkerService
   {
     try
     {
-      if (_appArgs.DoUpdateMarketCap || _appArgs.DoAutomatedTriggers)
+      if (_appArgs.DoUpdateMarketCap)
       {
         var latest = await _marketCapExtRepo.ListLatest("EUR");
 
@@ -157,7 +157,7 @@ internal class WorkerService
     // Test if eligible.
     if (!allocDiffs.Any(allocDiff =>
       (
-      // .. if any of the allocation diffs exceed the minimum order size.
+        // .. if any of the allocation diffs exceed the minimum order size.
         Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
         Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100
       )
