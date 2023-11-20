@@ -1,6 +1,7 @@
+using MailKit.Net.Smtp;
 using Microsoft.Extensions.Options;
-using System.Net;
-using System.Net.Mail;
+using MimeKit;
+using MimeKit.Text;
 using System.Web;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
@@ -8,7 +9,7 @@ using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.CLI.Services;
 
-internal class EmailNotificationService : IEmailNotificationService
+public class EmailNotificationService : IEmailNotificationService
 {
   private readonly EmailSettings _emailSettings;
   private readonly IConfigRepository _configRepo;
@@ -29,24 +30,23 @@ internal class EmailNotificationService : IEmailNotificationService
     string htmlString =
       $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
       $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
-      $" and executed successfully.</p>" +
+      $" and executed successfully!</p>" +
       $"<p>The below {rebalanceDto.Orders.Length} orders were executed:</p>" +
       $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
 
-    using var smtpClient = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.SmtpPort);
+    using var message = new MimeMessage();
 
-    smtpClient.Credentials = new NetworkCredential(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    smtpClient.EnableSsl = true;
+    message.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    message.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    message.Subject = "Trader automation succeeded";
+    message.Body = new TextPart(TextFormat.Html) { Text = htmlString };
 
-    using var mailMessage = new MailMessage();
+    using var client = new SmtpClient();
 
-    mailMessage.From = new MailAddress(_emailSettings.FromAddress, "Trader");
-    mailMessage.To.Add(userInfo.user_email);
-    mailMessage.Subject = "Trader automation succeeded";
-    mailMessage.IsBodyHtml = true;
-    mailMessage.Body = htmlString;
-
-    await smtpClient.SendMailAsync(mailMessage);
+    client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
+    client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
+    await client.SendAsync(message);
+    await client.DisconnectAsync(true);
   }
 
   public async Task SendAutomationFailed(
@@ -57,27 +57,26 @@ internal class EmailNotificationService : IEmailNotificationService
     string htmlString =
       $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
       $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
-      $" but failed.</p>" +
+      $" but failed!</p>" +
       $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
       $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
 
-    using var smtpClient = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.SmtpPort);
+    using var message = new MimeMessage();
 
-    smtpClient.Credentials = new NetworkCredential(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    smtpClient.EnableSsl = true;
+    message.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    message.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    message.Subject = "Trader automation failed";
+    message.Body = new TextPart(TextFormat.Html) { Text = htmlString };
 
-    using var mailMessage = new MailMessage();
+    using var client = new SmtpClient();
 
-    mailMessage.From = new MailAddress(_emailSettings.FromAddress, "Trader");
-    mailMessage.To.Add(userInfo.user_email);
-    mailMessage.Subject = "Trader automation failed";
-    mailMessage.IsBodyHtml = true;
-    mailMessage.Body = htmlString;
-
-    await smtpClient.SendMailAsync(mailMessage);
+    client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
+    client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
+    await client.SendAsync(message);
+    await client.DisconnectAsync(true);
   }
 
-  public Task SendAutomationException(
+  public async Task SendAutomationException(
     int userId, DateTime timestamp, Exception exception)
   {
     string htmlString =
@@ -87,19 +86,18 @@ internal class EmailNotificationService : IEmailNotificationService
       $"<p>{exception.Message}:</p>" +
       $"<pre>{exception.StackTrace}</pre>";
 
-    using var smtpClient = new SmtpClient(_emailSettings.SmtpServer, _emailSettings.SmtpPort);
+    using var message = new MimeMessage();
 
-    smtpClient.Credentials = new NetworkCredential(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    smtpClient.EnableSsl = true;
+    message.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    message.To.Add(new MailboxAddress("Trader Admin", _emailSettings.FromAddress));
+    message.Subject = "Trader automation exception";
+    message.Body = new TextPart(TextFormat.Html) { Text = htmlString };
 
-    using var mailMessage = new MailMessage();
+    using var client = new SmtpClient();
 
-    mailMessage.From = new MailAddress(_emailSettings.FromAddress, "Trader");
-    mailMessage.To.Add(_emailSettings.FromAddress);
-    mailMessage.Subject = "Trader automation exception";
-    mailMessage.IsBodyHtml = true;
-    mailMessage.Body = htmlString;
-
-    return smtpClient.SendMailAsync(mailMessage);
+    client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
+    client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
+    await client.SendAsync(message);
+    await client.DisconnectAsync(true);
   }
 }

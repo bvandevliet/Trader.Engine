@@ -2,7 +2,7 @@ using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.CLI.Services;
 
-internal interface IEmailNotificationService
+public interface IEmailNotificationService
 {
   Task SendAutomationSucceeded(int userId, DateTime timestamp, RebalanceDto rebalanceDto);
 

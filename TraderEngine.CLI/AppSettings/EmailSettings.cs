@@ -1,6 +1,6 @@
 namespace TraderEngine.CLI.AppSettings;
 
-internal class EmailSettings
+public class EmailSettings
 {
   public string SmtpServer { get; set; } = "your-smtp-server.com";
 
