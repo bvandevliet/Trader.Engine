@@ -277,11 +277,18 @@ public class BitvavoExchange : IExchange
     newOrderDto.DisableMarketProtection = true;
     newOrderDto.ResponseRequired = false;
 
-    var failedOrder = (OrderDto)order;
-
-    failedOrder.Status = OrderStatus.Failed;
-    failedOrder.AmountRemaining = order.Amount ?? default;
-    failedOrder.AmountQuoteRemaining = order.AmountQuote ?? default;
+    var failedOrder = new OrderDto()
+    {
+      Market = order.Market,
+      Side = order.Side,
+      Type = order.Type,
+      Price = order.Price ?? default,
+      Amount = order.Amount ?? default,
+      AmountQuote = order.AmountQuote ?? default,
+      Status = OrderStatus.Failed,
+      AmountRemaining = order.Amount ?? default,
+      AmountQuoteRemaining = order.AmountQuote ?? default,
+    };
 
     try
     {
