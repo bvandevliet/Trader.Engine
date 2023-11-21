@@ -156,13 +156,13 @@ internal class WorkerService
 
     // Test if eligible.
     if (!allocDiffs.Any(allocDiff =>
-      (
-        // .. if any of the allocation diffs exceed the minimum order size.
-        Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
-        Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100
-      )
-      // .. or if the asset should not be allocated at all.
-      || (allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
+      ( // .. if any of the allocation diffs exceed the minimum order size.
+      Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
+      Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)
+      ||
+      ( // .. or if the asset should not be allocated at all.
+      allocDiff.Market.BaseSymbol != curBalanceDto.QuoteSymbol
+      && allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
     {
       // Return empty rebalance DTO.
       return new RebalanceDto()
