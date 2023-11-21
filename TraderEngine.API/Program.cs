@@ -18,6 +18,10 @@ public class Program
   public static void Main(string[] args)
   {
     var builder = WebApplication.CreateBuilder(args);
+#if DEBUG
+    // Add private appsettings.json file when debugging.
+    builder.Configuration.AddJsonFile("appsettings.Private.json", optional: true, reloadOnChange: true);
+#endif
 
     builder.Services.AddRouting(options =>
     {
