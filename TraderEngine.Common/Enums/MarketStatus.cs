@@ -3,7 +3,7 @@ using TraderEngine.Common.Extensions;
 
 namespace TraderEngine.Common.Enums;
 
-[JsonConverter(typeof(EnumToStringConverter<OrderSide>))]
+[JsonConverter(typeof(EnumToStringConverter<MarketStatus>))]
 public enum MarketStatus
 {
   Unavailable,
