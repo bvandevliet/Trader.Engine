@@ -8,10 +8,11 @@ namespace TraderEngine.Common.Factories;
 /// Sql connection factory.
 /// Lifetime of the connections is the same as the lifetime of the factory.
 /// </summary>
-public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>
+public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>, IDisposable
 {
   private readonly IConfiguration _configuration;
-  private readonly Dictionary<string, MySqlConnection> _connections = new();
+  private readonly List<KeyValuePair<string, MySqlConnection>> _connections = new();
+  private bool _disposedValue;
 
   public SqlConnectionFactory(IConfiguration config)
   {
@@ -27,31 +28,45 @@ public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>
       throw new ArgumentException($"Connection string '{name}' not found in configuration.");
     }
 
-    if (_connections.TryGetValue(name, out MySqlConnection? connection))
+    // Always create a new connection to be thread-safe.
+    var connection = new MySqlConnection(connectionString);
+
+    // Initialize the database.
+    if (name == "MySql" && !_connections.Any(conn => conn.Key == name))
     {
-      return connection;
+      connection.Execute(
+        "CREATE TABLE IF NOT EXISTS MarketCapData (\n" +
+        "  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n" +
+        "  QuoteSymbol VARCHAR(12) NOT NULL,\n" +
+        "  BaseSymbol VARCHAR(12) NOT NULL,\n" +
+        "  Price VARCHAR(48) NOT NULL,\n" +
+        "  MarketCap VARCHAR(48) NOT NULL,\n" +
+        "  Tags TEXT,\n" +
+        "  Updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);");
     }
-    else
+
+    _connections.Add(new(name, connection));
+
+    return connection;
+  }
+
+  protected virtual void Dispose(bool disposing)
+  {
+    if (!_disposedValue)
     {
-      connection = new MySqlConnection(connectionString);
-
-      _connections.Add(name, connection);
-
-      // Initialize the database.
-      if (name == "MySql")
+      if (disposing)
       {
-        connection.Execute(
-          "CREATE TABLE IF NOT EXISTS MarketCapData (\n" +
-          "  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n" +
-          "  QuoteSymbol VARCHAR(12) NOT NULL,\n" +
-          "  BaseSymbol VARCHAR(12) NOT NULL,\n" +
-          "  Price VARCHAR(48) NOT NULL,\n" +
-          "  MarketCap VARCHAR(48) NOT NULL,\n" +
-          "  Tags TEXT,\n" +
-          "  Updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);");
+        _connections.ForEach(conn => conn.Value.Dispose());
       }
 
-      return connection;
+      _disposedValue = true;
     }
+  }
+
+  public void Dispose()
+  {
+    // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method.
+    Dispose(disposing: true);
+    GC.SuppressFinalize(this);
   }
 }
