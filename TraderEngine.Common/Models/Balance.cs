@@ -75,7 +75,7 @@ public class Balance
   /// <exception cref="ObjectAlreadyExistsException"></exception>
   public void AddAllocation(Allocation allocation)
   {
-    if (QuoteSymbol != allocation.Market.QuoteSymbol)
+    if (false == QuoteSymbol.Equals(allocation.Market.QuoteSymbol))
     {
       throw new InvalidObjectException("Quote currency of given Allocation object does not match with the quote currency of this Balance instance.");
     }

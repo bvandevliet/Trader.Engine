@@ -132,7 +132,7 @@ public class BitvavoExchange : IExchange
       {
         var market = new MarketReqDto(QuoteSymbol, alloc.dto.Symbol);
 
-        decimal price = market.BaseSymbol == QuoteSymbol ? 1 : await GetPrice(market);
+        decimal price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(market);
 
         var allocation = new Allocation(market, price, alloc.amount);
 

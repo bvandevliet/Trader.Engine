@@ -12,7 +12,7 @@ internal class BalanceProfile : Profile
       .ForMember(
         dest => dest.Allocations, opt => opt.MapFrom(
           src => src.Allocations
-          .OrderBy(alloc => alloc.Market.BaseSymbol != src.QuoteSymbol)
+          .OrderBy(alloc => !alloc.Market.BaseSymbol.Equals(src.QuoteSymbol))
           .ThenByDescending(alloc => alloc.AmountQuote)));
   }
 }

@@ -161,8 +161,8 @@ internal class WorkerService
       Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)
       ||
       ( // .. or if the asset should not be allocated at all.
-      allocDiff.Market.BaseSymbol != curBalanceDto.QuoteSymbol
-      && allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
+      false == allocDiff.Market.BaseSymbol.Equals(curBalanceDto.QuoteSymbol) &&
+      allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
     {
       // Return empty rebalance DTO.
       return new RebalanceDto()
