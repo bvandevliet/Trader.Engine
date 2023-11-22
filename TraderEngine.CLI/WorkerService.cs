@@ -89,10 +89,17 @@ internal class WorkerService
             // Run automation.
             var rebalanceDto = await RunAutomation(exchangeName, configReqDto, apiCred);
 
+            if (null == rebalanceDto)
+            {
+              _logger.LogInformation("Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
+
+              return;
+            }
+
             // If no orders were placed, return.
             if (rebalanceDto.Orders.Length == 0)
             {
-              _logger.LogInformation("No orders were placed for user '{userId}'.", userConfig.Key);
+              _logger.LogWarning("No orders were placed for user '{userId}'.", userConfig.Key);
 
               return;
             }
@@ -100,7 +107,7 @@ internal class WorkerService
             // If any of the orders have not ended, return.
             if (rebalanceDto.Orders.Any(order => !order.HasEnded))
             {
-              _logger.LogWarning("Not all orders have ended for user '{userId}'.", userConfig.Key);
+              _logger.LogError("Not all orders have ended for user '{userId}'.", userConfig.Key);
 
               await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto);
 
@@ -132,7 +139,7 @@ internal class WorkerService
     }
   }
 
-  public async Task<RebalanceDto> RunAutomation(
+  public async Task<RebalanceDto?> RunAutomation(
     string exchangeName, ConfigReqDto configReqDto, ApiCredReqDto apiCred)
   {
     // Get current balance DTO.
@@ -165,12 +172,7 @@ internal class WorkerService
       false == allocDiff.Market.BaseSymbol.Equals(curBalanceDto.QuoteSymbol) &&
       allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
     {
-      // Return empty rebalance DTO.
-      return new RebalanceDto()
-      {
-        Orders = Array.Empty<OrderDto>(),
-        NewBalance = curBalanceDto,
-      };
+      return null;
     }
 
     // Construct rebalance request DTO.
