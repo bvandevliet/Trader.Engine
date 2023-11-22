@@ -36,9 +36,9 @@ public class Program
 
     builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-    builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
+    builder.Services.AddTransient<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
-    builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
+    builder.Services.AddTransient<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
 

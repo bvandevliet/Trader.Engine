@@ -28,8 +28,6 @@ public class Program
 
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-        services.AddSingleton<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
-
         services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
 
         services.Configure<CmsDbSettings>(builder.Configuration.GetSection("CmsDbSettings"));
@@ -38,7 +36,9 @@ public class Program
 
         services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
-        services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
+        services.AddTransient<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
+
+        services.AddTransient<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {
@@ -62,9 +62,9 @@ public class Program
         })
           .ApplyDefaultPoolAndPolicyConfig();
 
-        services.AddSingleton<IConfigRepository, WordPressConfigRepository>();
+        services.AddTransient<IConfigRepository, WordPressConfigRepository>();
 
-        services.AddSingleton<IApiCredentialsRepository, WordPressApiCredRepository>();
+        services.AddTransient<IApiCredentialsRepository, WordPressApiCredRepository>();
 
         services.AddSingleton<IEmailNotificationService, EmailNotificationService>();
 

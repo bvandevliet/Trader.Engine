@@ -27,7 +27,7 @@ services:
     tty: true
     environment:
       - TZ=Europe/Amsterdam
-      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};
+      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};Pooling=true;MinPoolSize=0;MaxPoolSize=10;
 
   traderengine.cli:
     container_name: traderengine.cli
@@ -47,8 +47,8 @@ services:
       - Addresses__TRADER_API=http://traderengine.api
       - Addresses__TRADER_CRYPTO=http://traderengine.cryptography
       - CoinMarketCap__API_KEY=${CMC_API_KEY}
-      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};
-      - ConnectionStrings__CMS=server=traderengine.mariadb;port=3306;database=${CMS_DATABASE};uid=${CMS_USERNAME};pwd=${CMS_PASSWORD};
+      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};Pooling=true;MinPoolSize=0;MaxPoolSize=10;
+      - ConnectionStrings__CMS=server=traderengine.mariadb;port=3306;database=${CMS_DATABASE};uid=${CMS_USERNAME};pwd=${CMS_PASSWORD};Pooling=true;MinPoolSize=0;MaxPoolSize=10;
       - CmsDbSettings__TablePrefix=${CMS_TABLE_PREFIX}
       - EmailSettings__SmtpServer=${SMTP_SERVER}
       - EmailSettings__SmtpPort=${SMTP_PORT}

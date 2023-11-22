@@ -4,7 +4,6 @@ using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Helpers;
-using TraderEngine.Common.Models;
 using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.CLI;

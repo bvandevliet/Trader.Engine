@@ -35,15 +35,10 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
     using var sqlConn = GetConnection();
 
     // Get encrypted API credentials from WordPress database.
-    string userApiCred = await sqlConn.QueryFirstOrDefaultAsync<string>(
+    string userApiCred = (await sqlConn.QueryFirstOrDefaultAsync<string>(
       $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE user_id = @UserId AND meta_key = @MetaKey\n" +
-      "LIMIT 1;",
-      new
-      {
-        UserId = userId,
-        MetaKey = "api_keys",
-      });
+      "LIMIT 1;", new { UserId = userId, MetaKey = "api_keys", }))!;
 
     var encryptedApiCred = WordPressDbSerializer.Deserialize<Dictionary<string, string>>(userApiCred);
 

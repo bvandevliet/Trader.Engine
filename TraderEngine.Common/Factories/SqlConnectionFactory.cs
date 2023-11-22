@@ -28,6 +28,7 @@ public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>, IDisposa
     }
 
     // Always create a new connection to be thread-safe.
+    // The pool manager in the app domain takes care of pooling.
     var connection = new MySqlConnection(connectionString);
 
     // Initialize the database.
@@ -55,16 +56,7 @@ public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>, IDisposa
     {
       if (disposing)
       {
-        _connections.ForEach(conn =>
-        {
-          try
-          {
-            conn.Value.Dispose();
-          }
-          catch (Exception)
-          {
-          }
-        });
+        _connections.ForEach(conn => { try { conn.Value.Dispose(); } catch (Exception) { } });
       }
 
       _disposedValue = true;
