@@ -6,7 +6,6 @@ namespace TraderEngine.Common.Factories;
 
 /// <summary>
 /// Sql connection factory.
-/// Lifetime of the connections is the same as the lifetime of the factory.
 /// </summary>
 public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>, IDisposable
 {
@@ -56,7 +55,16 @@ public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>, IDisposa
     {
       if (disposing)
       {
-        _connections.ForEach(conn => conn.Value.Dispose());
+        _connections.ForEach(conn =>
+        {
+          try
+          {
+            conn.Value.Dispose();
+          }
+          catch (Exception)
+          {
+          }
+        });
       }
 
       _disposedValue = true;

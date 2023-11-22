@@ -14,7 +14,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 {
   private readonly ILogger<MarketCapInternalRepository> _logger;
   private readonly IMapper _mapper;
-  private readonly MySqlConnection _mySqlConnection;
+  private readonly INamedTypeFactory<MySqlConnection> _sqlConnectionFactory;
 
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
@@ -23,17 +23,20 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   {
     _logger = logger;
     _mapper = mapper;
-    _mySqlConnection = sqlConnectionFactory.GetService("MySql");
+    _sqlConnectionFactory = sqlConnectionFactory;
   }
+
+  private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("MySql");
 
   /// <summary>
   /// Test whether the record meets the updated time requirement in order to be inserted to the database.
   /// </summary>
+  /// <param name="sqlConn"></param>
   /// <param name="marketCap"></param>
   /// <returns></returns>
-  protected async Task<bool> ShouldInsert(MarketCapDataDto marketCap)
+  protected static async Task<bool> ShouldInsert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
   {
-    var lastRecord = await _mySqlConnection.QueryFirstOrDefaultAsync<MarketCapDataDb>(
+    var lastRecord = await sqlConn.QueryFirstOrDefaultAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
       "ORDER BY Updated DESC LIMIT 1;",
@@ -49,13 +52,15 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<int> Insert(MarketCapDataDto marketCap)
   {
+    using var sqlConn = GetConnection();
+
     int rowsAffected = 0;
 
-    if (await ShouldInsert(marketCap))
+    if (await ShouldInsert(sqlConn, marketCap))
     {
       var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
 
-      rowsAffected = await _mySqlConnection.ExecuteAsync(
+      rowsAffected = await sqlConn.ExecuteAsync(
         "INSERT INTO MarketCapData (QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated)\n" +
         "VALUES (@QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated);",
         marketCapData);
@@ -85,7 +90,9 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int hours = 24)
   {
-    var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
+    using var sqlConn = GetConnection();
+
+    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
       "AND Updated >= @Updated ORDER BY Updated DESC;",
@@ -102,8 +109,10 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   // TODO: CACHE RECENT RECORDS TO AVOID REPEATED QUERIES !!
   public async Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24)
   {
+    using var sqlConn = GetConnection();
+
     // Fetch recent records to determine relevant assets.
-    var listHistorical = await _mySqlConnection.QueryAsync<MarketCapDataDb>(
+    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol IN (\n" +
       "  SELECT BaseSymbol FROM MarketCapData\n" +

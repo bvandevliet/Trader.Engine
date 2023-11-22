@@ -14,7 +14,7 @@ public class WordPressConfigRepository : IConfigRepository
 {
   private readonly ILogger<WordPressConfigRepository> _logger;
   private readonly IMapper _mapper;
-  private readonly MySqlConnection _mySqlConnection;
+  private readonly INamedTypeFactory<MySqlConnection> _sqlConnectionFactory;
   private readonly CmsDbSettings _cmsDbSettings;
 
   public WordPressConfigRepository(
@@ -25,20 +25,26 @@ public class WordPressConfigRepository : IConfigRepository
   {
     _logger = logger;
     _mapper = mapper;
-    _mySqlConnection = sqlConnectionFactory.GetService("CMS");
+    _sqlConnectionFactory = sqlConnectionFactory;
     _cmsDbSettings = cmsDbOptions.Value;
   }
 
+  private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("CMS");
+
   public async Task<WordPressUserDto> GetUserInfo(int userId)
   {
-    return (await _mySqlConnection.QueryFirstOrDefaultAsync<WordPressUserDto>(
+    using var sqlConn = GetConnection();
+
+    return (await sqlConn.QueryFirstOrDefaultAsync<WordPressUserDto>(
       $"SELECT user_login, display_name, user_email FROM {_cmsDbSettings.TablePrefix}users\n" +
       "WHERE ID = @UserId LIMIT 1;", new { UserId = userId }))!;
   }
 
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
-    string dbConfig = (await _mySqlConnection.QueryFirstOrDefaultAsync<string>(
+    using var sqlConn = GetConnection();
+
+    string dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(
       $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE user_id = @UserId AND meta_key = 'trader_configuration'\n" +
       "LIMIT 1;", new { UserId = userId }))!;
@@ -50,7 +56,9 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs()
   {
-    var dbConfigs = await _mySqlConnection.QueryAsync<(int user_id, string meta_value)>(
+    using var sqlConn = GetConnection();
+
+    var dbConfigs = await sqlConn.QueryAsync<(int user_id, string meta_value)>(
       $"SELECT user_id, meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE meta_key = 'trader_configuration';");
 
@@ -61,11 +69,13 @@ public class WordPressConfigRepository : IConfigRepository
 
   public Task SaveConfig(int userId, ConfigReqDto configReqDto)
   {
+    using var sqlConn = GetConnection();
+
     var wpConfig = _mapper.Map<WordPressConfigDto>(configReqDto);
 
     string dbConfig = WordPressDbSerializer.Serialize(wpConfig);
 
-    return _mySqlConnection.ExecuteAsync(
+    return sqlConn.ExecuteAsync(
       $"UPDATE {_cmsDbSettings.TablePrefix}usermeta\n" +
       "SET meta_value = @MetaValue\n" +
       "WHERE user_id = @UserId AND meta_key = @MetaKey;",
