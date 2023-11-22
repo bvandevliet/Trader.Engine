@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using TraderEngine.CLI.AppSettings;
@@ -22,6 +23,13 @@ public class Program
         config.AddJsonFile("appsettings.Private.json", optional: true, reloadOnChange: true);
       })
 #endif
+#if !DEBUG
+      .ConfigureLogging(logging =>
+      {
+        logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+        logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
+      })
+#endif
       .ConfigureServices((builder, services) =>
       {
         services.AddSingleton(x => new AppArgs(args));
@@ -36,9 +44,9 @@ public class Program
 
         services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
-        services.AddTransient<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
+        services.AddSingleton<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
-        services.AddTransient<IMarketCapInternalRepository, MarketCapInternalRepository>();
+        services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {

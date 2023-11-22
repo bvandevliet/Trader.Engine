@@ -22,6 +22,10 @@ public class Program
     // Add private appsettings.json file when debugging.
     builder.Configuration.AddJsonFile("appsettings.Private.json", optional: true, reloadOnChange: true);
 #endif
+#if !DEBUG
+    builder.Logging.AddFilter("System.Net.Http.HttpClient", LogLevel.Warning);
+    builder.Logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
+#endif
 
     builder.Services.AddRouting(options =>
     {
@@ -36,9 +40,9 @@ public class Program
 
     builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
-    builder.Services.AddTransient<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
+    builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
-    builder.Services.AddTransient<IMarketCapInternalRepository, MarketCapInternalRepository>();
+    builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
 
