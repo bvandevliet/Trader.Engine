@@ -28,6 +28,21 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("MySql");
 
+  public Task<int> InitDatabase()
+  {
+    using var sqlConn = GetConnection();
+
+    return sqlConn.ExecuteAsync(
+        "CREATE TABLE IF NOT EXISTS MarketCapData (\n" +
+        "  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n" +
+        "  QuoteSymbol VARCHAR(12) NOT NULL,\n" +
+        "  BaseSymbol VARCHAR(12) NOT NULL,\n" +
+        "  Price VARCHAR(48) NOT NULL,\n" +
+        "  MarketCap VARCHAR(48) NOT NULL,\n" +
+        "  Tags TEXT,\n" +
+        "  Updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);");
+  }
+
   /// <summary>
   /// Test whether the record meets the updated time requirement in order to be inserted to the database.
   /// </summary>

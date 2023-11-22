@@ -46,6 +46,8 @@ internal class WorkerService
   {
     try
     {
+      await _marketCapIntRepo.InitDatabase();
+
       if (_appArgs.DoUpdateMarketCap)
       {
         var latest = await _marketCapExtRepo.ListLatest("EUR");

@@ -8,6 +8,8 @@ namespace TraderEngine.Common.Repositories;
 /// </summary>
 public interface IMarketCapInternalRepository
 {
+  public Task<int> InitDatabase();
+
   /// <summary>
   /// Saves a market cap object to the database.
   /// </summary>
