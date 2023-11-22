@@ -1,10 +1,22 @@
 using System.Collections;
 using System.Globalization;
+using System.Reflection;
 
 namespace TraderEngine.CLI.Helpers;
 
 public static class WordPressDbSerializer
 {
+  [AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct)]
+  public class WordPressObjectAttribute : Attribute
+  {
+    public string Name { get; }
+
+    public WordPressObjectAttribute(string name)
+    {
+      Name = name;
+    }
+  }
+
   public static string Serialize(object? value)
   {
     if (value == null)
@@ -105,7 +117,9 @@ public static class WordPressDbSerializer
         elements.Add($"s:{propertyInfo.Name.Length}:\"{propertyInfo.Name}\";{Serialize(propertyInfo.GetValue(value)!)}");
       }
 
-      return $"O:{type.Name.Length}:\"{type.Name}\":{elements.Count}:{{{string.Join("", elements)}}}";
+      var objectName = type.GetCustomAttribute<WordPressObjectAttribute>()?.Name ?? type.Name;
+
+      return $"O:{objectName.Length}:\"{objectName}\":{elements.Count}:{{{string.Join("", elements)}}}";
     }
 
     return "";

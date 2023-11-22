@@ -1,6 +1,9 @@
+using static TraderEngine.CLI.Helpers.WordPressDbSerializer;
+
 namespace TraderEngine.CLI.DTOs.WordPress;
 
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Style", "IDE1006:Naming Styles", Justification = "<Pending>")]
+[WordPressObject("Trader\\Configuration")]
 public class WordPressConfigDto
 {
   public decimal quote_takeout { get; set; } = 0;
