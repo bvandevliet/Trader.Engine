@@ -46,7 +46,7 @@ public class Program
 
         services.AddSingleton<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
-        services.AddSingleton<IMarketCapInternalRepository, MarketCapInternalRepository>();
+        services.AddTransient<IMarketCapInternalRepository, MarketCapInternalRepository>();
 
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {

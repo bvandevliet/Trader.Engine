@@ -33,21 +33,27 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<WordPressUserDto> GetUserInfo(int userId)
   {
-    using var sqlConn = GetConnection();
+    var sqlConn = GetConnection();
 
-    return (await sqlConn.QueryFirstOrDefaultAsync<WordPressUserDto>(
+    var result = (await sqlConn.QueryFirstOrDefaultAsync<WordPressUserDto>(
       $"SELECT user_login, display_name, user_email FROM {_cmsDbSettings.TablePrefix}users\n" +
       "WHERE ID = @UserId LIMIT 1;", new { UserId = userId }))!;
+
+    await sqlConn.CloseAsync();
+
+    return result;
   }
 
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
-    using var sqlConn = GetConnection();
+    var sqlConn = GetConnection();
 
     string dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(
       $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE user_id = @UserId AND meta_key = 'trader_configuration'\n" +
       "LIMIT 1;", new { UserId = userId }))!;
+
+    await sqlConn.CloseAsync();
 
     var wpConfig = WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig);
 
@@ -56,26 +62,28 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs()
   {
-    using var sqlConn = GetConnection();
+    var sqlConn = GetConnection();
 
     var dbConfigs = await sqlConn.QueryAsync<(int user_id, string meta_value)>(
       $"SELECT user_id, meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
       "WHERE meta_key = 'trader_configuration';");
+
+    await sqlConn.CloseAsync();
 
     return dbConfigs
       .Select(dbConfig => new KeyValuePair<int, ConfigReqDto>(dbConfig.user_id,
       _mapper.Map<ConfigReqDto>(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.meta_value))));
   }
 
-  public Task SaveConfig(int userId, ConfigReqDto configReqDto)
+  public async Task<int> SaveConfig(int userId, ConfigReqDto configReqDto)
   {
-    using var sqlConn = GetConnection();
-
     var wpConfig = _mapper.Map<WordPressConfigDto>(configReqDto);
 
     string dbConfig = WordPressDbSerializer.Serialize(wpConfig);
 
-    return sqlConn.ExecuteAsync(
+    var sqlConn = GetConnection();
+
+    var result = await sqlConn.ExecuteAsync(
       $"UPDATE {_cmsDbSettings.TablePrefix}usermeta\n" +
       "SET meta_value = @MetaValue\n" +
       "WHERE user_id = @UserId AND meta_key = @MetaKey;",
@@ -85,5 +93,9 @@ public class WordPressConfigRepository : IConfigRepository
         MetaKey = "trader_configuration",
         MetaValue = dbConfig,
       });
+
+    await sqlConn.CloseAsync();
+
+    return result;
   }
 }

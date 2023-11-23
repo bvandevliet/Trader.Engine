@@ -28,11 +28,11 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("MySql");
 
-  public Task<int> InitDatabase()
+  public async Task<int> InitDatabase()
   {
-    using var sqlConn = GetConnection();
+    var sqlConn = GetConnection();
 
-    return sqlConn.ExecuteAsync(
+    var result = await sqlConn.ExecuteAsync(
         "CREATE TABLE IF NOT EXISTS MarketCapData (\n" +
         "  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n" +
         "  QuoteSymbol VARCHAR(12) NOT NULL,\n" +
@@ -41,6 +41,10 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
         "  MarketCap VARCHAR(48) NOT NULL,\n" +
         "  Tags TEXT,\n" +
         "  Updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP);");
+
+    await sqlConn.CloseAsync();
+
+    return result;
   }
 
   /// <summary>
@@ -51,6 +55,11 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   /// <returns></returns>
   protected static async Task<bool> ShouldInsert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
   {
+    if (!IsCloseToTheWholeHour(marketCap.Updated))
+    {
+      return false;
+    }
+
     var lastRecord = await sqlConn.QueryFirstOrDefaultAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
       "WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol\n" +
@@ -61,14 +70,17 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
         marketCap.Market.BaseSymbol
       });
 
-    return IsCloseToTheWholeHour(marketCap.Updated) &&
-      (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance);
+    return null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance;
   }
 
-  public async Task<int> Insert(MarketCapDataDto marketCap)
+  /// <summary>
+  /// Saves a market cap object to the database.
+  /// </summary>
+  /// <param name="sqlConn"></param>
+  /// <param name="marketCap"></param>
+  /// <returns></returns>
+  protected async Task<int> Insert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
   {
-    using var sqlConn = GetConnection();
-
     int rowsAffected = 0;
 
     if (await ShouldInsert(sqlConn, marketCap))
@@ -91,12 +103,16 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
+    var sqlConn = GetConnection();
+
     int rowsAffected = 0;
 
     foreach (var marketCap in marketCaps)
     {
-      rowsAffected += await Insert(marketCap);
+      rowsAffected += await Insert(sqlConn, marketCap);
     }
+
+    await sqlConn.CloseAsync();
 
     _logger.LogInformation("Inserted {rows} market cap records into database.", rowsAffected);
 
@@ -105,7 +121,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int hours = 24)
   {
-    using var sqlConn = GetConnection();
+    var sqlConn = GetConnection();
 
     var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(
       "SELECT * FROM MarketCapData\n" +
@@ -118,13 +134,15 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
         Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
       });
 
+    await sqlConn.CloseAsync();
+
     return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
   }
 
   // TODO: CACHE RECENT RECORDS TO AVOID REPEATED QUERIES !!
   public async Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24)
   {
-    using var sqlConn = GetConnection();
+    var sqlConn = GetConnection();
 
     // Fetch recent records to determine relevant assets.
     var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(
@@ -142,6 +160,8 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
         UpdatedRecent = DateTime.UtcNow.AddHours(-(Math.Min(2, hours) + earlierTolerance / 60)),
         UpdatedSince = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
       });
+
+    await sqlConn.CloseAsync();
 
     // Group by asset base symbol.
     var assetGroups = listHistorical.GroupBy(record => record.BaseSymbol);

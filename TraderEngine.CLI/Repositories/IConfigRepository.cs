@@ -11,5 +11,5 @@ public interface IConfigRepository
 
   public Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs();
 
-  public Task SaveConfig(int userId, ConfigReqDto configReqDto);
+  public Task<int> SaveConfig(int userId, ConfigReqDto configReqDto);
 }

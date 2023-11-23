@@ -11,13 +11,6 @@ public interface IMarketCapInternalRepository
   public Task<int> InitDatabase();
 
   /// <summary>
-  /// Saves a market cap object to the database.
-  /// </summary>
-  /// <param name="marketCap"></param>
-  /// <returns></returns>
-  Task<int> Insert(MarketCapDataDto marketCap);
-
-  /// <summary>
   /// Saves multiple market cap objects to the database.
   /// </summary>
   /// <param name="marketCaps"></param>
