@@ -42,6 +42,9 @@ public class MockExchange : IExchange
     MakerFee = makerFee;
     TakerFee = takerFee;
     _curBalance = curBalance;
+
+    // Add quote allocation if not present.
+    _curBalance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
   }
 
   /// <summary>
@@ -80,13 +83,11 @@ public class MockExchange : IExchange
 
   public Task<OrderDto> NewOrder(OrderReqDto order)
   {
-    Allocation? curAlloc = _curBalance?.GetAllocation(order.Market.BaseSymbol);
+    Allocation quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
+
+    Allocation? curAlloc = _curBalance.GetAllocation(order.Market.BaseSymbol);
 
     Allocation newAlloc = curAlloc ?? new(order.Market);
-
-    Allocation? quoteAlloc = _curBalance?.GetAllocation(QuoteSymbol);
-
-    Allocation newQuoteAlloc = quoteAlloc ?? new(QuoteSymbol, QuoteSymbol, 1);
 
     var returnOrder = new OrderDto()
     {
@@ -109,7 +110,7 @@ public class MockExchange : IExchange
       // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
       newAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
-      newQuoteAlloc.AmountQuote -= amountQuote;
+      quoteAlloc.AmountQuote -= amountQuote;
 
       returnOrder.AmountQuote = amountQuote;
     }
@@ -120,7 +121,7 @@ public class MockExchange : IExchange
       newAlloc.AmountQuote -= amountQuote;
 
       // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
-      newQuoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
+      quoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       returnOrder.Amount = order.Amount;
     }
@@ -131,12 +132,7 @@ public class MockExchange : IExchange
 
     if (null == curAlloc)
     {
-      _curBalance?.AddAllocation(newAlloc);
-    }
-
-    if (null == quoteAlloc)
-    {
-      _curBalance?.AddAllocation(newQuoteAlloc);
+      _curBalance?.TryAddAllocation(newAlloc);
     }
 
     return Task.FromResult(returnOrder);

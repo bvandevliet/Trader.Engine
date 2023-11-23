@@ -29,10 +29,10 @@ public class TraderTests
 
     decimal deposit = 1000;
 
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
     //                                                                                                             100%
 
     _exchangeService = new(_quoteSymbol, 5, .0015m, .0025m, curBalance);

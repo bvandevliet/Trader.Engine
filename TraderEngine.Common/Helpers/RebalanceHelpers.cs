@@ -63,9 +63,6 @@ public static class RebalanceHelpers
         continue;
       }
 
-      // Define current allocation, which is zero here.
-      Allocation curAlloc = new(new MarketReqDto(curBalance.QuoteSymbol, absAlloc.BaseSymbol), 0, 0);
-
       // Determine relative allocation.
       decimal relAlloc = totalAbsAlloc == 0 ? 0 : absAlloc.AbsAlloc / totalAbsAlloc;
 
@@ -73,9 +70,9 @@ public static class RebalanceHelpers
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
       yield return new AllocDiffReqDto(
-        curAlloc.Market,
-        curAlloc.Price,
-        curAlloc.Amount,
+        new MarketReqDto(curBalance.QuoteSymbol, absAlloc.BaseSymbol),
+        0,
+        0,
         -newAmountQuote);
     }
   }
@@ -137,9 +134,6 @@ public static class RebalanceHelpers
         continue;
       }
 
-      // Define current allocation, which is zero here.
-      Allocation curAlloc = new(new MarketReqDto(curBalance.QuoteSymbol, absAlloc.BaseSymbol), 0, 0);
-
       // Determine relative allocation.
       decimal relAlloc = totalAbsAlloc == 0 ? 0 : absAlloc.AbsAlloc / totalAbsAlloc;
 
@@ -147,9 +141,9 @@ public static class RebalanceHelpers
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
       yield return new AllocDiffReqDto(
-        curAlloc.Market,
-        curAlloc.Price,
-        curAlloc.Amount,
+        new MarketReqDto(curBalance.QuoteSymbol, absAlloc.BaseSymbol),
+        0,
+        0,
         -newAmountQuote);
     }
   }

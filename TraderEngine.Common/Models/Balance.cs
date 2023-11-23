@@ -72,8 +72,7 @@ public class Balance
   /// </summary>
   /// <param name="allocation">The <see cref="Allocation"/> to add.</param>
   /// <exception cref="InvalidObjectException"></exception>
-  /// <exception cref="ObjectAlreadyExistsException"></exception>
-  public void AddAllocation(Allocation allocation)
+  public bool TryAddAllocation(Allocation allocation)
   {
     if (false == QuoteSymbol.Equals(allocation.Market.QuoteSymbol))
     {
@@ -82,7 +81,7 @@ public class Balance
 
     if (_allocations.Any(alloc => alloc.Market.Equals(allocation.Market)))
     {
-      throw new ObjectAlreadyExistsException("An allocation in this market already exists.");
+      return false;
     }
 
     allocation.PriceUpdated += ResetAmountQuoteTotal;
@@ -104,6 +103,8 @@ public class Balance
     {
       ResetAmountQuoteAvailable();
     }
+
+    return true;
   }
 
   /// <summary>

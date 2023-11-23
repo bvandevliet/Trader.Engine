@@ -144,8 +144,11 @@ public class BitvavoExchange : IExchange
 
     foreach (var allocation in allocations)
     {
-      balance.AddAllocation(allocation);
+      balance.TryAddAllocation(allocation);
     }
+
+    // Add quote allocation if not present.
+    balance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
 
     return balance;
   }
