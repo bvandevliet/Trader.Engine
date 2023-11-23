@@ -1,9 +1,9 @@
-using MongoDB.Driver;
-using TraderEngine.API.Extensions;
+using System.Text.RegularExpressions;
 using TraderEngine.Common.Abstracts;
-using TraderEngine.Common.DTOs.Request;
-using TraderEngine.Common.DTOs.Response;
-using TraderEngine.Common.Services;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Extensions;
+using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.API.Services;
 
@@ -12,136 +12,87 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
   private readonly ILogger<MarketCapService> _logger;
   private readonly IMarketCapInternalRepository _marketCapInternalRepo;
 
-  private readonly object _cacheLock = new();
-  private readonly Dictionary<string, List<MarketCapDataDto>> _listLatestSmoothedCache = new();
-
   public MarketCapService(
     ILogger<MarketCapService> logger,
     IMarketCapInternalRepository marketCapInternalRepo)
   {
     _logger = logger;
-    _marketCapInternalRepo = marketCapInternalRepo ?? throw new ArgumentNullException(nameof(marketCapInternalRepo));
+    _marketCapInternalRepo = marketCapInternalRepo;
   }
 
-  /// <summary>
-  /// Finds a record for each day in the provided records
-  /// as long as the record is within the allowed tolerance.
-  /// </summary>
-  /// <param name="records"></param>
-  /// <param name="days"></param>
-  /// <returns></returns>
-  private IEnumerable<MarketCapDataDto> GetCandidates(IEnumerable<MarketCapDataDto> records)
+  public async Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing)
   {
-    // Updated timestamp of last winner record.
-    DateTime? prevUpdated = null;
+    var listHistoricalMany = await _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, smoothing + 1);
 
-    // Potential winner record.
-    MarketCapDataDto? candidate = null;
-
-    foreach (MarketCapDataDto record in records)
-    {
-    start:
-
-      // Offset in minutes between current iteration record and last winner record.
-      double offsetMinutes = OffsetMinutes(record.Updated, prevUpdated);
-
-      // Test if current iteration record is within one day from last winner record.
-      bool isWithinDayTimespan = offsetMinutes + earlierTolerance >= -1440 - laterTolerance;
-
-      // Test if current iteration record is within and nearly one day from last winner record.
-      bool isWithinDailySequence = isWithinDayTimespan && offsetMinutes - laterTolerance <= -1440 + earlierTolerance;
-
-      // If current iteration record is within one day from last winner record,
-      // mark it as potential candidate.
-      if (isWithinDayTimespan)
+    // Generates a list containing only the last EMA value for each asset.
+    return listHistoricalMany
+      .Select(marketCaps =>
       {
-        candidate = record;
+        // Enumerate once, then just iterate.
+        var marketCapsList = marketCaps.ToList();
 
-        // If is NOT first iteration AND current iteration record is NOT exactly one day from last winner record,
-        // continue iterating for candidates.
-        if (null != prevUpdated && !isWithinDailySequence) { continue; }
-      }
+        // Get last market cap record.
+        var marketCap = marketCapsList.Last();
 
-      if (null != candidate)
-      {
-        // This candidate is a winner record.
-        yield return candidate;
+        // Update market cap value with EMA value.
+        marketCap.MarketCap = marketCapsList.TryGetEmaValue(smoothing);
 
-        // Store updated timestamp.
-        prevUpdated = candidate.Updated;
-
-        // Reset candidate to ensure it's only returned once.
-        candidate = null;
-
-        // If winner record came from previous iteration, then re-process current iteration record.
-        if (!isWithinDayTimespan) { goto start; }
-      }
-
-      // Bail as soon as the daily sequence gets interrupted.
-      else { break; }
-    }
-  }
-
-  public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int days = 21)
-  {
-    IEnumerable<MarketCapDataDto> records = await _marketCapInternalRepo.ListHistorical(market, days);
-
-    return GetCandidates(records);
-  }
-
-  public async IAsyncEnumerable<IEnumerable<MarketCapDataDto>> ListHistoricalMany(string quoteSymbol, int days = 21)
-  {
-    await foreach (IEnumerable<MarketCapDataDto> marketCaps in _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, days))
-    {
-      yield return GetCandidates(marketCaps);
-    }
-  }
-
-  public async Task<List<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing = 7)
-  {
-    // Concat the cache indexer string.
-    string cacheHash = $"{quoteSymbol}-{smoothing}";
-
-    // Check if exists in cache to avoid expensive re-calculations.
-    if (!_listLatestSmoothedCache.ContainsKey(cacheHash))
-    {
-      // Execute the expensive calculations in an async manner.
-      await Task.Run(() =>
-      {
-        // Avoid race condition.
-        lock (_cacheLock)
-        {
-          // Generate a list containing only the last EMA value for each asset.
-          List<MarketCapDataDto> listLatestSmoothed =
-            ListHistoricalMany(quoteSymbol, smoothing + 1)
-            .Select(marketCaps =>
-            {
-              // Enumerate once, then just iterate.
-              var marketCapsList = marketCaps.ToList();
-
-              // Get last market cap record.
-              MarketCapDataDto marketCap = marketCapsList.Last();
-
-              // Update market cap value with EMA value.
-              marketCap.MarketCap = marketCapsList.TryGetEmaValue(smoothing);
-
-              // Return altered record.
-              return marketCap;
-            })
-
-            // Sort by EMA value.
-            .OrderByDescending(marketCap => marketCap.MarketCap)
-
-            // Enumerate once, add the static list to cache.
-            .ToEnumerable().ToList();
-
-          // Add to cache.
-          _listLatestSmoothedCache.Add(cacheHash, listLatestSmoothed);
-        }
+        // Return altered record.
+        return marketCap;
       });
+  }
+
+  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto)
+  {
+    var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
+
+    // Expected to have at least 100 records. Bail out for safety.
+    // TODO: USE THE "RESULT" APPROACH INSTEAD OF THROWING EXCEPTIONS !!
+    if (marketCapLatest.Count < 100)
+    {
+      throw new Exception("No recent market cap records found.");
     }
 
-    // Return from cache.
-    return _listLatestSmoothedCache[cacheHash];
+    string ignoredTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $"^{tag}$"));
+
+    var ignoredTagsRegex = new Regex(ignoredTagsPattern, RegexOptions.IgnoreCase);
+
+    return
+      marketCapLatest
+
+      // Determine weighting.
+      .Select(marketCapDataDto =>
+      {
+        bool hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out double weighting);
+
+        return new
+        {
+          MarketCapDataDto = marketCapDataDto,
+          HasWeighting = hasWeighting,
+          Weighting = hasWeighting ? weighting : 1,
+        };
+      })
+
+      // Skip zero-weighted assets.
+      .Where(marketCap => marketCap.Weighting > 0)
+
+      // Handle ignored tags, but not if asset has a weighting configured.
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoredTagsRegex.IsMatch(tag)))
+
+      // Apply weighting and dampening.
+      .Select(marketCap =>
+      {
+        return new AbsAllocReqDto()
+        {
+          BaseSymbol = marketCap.MarketCapDataDto.Market.BaseSymbol,
+          AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+        };
+      })
+
+      // Sort by Market Cap EMA value.
+      .OrderByDescending(alloc => alloc.AbsAlloc)
+
+      // Take the top count.
+      .Take(configReqDto.TopRankingCount);
   }
 }

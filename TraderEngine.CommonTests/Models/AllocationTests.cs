@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TraderEngine.Common.DTOs.Request;
+using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.Common.Models.Tests;
 
@@ -29,19 +29,6 @@ public class AllocationTests
     internal bool PriceUpdateEventTriggered() => _priceUpdate && !(_priceUpdate = false);
     internal bool AmountUpdateEventTriggered() => _amountUpdate && !(_amountUpdate = false);
     internal bool AmountQuoteUpdateEventTriggered() => _amountQuoteUpdate && !(_amountQuoteUpdate = false);
-  }
-
-  [TestMethod()]
-  public void Initialize()
-  {
-    decimal price = 15;
-    decimal amount = 25;
-
-    // Create instance.
-    var alloc = new AllocationWrapper(new MarketReqDto(_quoteSymbol, _baseSymbol), price, amount);
-
-    // Test if quote amounts are correct.
-    Assert.AreEqual(amount * price, alloc.AmountQuote);
   }
 
   [TestMethod()]

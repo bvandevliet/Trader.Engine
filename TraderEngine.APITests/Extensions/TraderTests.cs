@@ -1,6 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.API.Exchanges;
-using TraderEngine.Common.DTOs.Request;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions.Tests;
@@ -12,7 +13,7 @@ public class TraderTests
 
   private MockExchange _exchangeService = null!;
 
-  private readonly List<AbsAssetAllocReqDto> _absAssetAlloc = new()
+  private readonly List<AbsAllocReqDto> _absAssetAlloc = new()
   {
     new(baseSymbol: "EUR", absAlloc: .05m),
     new(baseSymbol: "BTC", absAlloc: .40m),
@@ -28,29 +29,29 @@ public class TraderTests
 
     decimal deposit = 1000;
 
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
-    curBalance.AddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "EUR"), price: 000001, amount: .05m * deposit));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
+    curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
     //                                                                                                             100%
 
     _exchangeService = new(_quoteSymbol, 5, .0015m, .0025m, curBalance);
   }
 
   [TestMethod()]
-  public async Task AllocQuoteDiffsTest()
+  public async Task AllocDiffsTest()
   {
     Balance curBalance = await _exchangeService.GetBalance();
 
-    var allocQuoteDiffs = Trader.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
 
-    Assert.AreEqual(5, allocQuoteDiffs.Count);
+    Assert.AreEqual(5, allocDiffs.Count);
 
-    Assert.AreEqual(-005, (double)Math.Round(allocQuoteDiffs[0].Value, 1));
-    Assert.AreEqual(0040, (double)Math.Round(allocQuoteDiffs[1].Value, 1));
-    Assert.AreEqual(0015, (double)Math.Round(allocQuoteDiffs[2].Value, 1));
-    Assert.AreEqual(0225, (double)Math.Round(allocQuoteDiffs[3].Value, 1));
-    Assert.AreEqual(-275, (double)Math.Round(allocQuoteDiffs[4].Value, 1));
+    Assert.AreEqual(-005, (double)Math.Round(allocDiffs[0].AmountQuoteDiff, 1));
+    Assert.AreEqual(0040, (double)Math.Round(allocDiffs[1].AmountQuoteDiff, 1));
+    Assert.AreEqual(0015, (double)Math.Round(allocDiffs[2].AmountQuoteDiff, 1));
+    Assert.AreEqual(0225, (double)Math.Round(allocDiffs[3].AmountQuoteDiff, 1));
+    Assert.AreEqual(-275, (double)Math.Round(allocDiffs[4].AmountQuoteDiff, 1));
   }
 
   [TestMethod()]
@@ -69,14 +70,14 @@ public class TraderTests
 
     Balance curBalance = await _exchangeService.GetBalance();
 
-    var allocQuoteDiffs = Trader.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
+    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
 
-    Assert.AreEqual(5, allocQuoteDiffs.Count);
+    Assert.AreEqual(5, allocDiffs.Count);
 
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[0].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[1].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[2].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[3].Value));
-    Assert.AreEqual(0, (double)Math.Round(allocQuoteDiffs[4].Value));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[0].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[1].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[2].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[3].AmountQuoteDiff));
+    Assert.AreEqual(0, (double)Math.Round(allocDiffs[4].AmountQuoteDiff));
   }
 }

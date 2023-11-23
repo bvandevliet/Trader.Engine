@@ -1,5 +1,5 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TraderEngine.Common.DTOs.Request;
+using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.Common.Models.Tests;
 
@@ -15,7 +15,7 @@ public class BalanceTests
     private bool _amountQuoteAvailableReset = false;
 
     /// <inheritdoc/>
-    public BalanceWrapper(string quoteCurrency) : base(quoteCurrency)
+    public BalanceWrapper(string quoteSymbol) : base(quoteSymbol)
     {
       OnAmountQuoteTotalReset += (oldValue, newValue) => _amountQuoteTotalReset = true;
       OnAmountQuoteAvailableReset += (oldValue, newValue) => _amountQuoteAvailableReset = true;
@@ -34,14 +34,14 @@ public class BalanceTests
     var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 0);
     var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, "ETH"), 0, 0);
 
-    balance.AddAllocation(alloc1);
-    balance.AddAllocation(alloc2);
+    balance.TryAddAllocation(alloc1);
+    balance.TryAddAllocation(alloc2);
 
     // Test if events are raised as expected.
     Assert.IsTrue(balance.AmountQuoteTotalResetEventTriggered());
     Assert.IsFalse(balance.AmountQuoteAvailableResetEventTriggered());
 
-    balance.AddAllocation(alloc0);
+    balance.TryAddAllocation(alloc0);
 
     // Test if events are raised as expected.
     Assert.IsTrue(balance.AmountQuoteTotalResetEventTriggered());
@@ -60,9 +60,9 @@ public class BalanceTests
     var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 0);
     var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, "ETH"), 0, 0);
 
-    balance.AddAllocation(alloc0);
-    balance.AddAllocation(alloc1);
-    balance.AddAllocation(alloc2);
+    balance.TryAddAllocation(alloc0);
+    balance.TryAddAllocation(alloc1);
+    balance.TryAddAllocation(alloc2);
 
     // Reset event states.
     balance.AmountQuoteTotalResetEventTriggered();
@@ -91,7 +91,7 @@ public class BalanceTests
 
     var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 5);
 
-    balance.AddAllocation(alloc);
+    balance.TryAddAllocation(alloc);
 
     // Test amount quote value.
     Assert.AreEqual(0 * 5, balance.AmountQuoteTotal);
@@ -117,7 +117,7 @@ public class BalanceTests
 
     var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 5, 0);
 
-    balance.AddAllocation(alloc);
+    balance.TryAddAllocation(alloc);
 
     // Test amount quote value.
     Assert.AreEqual(5 * 0, balance.AmountQuoteTotal);
@@ -143,7 +143,7 @@ public class BalanceTests
 
     var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 5, 5);
 
-    balance.AddAllocation(alloc);
+    balance.TryAddAllocation(alloc);
 
     // Test amount quote value.
     Assert.AreEqual(5 * 5, balance.AmountQuoteTotal);
@@ -160,90 +160,5 @@ public class BalanceTests
 
     // Test amount quote value.
     Assert.AreEqual(20, balance.AmountQuoteTotal);
-  }
-
-  [TestMethod()]
-  public void AddAllocation_SameReferenceMultipleTimes()
-  {
-    var balance = new BalanceWrapper(_quoteSymbol);
-
-    var alloc = new Allocation(new MarketReqDto(_quoteSymbol, "BTC"), 0, 0);
-
-    balance.AddAllocation(alloc);
-    try
-    {
-      balance.AddAllocation(alloc);
-      Assert.Fail();
-    }
-    catch (Exceptions.ObjectAlreadyExistsException) { }
-
-    // Allocation should only be added once.
-    Assert.AreEqual(1, balance.Allocations.Count);
-  }
-
-  [TestMethod()]
-  public void AddAllocation_SameMarketReferenceMultipleTimes()
-  {
-    var balance = new BalanceWrapper(_quoteSymbol);
-
-    var market = new MarketReqDto(_quoteSymbol, "BTC");
-
-    var alloc1 = new Allocation(market, 0, 0);
-    var alloc2 = new Allocation(market, 0, 0);
-
-    balance.AddAllocation(alloc1);
-    try
-    {
-      balance.AddAllocation(alloc2);
-      Assert.Fail();
-    }
-    catch (Exceptions.ObjectAlreadyExistsException) { }
-
-    // Allocation should only be added once.
-    Assert.AreEqual(1, balance.Allocations.Count);
-  }
-
-  [TestMethod()]
-  public void AddAllocation_SameMarketMultipleTimes()
-  {
-    var balance = new BalanceWrapper(_quoteSymbol);
-
-    var baseCurrency = "BTC";
-
-    var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
-    var alloc2 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
-
-    balance.AddAllocation(alloc1);
-    try
-    {
-      balance.AddAllocation(alloc2);
-      Assert.Fail();
-    }
-    catch (Exceptions.ObjectAlreadyExistsException) { }
-
-    // Allocation should only be added once.
-    Assert.AreEqual(1, balance.Allocations.Count);
-  }
-
-  [TestMethod()]
-  public void AddAllocation_WrongQuoteCurrency()
-  {
-    var balance = new BalanceWrapper(_quoteSymbol);
-
-    var baseCurrency = "BTC";
-
-    var alloc1 = new Allocation(new MarketReqDto(_quoteSymbol, baseCurrency), 0, 0);
-    var alloc2 = new Allocation(new MarketReqDto(baseCurrency, _quoteSymbol), 0, 0);
-
-    balance.AddAllocation(alloc1);
-    try
-    {
-      balance.AddAllocation(alloc2);
-      Assert.Fail();
-    }
-    catch (Exceptions.InvalidObjectException) { }
-
-    // An allocation against a different quote currency should not be added.
-    Assert.AreEqual(1, balance.Allocations.Count);
   }
 }

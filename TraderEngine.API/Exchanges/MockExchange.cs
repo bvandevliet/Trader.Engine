@@ -1,5 +1,5 @@
-using TraderEngine.Common.DTOs.Request;
-using TraderEngine.Common.DTOs.Response;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
 
@@ -12,49 +12,39 @@ public class MockExchange : IExchange
 
   public string QuoteSymbol { get; }
 
-  public decimal MinimumOrderSize { get; }
+  public decimal MinOrderSizeInQuote { get; }
 
   public decimal MakerFee { get; }
 
   public decimal TakerFee { get; }
 
+  public string ApiKey { get; set; } = string.Empty;
+
+  public string ApiSecret { get; set; } = string.Empty;
+
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
   /// <param name="quoteSymbol"><inheritdoc cref="QuoteSymbol"/></param>
-  /// <param name="minimumOrderSize"><inheritdoc cref="MinimumOrderSize"/></param>
+  /// <param name="minOrderSize"><inheritdoc cref="MinOrderSizeInQuote"/></param>
   /// <param name="makerFee"><inheritdoc cref="MakerFee"/></param>
   /// <param name="takerFee"><inheritdoc cref="TakerFee"/></param>
   /// <param name="curBalance"><inheritdoc cref="Balance"/></param>
   public MockExchange(
     string quoteSymbol,
-    decimal minimumOrderSize,
+    decimal minOrderSize,
     decimal makerFee,
     decimal takerFee,
     Balance curBalance)
   {
     QuoteSymbol = quoteSymbol;
-    MinimumOrderSize = minimumOrderSize;
+    MinOrderSizeInQuote = minOrderSize;
     MakerFee = makerFee;
     TakerFee = takerFee;
     _curBalance = curBalance;
-  }
 
-  /// <summary>
-  /// <inheritdoc cref="IExchange"/>
-  /// </summary>
-  /// <param name="exchangeService">Instance of the exchange service to base this mock instance on.</param>
-  /// <param name="curBalance"><inheritdoc cref="Balance"/></param>
-  public MockExchange(
-    IExchange exchangeService,
-    Balance curBalance)
-    : this(
-      exchangeService.QuoteSymbol,
-      exchangeService.MinimumOrderSize,
-      exchangeService.MakerFee,
-      exchangeService.TakerFee,
-      curBalance)
-  {
+    // Add quote allocation if not present.
+    _curBalance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
   }
 
   /// <summary>
@@ -66,24 +56,24 @@ public class MockExchange : IExchange
     return Task.FromResult(_curBalance);
   }
 
-  public Task<object> DepositHistory()
+  public Task<decimal> TotalDeposited()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> WithdrawHistory()
+  public Task<decimal> TotalWithdrawn()
   {
     throw new NotImplementedException();
   }
 
-  public Task<object> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
+  public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
   {
     throw new NotImplementedException();
   }
 
-  public Task<bool> IsTradable(MarketReqDto market)
+  public Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
-    return Task.FromResult(true);
+    throw new NotImplementedException();
   }
 
   public Task<decimal> GetPrice(MarketReqDto market)
@@ -93,13 +83,11 @@ public class MockExchange : IExchange
 
   public Task<OrderDto> NewOrder(OrderReqDto order)
   {
+    Allocation quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
+
     Allocation? curAlloc = _curBalance.GetAllocation(order.Market.BaseSymbol);
 
     Allocation newAlloc = curAlloc ?? new(order.Market);
-
-    Allocation? quoteAlloc = _curBalance.GetAllocation(QuoteSymbol);
-
-    Allocation newQuoteAlloc = quoteAlloc ?? new(QuoteSymbol, QuoteSymbol, 1);
 
     var returnOrder = new OrderDto()
     {
@@ -111,88 +99,112 @@ public class MockExchange : IExchange
       AmountQuote = order.AmountQuote,
     };
 
+    decimal price = curAlloc?.Price ?? 0;
+
     decimal amountQuote;
 
     if (order.Side == OrderSide.Buy)
     {
-      amountQuote = order.AmountQuote ?? (decimal)(order.Amount * curAlloc!.Price);
+      amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
-      newAlloc.AmountQuote += amountQuote;
+      // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
+      newAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
-      newQuoteAlloc.AmountQuote -= amountQuote;
+      quoteAlloc.AmountQuote -= amountQuote;
 
       returnOrder.AmountQuote = amountQuote;
     }
     else
     {
-      amountQuote = order.AmountQuote ?? (decimal)(order.Amount * curAlloc!.Price);
+      amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
       newAlloc.AmountQuote -= amountQuote;
 
-      newQuoteAlloc.AmountQuote += amountQuote;
+      // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
+      quoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
 
       returnOrder.Amount = order.Amount;
     }
 
+    returnOrder.AmountFilled = price == 0 ? 0 : amountQuote / price;
+    returnOrder.AmountQuoteFilled = amountQuote;
     returnOrder.FeePaid = amountQuote * TakerFee;
 
     if (null == curAlloc)
     {
-      _curBalance.AddAllocation(newAlloc);
-    }
-
-    if (null == quoteAlloc)
-    {
-      _curBalance.AddAllocation(newQuoteAlloc);
+      _curBalance?.TryAddAllocation(newAlloc);
     }
 
     return Task.FromResult(returnOrder);
   }
 
-  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto? market = null)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>> CancelAllOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
   {
-    return Task.FromResult(new List<OrderDto>().AsEnumerable());
+    return Task.FromResult(new List<OrderDto>().AsEnumerable())!;
   }
 
-  public Task<IEnumerable<OrderDto>> SellAllPositions(string? asset = null)
+  public Task<IEnumerable<OrderDto>?> SellAllPositions(string? asset = null)
   {
     throw new NotImplementedException();
   }
 }
 
 /// <inheritdoc cref="MockExchange"/>
-public class MockExchange<T> : MockExchange, IExchange where T : class, IExchange
+public class SimExchange : MockExchange, IExchange
 {
   protected readonly IExchange _instance;
 
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
-  public MockExchange(T exchangeService, Balance? curBalance = null)
+  public SimExchange(IExchange exchangeService, Balance? curBalance = null)
     : base(
       exchangeService.QuoteSymbol,
-      exchangeService.MinimumOrderSize,
+      exchangeService.MinOrderSizeInQuote,
       exchangeService.MakerFee,
       exchangeService.TakerFee,
-      curBalance ?? exchangeService.GetBalance().Result)
+      curBalance ?? exchangeService.GetBalance().GetAwaiter().GetResult())
   {
     _instance = exchangeService;
   }
 
+  public async Task ProcessOrders(IEnumerable<OrderDto> orders)
+  {
+    foreach (var order in orders)
+    {
+      // If the order is a buy, we need to add the fee to the amount, since fee is handled by the NewOrder method.
+      if (order.Side == OrderSide.Buy)
+      {
+        order.Amount = order.AmountFilled > 0 ? order.AmountFilled * (1 / (1 - TakerFee)) : order.Amount;
+        order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled * (1 / (1 - TakerFee)) : order.AmountQuote;
+      }
+      // For sell orders, we don't need to add the fee, since it's already subtracted from the amount.
+      else
+      {
+        order.Amount = order.AmountFilled > 0 ? order.AmountFilled : order.Amount;
+        order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled : order.AmountQuote;
+      }
+
+      await NewOrder(order);
+    }
+  }
+
+  new public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit) => _instance.GetCandles(market, interval, limit);
+  new public Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
   new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

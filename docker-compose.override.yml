@@ -2,9 +2,9 @@ version: '3.4'
 
 services:
   
-  traderengine.mongodb:
+  traderengine.mariadb:
     ports:
-      - "27017:27017"
+      - "3306:3306"
 
   traderengine.api:
     build:
@@ -14,7 +14,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
     ports:
-      - "${PORT_API}:80"
+      - "5000:80"
 
   traderengine.cli:
     build:
@@ -23,3 +23,8 @@ services:
         - MODE=Debug
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+
+  traderengine.cryptography:
+    image: bvandevliet/cryptography:linux-amd64
+    ports:
+      - "5010:80"

@@ -14,7 +14,7 @@ public class Balance
   public event EventHandler? OnAmountQuoteTotalReset;
 
   /// <summary>
-  /// Triggered when <see cref="AmountQuote"/> has changed.
+  /// Triggered when <see cref="AmountQuoteAvailable"/> has changed.
   /// </summary>
   public event EventHandler? OnAmountQuoteAvailableReset;
 
@@ -29,31 +29,31 @@ public class Balance
   /// </summary>
   public ReadOnlyCollection<Allocation> Allocations { get; }
 
+  private decimal? _amountQuote;
+  /// <summary>
+  /// Amount of quote currency available.
+  /// </summary>
+  public decimal AmountQuoteAvailable
+  {
+    get => _amountQuote ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
+  }
+
   private decimal? _amountQuoteTotal;
   /// <summary>
-  /// Total value of balance in quote currency.
+  /// Total value of portfolio in quote currency.
   /// </summary>
   public decimal AmountQuoteTotal
   {
     get => _amountQuoteTotal ??= Allocations.Sum(alloc => alloc.AmountQuote);
   }
 
-  private decimal? _amountQuote;
-  /// <summary>
-  /// Amount of quote currency.
-  /// </summary>
-  public decimal AmountQuote
-  {
-    get => _amountQuote ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
-  }
-
   /// <summary>
   /// Collection of <see cref="Allocation"/> instances and total quote amount values.
   /// </summary>
-  /// <param name="quoteCurrency"><inheritdoc cref="QuoteSymbol"/></param>
-  public Balance(string quoteCurrency)
+  /// <param name="quoteSymbol"><inheritdoc cref="QuoteSymbol"/></param>
+  public Balance(string quoteSymbol)
   {
-    QuoteSymbol = quoteCurrency;
+    QuoteSymbol = quoteSymbol;
 
     Allocations = _allocations.AsReadOnly();
   }
@@ -72,17 +72,16 @@ public class Balance
   /// </summary>
   /// <param name="allocation">The <see cref="Allocation"/> to add.</param>
   /// <exception cref="InvalidObjectException"></exception>
-  /// <exception cref="ObjectAlreadyExistsException"></exception>
-  public void AddAllocation(Allocation allocation)
+  public bool TryAddAllocation(Allocation allocation)
   {
-    if (QuoteSymbol != allocation.Market.QuoteSymbol)
+    if (false == QuoteSymbol.Equals(allocation.Market.QuoteSymbol))
     {
       throw new InvalidObjectException("Quote currency of given Allocation object does not match with the quote currency of this Balance instance.");
     }
 
     if (_allocations.Any(alloc => alloc.Market.Equals(allocation.Market)))
     {
-      throw new ObjectAlreadyExistsException("An allocation in this market already exists.");
+      return false;
     }
 
     allocation.PriceUpdated += ResetAmountQuoteTotal;
@@ -104,6 +103,8 @@ public class Balance
     {
       ResetAmountQuoteAvailable();
     }
+
+    return true;
   }
 
   /// <summary>
