@@ -35,7 +35,9 @@ public class RebalanceController : ControllerBase
 
     var simExchange = new SimExchange(exchange, curBalance);
 
-    var orders = await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs);
+    var orders = null != rebalanceReqDto.AllocDiffs
+      ? await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.AllocDiffs)
+      : await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs, curBalance);
 
     var newBalance = await simExchange.GetBalance();
 
