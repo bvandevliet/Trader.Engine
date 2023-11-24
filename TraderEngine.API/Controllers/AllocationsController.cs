@@ -32,7 +32,7 @@ public class AllocationsController : ControllerBase
   [HttpPost("current/{exchangeName}")]
   public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredentials)
   {
-    _logger.LogInformation("Handling CurrentBalance request for '{Host}'.", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogInformation("Handling CurrentBalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
@@ -47,7 +47,7 @@ public class AllocationsController : ControllerBase
   [HttpPost("balanced/{exchangeName}")]
   public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
-    _logger.LogInformation("Handling BalancedAbsAllocs request for '{Host}'.", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogInformation("Handling BalancedAbsAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
@@ -67,6 +67,11 @@ public class AllocationsController : ControllerBase
     // Get absolute balanced allocations.
     var absAllocs = await _marketCapService()
       .BalancedAbsAllocs(quoteSymbol, balanceReqDto.Config);
+
+    if (null == absAllocs)
+    {
+      return NotFound("No recent market cap records found.");
+    }
 
     // Get absolute balanced allocation tasks, to check if tradable.
     var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>

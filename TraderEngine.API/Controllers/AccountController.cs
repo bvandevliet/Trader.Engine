@@ -21,7 +21,7 @@ public class AccountController : ControllerBase
   [HttpPost("totals/deposited/{exchangeName}")]
   public async Task<ActionResult<decimal>> TotalDeposited(string exchangeName, ApiCredReqDto apiCredentials)
   {
-    _logger.LogInformation("Handling TotalDeposited request for '{Host}'.", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogInformation("Handling TotalDeposited request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
@@ -36,7 +36,7 @@ public class AccountController : ControllerBase
   [HttpPost("totals/withdrawn/{exchangeName}")]
   public async Task<ActionResult<decimal>> TotalWithdrawn(string exchangeName, ApiCredReqDto apiCredentials)
   {
-    _logger.LogInformation("Handling TotalWithdrawn request for '{Host}'.", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogInformation("Handling TotalWithdrawn request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
