@@ -219,7 +219,7 @@ public static class WordPressDbSerializer
 
         // TODO: Handle timezone !!
         string formattedDate = parts[1].Split('"')[1];
-        string tzKind = parts[5].Split('"')[1];
+        //string tzKind = parts[5].Split('"')[1];
 
         return DateTime.Parse(formattedDate, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
       }

@@ -139,7 +139,6 @@ public class BitvavoExchange : IExchange
         return allocation;
       });
 
-    // TODO: HANDLE ERRORS ??
     Allocation[] allocations = await Task.WhenAll(priceTasks);
 
     foreach (var allocation in allocations)
@@ -201,11 +200,6 @@ public class BitvavoExchange : IExchange
     }
 
     return result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString()));
-  }
-
-  public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
-  {
-    throw new NotImplementedException();
   }
 
   public async Task<MarketDataDto?> GetMarket(MarketReqDto market)

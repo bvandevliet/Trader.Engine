@@ -32,7 +32,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   {
     var sqlConn = GetConnection();
 
-    var result = await sqlConn.ExecuteAsync(
+    int result = await sqlConn.ExecuteAsync(
         "CREATE TABLE IF NOT EXISTS MarketCapData (\n" +
         "  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,\n" +
         "  QuoteSymbol VARCHAR(12) NOT NULL,\n" +
