@@ -56,7 +56,7 @@ public static class WordPressDbSerializer
       string formattedDate = dateTimeValue.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
       string tzKind = dateTimeValue.Kind.ToString();
 
-      return $"O:8:\"DateTime\":3:{{s:4:\"date\";s:{formattedDate.Length}:\"{formattedDate}\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:{tzKind.Length}:\"{tzKind}\";}}";
+      return $"O:8:\"DateTime\":3:{{s:4:\"date\";s:{formattedDate.Length}:\"{formattedDate}\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:{tzKind.Length}:\"{tzKind.ToUpper()}\";}}";
     }
 
     var type = value.GetType();
@@ -219,7 +219,7 @@ public static class WordPressDbSerializer
 
         // TODO: Handle timezone !!
         string formattedDate = parts[1].Split('"')[1];
-        string tzKind = parts[5].Split('"')[1];
+        //string tzKind = parts[5].Split('"')[1];
 
         return DateTime.Parse(formattedDate, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
       }

@@ -12,15 +12,18 @@ namespace TraderEngine.API.Controllers;
 [ApiController, Route("api/[controller]")]
 public class AllocationsController : ControllerBase
 {
+  private readonly ILogger<AllocationsController> _logger;
   private readonly IMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
   private readonly Func<IMarketCapService> _marketCapService;
 
   public AllocationsController(
+    ILogger<AllocationsController> logger,
     IServiceProvider serviceProvider,
     IMapper mapper,
     ExchangeFactory exchangeFactory)
   {
+    _logger = logger;
     _mapper = mapper;
     _exchangeFactory = exchangeFactory;
     _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
@@ -29,6 +32,8 @@ public class AllocationsController : ControllerBase
   [HttpPost("current/{exchangeName}")]
   public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredentials)
   {
+    _logger.LogInformation("Handling CurrentBalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = apiCredentials.ApiKey;
@@ -42,6 +47,8 @@ public class AllocationsController : ControllerBase
   [HttpPost("balanced/{exchangeName}")]
   public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
+    _logger.LogInformation("Handling BalancedAbsAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = balanceReqDto.ExchangeApiCred.ApiKey;
@@ -60,6 +67,11 @@ public class AllocationsController : ControllerBase
     // Get absolute balanced allocations.
     var absAllocs = await _marketCapService()
       .BalancedAbsAllocs(quoteSymbol, balanceReqDto.Config);
+
+    if (null == absAllocs)
+    {
+      return NotFound("No recent market cap records found.");
+    }
 
     // Get absolute balanced allocation tasks, to check if tradable.
     var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>

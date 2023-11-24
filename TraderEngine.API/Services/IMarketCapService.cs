@@ -19,9 +19,10 @@ public interface IMarketCapService
 
   /// <summary>
   /// Get the top ranked balanced allocations for the specified <paramref name="configReqDto"/>.
+  /// Returns null if not at least 100 records are available, which indicates a lack of recent market cap data.
   /// </summary>
   /// <param name="quoteSymbol"></param>
   /// <param name="configReqDto"></param>
   /// <returns></returns>
-  Task<IEnumerable<AbsAllocReqDto>> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto);
+  Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto);
 }

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -27,6 +28,8 @@ internal class ApiClient : IApiClient
 
   public async Task<BalanceDto> CurrentBalance(string exchangeName, ApiCredReqDto apiCred)
   {
+    _logger.LogDebug("Requesting current balance for '{exchangeName}' ..", exchangeName);
+
     // Request current balance.
     using var curBalanceResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/current/{exchangeName}", apiCred);
@@ -45,20 +48,28 @@ internal class ApiClient : IApiClient
     return (await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>())!;
   }
 
-  public async Task<List<AbsAllocReqDto>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
+  public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
+    _logger.LogDebug("Requesting balanced absolute allocations for '{exchangeName}' ..", exchangeName);
+
     // Request absolute balanced allocations.
     using var absAllocsResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balanceReqDto);
 
-    // TODO: ERROR HANDLING ??
     if (!absAllocsResp.IsSuccessStatusCode)
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
-        $"api/allocations/balanced/{exchangeName}", (int)absAllocsResp.StatusCode,
-        absAllocsResp.ReasonPhrase, await absAllocsResp.Content.ReadAsStringAsync());
+      if (absAllocsResp.StatusCode == HttpStatusCode.NotFound)
+      {
+        _logger.LogWarning("No recent market cap records found.");
+      }
+      else
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          $"api/allocations/balanced/{exchangeName}", (int)absAllocsResp.StatusCode,
+          absAllocsResp.ReasonPhrase, await absAllocsResp.Content.ReadAsStringAsync());
+      }
 
-      throw new Exception("Error while requesting balanced allocations.");
+      return null;
     }
 
     // Read absolute balanced allocations DTO.
@@ -71,6 +82,8 @@ internal class ApiClient : IApiClient
 
   public async Task<RebalanceDto> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
+    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
+
     // Execute rebalance.
     using var rebalanceResp = await _httpClient
       .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", rebalanceReqDto);

@@ -25,9 +25,6 @@ public interface IExchange
 
   Task<decimal> TotalWithdrawn();
 
-  // TODO: ASSIGN TYPE !!
-  Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit);
-
   Task<MarketDataDto?> GetMarket(MarketReqDto market);
 
   Task<decimal> GetPrice(MarketReqDto market);
