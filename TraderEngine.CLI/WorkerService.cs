@@ -166,11 +166,7 @@ internal class WorkerService
     if (!allocDiffs.Any(allocDiff =>
       ( // .. if any of the allocation diffs exceed the minimum order size.
       Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
-      Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)
-      ||
-      ( // .. or if the asset should not be allocated at all.
-      false == allocDiff.Market.BaseSymbol.Equals(curBalanceDto.QuoteSymbol) &&
-      allocDiff.Price > 0 && allocDiff.AmountQuoteDiff / allocDiff.Price == allocDiff.Amount)))
+      Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)))
     {
       return null;
     }
