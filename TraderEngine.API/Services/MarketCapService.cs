@@ -44,17 +44,18 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       });
   }
 
-  public async Task<IEnumerable<AbsAllocReqDto>> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto)
+  public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto)
   {
     _logger.LogDebug("Calculating balanced absolute allocations for '{QuoteSymbol}' ..", quoteSymbol);
 
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
     // Expected to have at least 100 records. Bail out for safety.
-    // TODO: USE THE "RESULT" APPROACH INSTEAD OF THROWING EXCEPTIONS !!
     if (marketCapLatest.Count < 100)
     {
-      throw new Exception("No recent market cap records found.");
+      _logger.LogWarning("No recent market cap records found.");
+
+      return null;
     }
 
     string ignoredTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $"^{tag}$"));

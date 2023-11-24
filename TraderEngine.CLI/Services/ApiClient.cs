@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http.Json;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -47,7 +48,7 @@ internal class ApiClient : IApiClient
     return (await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>())!;
   }
 
-  public async Task<List<AbsAllocReqDto>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
+  public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
     _logger.LogDebug("Requesting balanced absolute allocations for '{exchangeName}' ..", exchangeName);
 
@@ -55,14 +56,20 @@ internal class ApiClient : IApiClient
     using var absAllocsResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balanceReqDto);
 
-    // TODO: ERROR HANDLING ??
     if (!absAllocsResp.IsSuccessStatusCode)
     {
-      _logger.LogError("{url} returned {code} {reason} : {response}",
-        $"api/allocations/balanced/{exchangeName}", (int)absAllocsResp.StatusCode,
-        absAllocsResp.ReasonPhrase, await absAllocsResp.Content.ReadAsStringAsync());
+      if (absAllocsResp.StatusCode == HttpStatusCode.NotFound)
+      {
+        _logger.LogWarning("No recent market cap records found.");
+      }
+      else
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          $"api/allocations/balanced/{exchangeName}", (int)absAllocsResp.StatusCode,
+          absAllocsResp.ReasonPhrase, await absAllocsResp.Content.ReadAsStringAsync());
+      }
 
-      throw new Exception("Error while requesting balanced allocations.");
+      return null;
     }
 
     // Read absolute balanced allocations DTO.
