@@ -12,13 +12,16 @@ namespace TraderEngine.API.Controllers;
 [ApiController, Route("api/[controller]")]
 public class RebalanceController : ControllerBase
 {
+  private readonly ILogger<RebalanceController> _logger;
   private readonly IMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
 
   public RebalanceController(
+    ILogger<RebalanceController> logger,
     IMapper mapper,
     ExchangeFactory exchangeFactory)
   {
+    _logger = logger;
     _mapper = mapper;
     _exchangeFactory = exchangeFactory;
   }
@@ -26,6 +29,8 @@ public class RebalanceController : ControllerBase
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<RebalanceDto>> SimulateRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
+    _logger.LogInformation("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
@@ -51,6 +56,8 @@ public class RebalanceController : ControllerBase
   [HttpPost("execute/{exchangeName}")]
   public async Task<ActionResult<RebalanceDto>> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
+    _logger.LogInformation("Handling ExecuteRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;

@@ -33,6 +33,8 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<WordPressUserDto> GetUserInfo(int userId)
   {
+    _logger.LogDebug("Getting user info for user '{UserId}' ..", userId);
+
     var sqlConn = GetConnection();
 
     var result = (await sqlConn.QueryFirstOrDefaultAsync<WordPressUserDto>(
@@ -46,6 +48,8 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
+    _logger.LogDebug("Getting config for user '{UserId}' ..", userId);
+
     var sqlConn = GetConnection();
 
     string dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(
@@ -62,6 +66,8 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs()
   {
+    _logger.LogDebug("Getting configs for all users ..");
+
     var sqlConn = GetConnection();
 
     var dbConfigs = await sqlConn.QueryAsync<(int user_id, string meta_value)>(
@@ -77,6 +83,8 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<int> SaveConfig(int userId, ConfigReqDto configReqDto)
   {
+    _logger.LogDebug("Saving config for user '{UserId}' ..", userId);
+
     var wpConfig = _mapper.Map<WordPressConfigDto>(configReqDto);
 
     string dbConfig = WordPressDbSerializer.Serialize(wpConfig);

@@ -66,11 +66,6 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit)
-  {
-    throw new NotImplementedException();
-  }
-
   public Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
     throw new NotImplementedException();
@@ -204,7 +199,6 @@ public class SimExchange : MockExchange, IExchange
     }
   }
 
-  new public Task<object?> GetCandles(MarketReqDto market, CandleInterval interval, int limit) => _instance.GetCandles(market, interval, limit);
   new public Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
   new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

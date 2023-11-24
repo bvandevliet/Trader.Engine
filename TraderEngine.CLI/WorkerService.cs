@@ -1,8 +1,6 @@
-using AutoMapper;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
-using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Repositories;
 
@@ -12,7 +10,6 @@ internal class WorkerService
 {
   private readonly Program.AppArgs _appArgs;
   private readonly ILogger<WorkerService> _logger;
-  private readonly IMapper _mapper;
   private readonly IMarketCapExternalRepository _marketCapExtRepo;
   private readonly IMarketCapInternalRepository _marketCapIntRepo;
   private readonly IApiCredentialsRepository _keyRepo;
@@ -23,7 +20,6 @@ internal class WorkerService
   public WorkerService(
     Program.AppArgs appArgs,
     ILogger<WorkerService> logger,
-    IMapper mapper,
     IMarketCapExternalRepository marketCapExtRepo,
     IMarketCapInternalRepository marketCapIntRepo,
     IApiCredentialsRepository keyRepo,
@@ -33,7 +29,6 @@ internal class WorkerService
   {
     _appArgs = appArgs;
     _logger = logger;
-    _mapper = mapper;
     _marketCapExtRepo = marketCapExtRepo;
     _marketCapIntRepo = marketCapIntRepo;
     _keyRepo = keyRepo;
@@ -50,13 +45,17 @@ internal class WorkerService
 
       if (_appArgs.DoUpdateMarketCap)
       {
+        _logger.LogInformation("Updating market cap data ..");
+
         var latest = await _marketCapExtRepo.ListLatest("EUR");
 
         await _marketCapIntRepo.InsertMany(latest);
       }
 
-      if (_appArgs.DoAutomatedTriggers)
+      if (_appArgs.DoAutomations)
       {
+        _logger.LogInformation("Running automations ..");
+
         var userConfigs = await _configRepo.GetConfigs();
 
         var now = DateTime.UtcNow;
@@ -70,6 +69,8 @@ internal class WorkerService
             // Only handle automation enabled configs.
             if (!configReqDto.AutomationEnabled)
             {
+              _logger.LogInformation("Automation is disabled for user '{userId}'.", userConfig.Key);
+
               return;
             }
 
@@ -77,6 +78,8 @@ internal class WorkerService
             if (configReqDto.LastRebalance is DateTime lastRebalance &&
               Math.Round((now - lastRebalance).TotalHours, MidpointRounding.ToNegativeInfinity) < configReqDto.IntervalHours)
             {
+              _logger.LogInformation("Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
+
               return;
             }
 
@@ -86,15 +89,54 @@ internal class WorkerService
             // Get API credentials.
             var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
-            // Run automation.
-            var rebalanceDto = await RunAutomation(exchangeName, configReqDto, apiCred);
+            // Get current balance DTO.
+            var curBalanceDto = await _apiClient.CurrentBalance(exchangeName, apiCred);
 
-            if (null == rebalanceDto)
+            // Construct balance request DTO.
+            var balanceReqDto = new BalanceReqDto()
+            {
+              QuoteSymbol = curBalanceDto.QuoteSymbol,
+              AmountQuoteTotal = curBalanceDto.AmountQuoteTotal,
+              Config = configReqDto,
+              ExchangeApiCred = apiCred,
+            };
+
+            // Get absolute balanced allocations DTO.
+            var absAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balanceReqDto);
+
+            if (null == absAllocs)
+            {
+              _logger.LogWarning("Balanced allocations could not be determined for user '{userId}'.", userConfig.Key);
+
+              return;
+            }
+
+            // Get relative allocation diffs, as list since we're iterating it more than once.
+            var allocDiffs = RebalanceHelpers
+              .GetAllocationQuoteDiffs(absAllocs, curBalanceDto)
+              .ToList();
+
+            // Test if eligible.
+            if (!allocDiffs.Any(allocDiff =>
+              ( // .. if any of the allocation diffs exceed the minimum order size.
+              Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
+              Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)))
             {
               _logger.LogInformation("Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
 
               return;
             }
+
+            // Construct rebalance request DTO.
+            var rebalanceReqDto = new RebalanceReqDto()
+            {
+              ExchangeApiCred = apiCred,
+              NewAbsAllocs = absAllocs,
+              AllocDiffs = allocDiffs,
+            };
+
+            // Execute and return resulting rebalance DTO.
+            var rebalanceDto = await _apiClient.ExecuteRebalance(exchangeName, rebalanceReqDto);
 
             // If no orders were placed, return.
             if (rebalanceDto.Orders.Length == 0)
@@ -114,7 +156,7 @@ internal class WorkerService
               return;
             }
 
-            _logger.LogInformation("Automation completed for user '{userId}' ..", userConfig.Key);
+            _logger.LogInformation("Automation completed for user '{userId}'.", userConfig.Key);
 
             // Update last rebalance timestamp.
             configReqDto.LastRebalance = now;
@@ -137,49 +179,5 @@ internal class WorkerService
     {
       _logger.LogCritical(exception, "Error while running worker service.");
     }
-  }
-
-  public async Task<RebalanceDto?> RunAutomation(
-    string exchangeName, ConfigReqDto configReqDto, ApiCredReqDto apiCred)
-  {
-    // Get current balance DTO.
-    var curBalanceDto = await _apiClient.CurrentBalance(exchangeName, apiCred);
-
-    // Construct balance request DTO.
-    var balanceReqDto = new BalanceReqDto()
-    {
-      QuoteSymbol = curBalanceDto.QuoteSymbol,
-      AmountQuoteTotal = curBalanceDto.AmountQuoteTotal,
-      Config = configReqDto,
-      ExchangeApiCred = apiCred,
-    };
-
-    // Get absolute balanced allocations DTO.
-    var absAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balanceReqDto);
-
-    // Get relative allocation diffs, as list since we're iterating it more than once.
-    var allocDiffs = RebalanceHelpers
-      .GetAllocationQuoteDiffs(absAllocs, curBalanceDto)
-      .ToList();
-
-    // Test if eligible.
-    if (!allocDiffs.Any(allocDiff =>
-      ( // .. if any of the allocation diffs exceed the minimum order size.
-      Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
-      Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)))
-    {
-      return null;
-    }
-
-    // Construct rebalance request DTO.
-    var rebalanceReqDto = new RebalanceReqDto()
-    {
-      ExchangeApiCred = apiCred,
-      NewAbsAllocs = absAllocs,
-      AllocDiffs = allocDiffs,
-    };
-
-    // Execute and return resulting rebalance DTO.
-    return await _apiClient.ExecuteRebalance(exchangeName, rebalanceReqDto);
   }
 }
