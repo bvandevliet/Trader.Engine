@@ -1,4 +1,3 @@
-using AutoMapper;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
@@ -12,7 +11,6 @@ internal class WorkerService
 {
   private readonly Program.AppArgs _appArgs;
   private readonly ILogger<WorkerService> _logger;
-  private readonly IMapper _mapper;
   private readonly IMarketCapExternalRepository _marketCapExtRepo;
   private readonly IMarketCapInternalRepository _marketCapIntRepo;
   private readonly IApiCredentialsRepository _keyRepo;
@@ -23,7 +21,6 @@ internal class WorkerService
   public WorkerService(
     Program.AppArgs appArgs,
     ILogger<WorkerService> logger,
-    IMapper mapper,
     IMarketCapExternalRepository marketCapExtRepo,
     IMarketCapInternalRepository marketCapIntRepo,
     IApiCredentialsRepository keyRepo,
@@ -33,7 +30,6 @@ internal class WorkerService
   {
     _appArgs = appArgs;
     _logger = logger;
-    _mapper = mapper;
     _marketCapExtRepo = marketCapExtRepo;
     _marketCapIntRepo = marketCapIntRepo;
     _keyRepo = keyRepo;
@@ -50,13 +46,17 @@ internal class WorkerService
 
       if (_appArgs.DoUpdateMarketCap)
       {
+        _logger.LogInformation("Updating market cap data ..");
+
         var latest = await _marketCapExtRepo.ListLatest("EUR");
 
         await _marketCapIntRepo.InsertMany(latest);
       }
 
-      if (_appArgs.DoAutomatedTriggers)
+      if (_appArgs.DoAutomations)
       {
+        _logger.LogInformation("Running automations ..");
+
         var userConfigs = await _configRepo.GetConfigs();
 
         var now = DateTime.UtcNow;
@@ -70,6 +70,8 @@ internal class WorkerService
             // Only handle automation enabled configs.
             if (!configReqDto.AutomationEnabled)
             {
+              _logger.LogInformation("Automation is disabled for user '{userId}'.", userConfig.Key);
+
               return;
             }
 
@@ -77,6 +79,8 @@ internal class WorkerService
             if (configReqDto.LastRebalance is DateTime lastRebalance &&
               Math.Round((now - lastRebalance).TotalHours, MidpointRounding.ToNegativeInfinity) < configReqDto.IntervalHours)
             {
+              _logger.LogInformation("Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
+
               return;
             }
 
@@ -114,7 +118,7 @@ internal class WorkerService
               return;
             }
 
-            _logger.LogInformation("Automation completed for user '{userId}' ..", userConfig.Key);
+            _logger.LogInformation("Automation completed for user '{userId}'.", userConfig.Key);
 
             // Update last rebalance timestamp.
             configReqDto.LastRebalance = now;

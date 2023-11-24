@@ -221,9 +221,6 @@ public class BitvavoExchange : IExchange
 
       if (error?["errorCode"]?.ToString() == "205")
       {
-        _logger.LogWarning("{url} returned {code} {reason} : {response}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
-
         return new MarketDataDto()
         {
           Status = MarketStatus.Unavailable,

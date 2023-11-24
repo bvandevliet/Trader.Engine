@@ -27,6 +27,8 @@ internal class ApiClient : IApiClient
 
   public async Task<BalanceDto> CurrentBalance(string exchangeName, ApiCredReqDto apiCred)
   {
+    _logger.LogDebug("Requesting current balance for '{exchangeName}' ..", exchangeName);
+
     // Request current balance.
     using var curBalanceResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/current/{exchangeName}", apiCred);
@@ -47,6 +49,8 @@ internal class ApiClient : IApiClient
 
   public async Task<List<AbsAllocReqDto>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
   {
+    _logger.LogDebug("Requesting balanced absolute allocations for '{exchangeName}' ..", exchangeName);
+
     // Request absolute balanced allocations.
     using var absAllocsResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balanceReqDto);
@@ -71,6 +75,8 @@ internal class ApiClient : IApiClient
 
   public async Task<RebalanceDto> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
+    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
+
     // Execute rebalance.
     using var rebalanceResp = await _httpClient
       .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", rebalanceReqDto);

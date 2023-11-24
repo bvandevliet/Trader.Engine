@@ -1,18 +1,13 @@
-using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 
 namespace TraderEngine.Common.Services;
 
 public class CryptographyService : ICryptographyService
 {
-  private readonly ILogger<CryptographyService> _logger;
   private readonly HttpClient _httpClient;
 
-  public CryptographyService(
-    ILogger<CryptographyService> logger,
-    HttpClient httpClient)
+  public CryptographyService(HttpClient httpClient)
   {
-    _logger = logger;
     _httpClient = httpClient;
   }
 

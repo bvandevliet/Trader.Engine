@@ -53,10 +53,12 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   /// <param name="sqlConn"></param>
   /// <param name="marketCap"></param>
   /// <returns></returns>
-  protected static async Task<bool> ShouldInsert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
+  protected async Task<bool> ShouldInsert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
   {
     if (!IsCloseToTheWholeHour(marketCap.Updated))
     {
+      _logger.LogWarning("Market cap of '{market}' is not close to the whole hour.", marketCap.Market);
+
       return false;
     }
 
@@ -81,6 +83,8 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   /// <returns></returns>
   protected async Task<int> Insert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
   {
+    _logger.LogDebug("Inserting market cap of '{market}' to database ..", marketCap.Market);
+
     int rowsAffected = 0;
 
     if (await ShouldInsert(sqlConn, marketCap))
@@ -94,7 +98,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
       if (0 == rowsAffected)
       {
-        _logger.LogError("Failed to insert market cap of {market} to database.", marketCap.Market);
+        _logger.LogError("Failed to insert market cap of '{market}' to database.", marketCap.Market);
       }
     }
 
@@ -103,6 +107,8 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
+    _logger.LogDebug("Inserting {count} market cap records into database ..", marketCaps.Count());
+
     var sqlConn = GetConnection();
 
     int rowsAffected = 0;
@@ -121,6 +127,8 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int hours = 24)
   {
+    _logger.LogDebug("Listing historical market cap for '{market}' ..", market);
+
     var sqlConn = GetConnection();
 
     var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(
@@ -142,6 +150,8 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   // TODO: CACHE RECENT RECORDS TO AVOID REPEATED QUERIES !!
   public async Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24)
   {
+    _logger.LogDebug("Listing many historical market cap for '{QuoteSymbol}' ..", quoteSymbol);
+
     var sqlConn = GetConnection();
 
     // Fetch recent records to determine relevant assets.

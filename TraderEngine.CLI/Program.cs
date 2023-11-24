@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
+using System.Diagnostics;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
@@ -99,10 +100,14 @@ public class Program
     args = args.Append("-marketcap").ToArray();
 #endif
 
+    var stopwatch = Stopwatch.StartNew();
+
     // Run the hosted service, catch-all to guarantee shutdown.
     try
     {
-      logger.LogInformation("{time}: Application is starting up ..", DateTime.Now.ToString("u"));
+      logger.LogInformation(
+        "{time}: Application is starting up ..",
+        DateTime.Now.ToString("u"));
 
       host.Services.GetRequiredService<WorkerService>().RunAsync().GetAwaiter().GetResult();
     }
@@ -112,7 +117,11 @@ public class Program
     }
     finally
     {
-      logger.LogInformation("{time}: Application is shutting down ..", DateTime.Now.ToString("u"));
+      stopwatch.Stop();
+
+      logger.LogInformation(
+        "{time}: Application is shutting down after {secs} seconds ..",
+        DateTime.Now.ToString("u"), Math.Ceiling(stopwatch.Elapsed.TotalSeconds));
 
       host.Dispose();
     }
@@ -125,12 +134,12 @@ public class Program
       Args = args;
 
       DoUpdateMarketCap = Args.Contains("-marketcap");
-      DoAutomatedTriggers = Args.Contains("-automations");
+      DoAutomations = Args.Contains("-automations");
     }
 
     public string[] Args { get; }
 
     public bool DoUpdateMarketCap { get; }
-    public bool DoAutomatedTriggers { get; }
+    public bool DoAutomations { get; }
   }
 }
