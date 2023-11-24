@@ -75,7 +75,7 @@ public class Program
 
         services.AddTransient<IApiCredentialsRepository, WordPressApiCredRepository>();
 
-        services.AddSingleton<IEmailNotificationService, EmailNotificationService>();
+        services.AddTransient<IEmailNotificationService, EmailNotificationService>();
 
         services.AddHttpClient<IApiClient, ApiClient>((x, httpClient) =>
         {
