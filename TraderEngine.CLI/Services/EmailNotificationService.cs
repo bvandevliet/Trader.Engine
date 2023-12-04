@@ -56,7 +56,7 @@ table td.trader-number {
     var orderData = rebalanceDto.Orders.Select(order =>
     $"{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}\n" +
     $"{order.AmountFilled} {order.Market.BaseSymbol}\n" +
-    $"for {order.AmountQuoteFilled.Floor(2)} {order.Market.QuoteSymbol}");
+    $"for {order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}");
 
     decimal cumulativeValue = rebalanceDto.NewBalance.AmountQuoteTotal + totalWithdrawn;
 
@@ -82,13 +82,13 @@ table td.trader-number {
     $"<td>Current value</td>" +
     $"<td class=\"trader-number\">(v)</td>" +
     $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.AmountQuoteTotal.Round(2)}</td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
     $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Cumulative value</td>" +
     $"<td class=\"trader-number\">(V=o+v)</td>" +
     $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{cumulativeValue.Round(2)}</td>" +
+    $"<td class=\"trader-number\">{cumulativeValue.Floor(2)}</td>" +
     $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr style=\"border-top-width:1px;\">" +
     $"<td>Total gain</td>" +
