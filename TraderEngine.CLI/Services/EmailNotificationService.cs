@@ -33,13 +33,12 @@ tt,
 var,
 .monospace,
 .trader-number {
-  background-color: unset;
-  font-family: 'Lucida Console', Monaco, Consolas, ""Andale Mono"", ""DejaVu Sans Mono"", monospace;
+  font-family: monospace;
   white-space: pre;
+  background-color: unset;
 }
 .trader-number {
   text-align: right;
-  white-space: pre;
 }
 table tr.trader-number th,
 table tr.trader-number td,
@@ -52,11 +51,6 @@ table td.trader-number {
     int userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, RebalanceDto rebalanceDto)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
-
-    var orderData = rebalanceDto.Orders.Select(order =>
-    $"{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}\n" +
-    $"{order.AmountFilled} {order.Market.BaseSymbol}\n" +
-    $"for {order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}");
 
     decimal cumulativeValue = rebalanceDto.NewBalance.AmountQuoteTotal + totalWithdrawn;
 
@@ -105,8 +99,15 @@ table td.trader-number {
     $"</tr>" +
     $"</table></p>" +
     $"<p>The below {rebalanceDto.Orders.Length} orders were executed" +
-    $" with a total fee of {rebalanceDto.TotalFee.Ceiling(2)} {rebalanceDto.NewBalance.QuoteSymbol} was paid.</p>" +
-    $"<pre>{string.Join("</pre><pre>", orderData)}</pre>";
+    $" with a total fee paid of {rebalanceDto.TotalFee.Ceiling(2)} {rebalanceDto.NewBalance.QuoteSymbol}.</p>" +
+    $"<table>" +
+      string.Concat(rebalanceDto.Orders.Select(order =>
+      $"<tr>" +
+      $"<td>{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}</td>" +
+      $"<td class=\"trader-number\">{order.AmountFilled} {order.Market.BaseSymbol}</td>" +
+      $"<td class=\"trader-number\">for {order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
+      $"</tr>")) +
+    "</table>";
 
     using var message = new MimeMessage();
 
@@ -129,6 +130,7 @@ table td.trader-number {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string htmlString =
+    $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
     $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
@@ -153,6 +155,7 @@ table td.trader-number {
     int userId, DateTime timestamp, Exception exception)
   {
     string htmlString =
+    $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode("")},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
     $"<p>{exception.Message}:</p>" +
