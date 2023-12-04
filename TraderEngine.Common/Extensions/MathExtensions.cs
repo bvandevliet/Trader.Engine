@@ -20,4 +20,9 @@ public static class MathExtensions
 
     return Math.Ceiling(value * mult) / mult;
   }
+
+  public static decimal GainPerc(this decimal value, decimal baseValue, int decimals)
+  {
+    return baseValue == 0 ? 0 : 100 * (value / baseValue - 1).Round(decimals);
+  }
 }

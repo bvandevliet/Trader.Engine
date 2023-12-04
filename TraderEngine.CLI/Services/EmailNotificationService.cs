@@ -24,8 +24,32 @@ public class EmailNotificationService : IEmailNotificationService
     _configRepo = configRepo;
   }
 
+  private readonly string _cssString =
+@"
+pre,
+code,
+kbd,
+tt,
+var,
+.monospace,
+.trader-number {
+  background-color: unset;
+  font-family: 'Lucida Console', Monaco, Consolas, ""Andale Mono"", ""DejaVu Sans Mono"", monospace;
+  white-space: pre;
+}
+.trader-number {
+  text-align: right;
+  white-space: pre;
+}
+table tr.trader-number th,
+table tr.trader-number td,
+table th.trader-number,
+table td.trader-number {
+  width: .1ch;
+}";
+
   public async Task SendAutomationSucceeded(
-    int userId, DateTime timestamp, RebalanceDto rebalanceDto)
+    int userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, RebalanceDto rebalanceDto)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
@@ -34,12 +58,55 @@ public class EmailNotificationService : IEmailNotificationService
     $"{order.AmountFilled} {order.Market.BaseSymbol}\n" +
     $"for {order.AmountQuoteFilled.Floor(2)} {order.Market.QuoteSymbol}");
 
+    decimal cumulativeValue = rebalanceDto.NewBalance.AmountQuoteTotal + totalWithdrawn;
+
     string htmlString =
-      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
-      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
-      $"<p>A total fee of {rebalanceDto.Orders.Sum(order => order.FeePaid).Ceiling(2)} {rebalanceDto.NewBalance.QuoteSymbol} was paid.</p>" +
-      $"<p>The below {rebalanceDto.Orders.Length} orders were executed:</p>" +
-      $"<pre>{string.Join("</pre><pre>", orderData)}</pre>";
+    $"<style>{_cssString}</style>" +
+    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
+    $"<p>Your current balance summary:<br>" +
+    $"<table>" +
+    $"<tr>" +
+    $"<td>Total deposited</td>" +
+    $"<td class=\"trader-number\">(i)</td>" +
+    $"<td class=\"trader-number\">:</td>" +
+    $"<td class=\"trader-number\">{totalDeposited.Round(2)}</td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"</tr><tr>" +
+    $"<td>Total withdrawn</td>" +
+    $"<td class=\"trader-number\">(o)</td>" +
+    $"<td class=\"trader-number\">:</td>" +
+    $"<td class=\"trader-number\">{totalWithdrawn.Round(2)}</td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"</tr><tr>" +
+    $"<td>Current value</td>" +
+    $"<td class=\"trader-number\">(v)</td>" +
+    $"<td class=\"trader-number\">:</td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.AmountQuoteTotal.Round(2)}</td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"</tr><tr>" +
+    $"<td>Cumulative value</td>" +
+    $"<td class=\"trader-number\">(V=o+v)</td>" +
+    $"<td class=\"trader-number\">:</td>" +
+    $"<td class=\"trader-number\">{cumulativeValue.Round(2)}</td>" +
+    $"<td class=\"trader-number\"{rebalanceDto.NewBalance.QuoteSymbol}></td>" +
+    $"</tr><tr style=\"border-top-width:1px;\">" +
+    $"<td>Total gain</td>" +
+    $"<td class=\"trader-number\">(V-i)</td>" +
+    $"<td class=\"trader-number\">:</td>" +
+    $"<td class=\"trader-number\">{(cumulativeValue - totalDeposited).Round(2)}</td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"</tr><tr>" +
+    $"<td></td>" +
+    $"<td class=\"trader-number\">(V/i-1)</td>" +
+    $"<td class=\"trader-number\">:</td>" +
+    $"<td class=\"trader-number\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
+    $"<td class=\"trader-number\">%</td>" +
+    $"</tr>" +
+    $"</table></p>" +
+    $"<p>The below {rebalanceDto.Orders.Length} orders were executed" +
+    $" with a total fee of {rebalanceDto.TotalFee.Ceiling(2)} {rebalanceDto.NewBalance.QuoteSymbol} was paid.</p>" +
+    $"<pre>{string.Join("</pre><pre>", orderData)}</pre>";
 
     using var message = new MimeMessage();
 
@@ -62,10 +129,10 @@ public class EmailNotificationService : IEmailNotificationService
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string htmlString =
-      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
-      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
-      $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
-      $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
+    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
+    $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
+    $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
 
     using var message = new MimeMessage();
 
@@ -86,10 +153,10 @@ public class EmailNotificationService : IEmailNotificationService
     int userId, DateTime timestamp, Exception exception)
   {
     string htmlString =
-      $"<p>Hi {HttpUtility.HtmlEncode("")},</p>" +
-      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
-      $"<p>{exception.Message}:</p>" +
-      $"<pre>{exception.StackTrace}</pre>";
+    $"<p>Hi {HttpUtility.HtmlEncode("")},</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
+    $"<p>{exception.Message}:</p>" +
+    $"<pre>{exception.StackTrace}</pre>";
 
     using var message = new MimeMessage();
 
