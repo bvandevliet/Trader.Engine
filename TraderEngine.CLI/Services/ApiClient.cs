@@ -5,7 +5,7 @@ using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.CLI.Services;
 
-internal class ApiClient : IApiClient
+public class ApiClient : IApiClient
 {
   private readonly ILogger<ApiClient> _logger;
   private readonly HttpClient _httpClient;
@@ -18,13 +18,49 @@ internal class ApiClient : IApiClient
     _httpClient = httpClient;
   }
 
-  //public void TotalDeposited()
-  //{
-  //}
+  public async Task<decimal> TotalDeposited(string exchangeName, ApiCredReqDto apiCred)
+  {
+    _logger.LogDebug("Requesting total deposited for '{exchangeName}' ..", exchangeName);
 
-  //public void TotalWithdrawn()
-  //{
-  //}
+    // Request total deposited.
+    using var totalDepositedResp = await _httpClient
+      .PostAsJsonAsync($"api/account/totals/deposited/{exchangeName}", apiCred);
+
+    // TODO: ERROR HANDLING ??
+    if (!totalDepositedResp.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        $"api/account/totals/deposited/{exchangeName}", (int)totalDepositedResp.StatusCode,
+        totalDepositedResp.ReasonPhrase, await totalDepositedResp.Content.ReadAsStringAsync());
+
+      throw new Exception("Error while requesting total deposited.");
+    }
+
+    // Read total deposited.
+    return (await totalDepositedResp.Content.ReadFromJsonAsync<decimal>())!;
+  }
+
+  public async Task<decimal> TotalWithdrawn(string exchangeName, ApiCredReqDto apiCred)
+  {
+    _logger.LogDebug("Requesting total withdrawn for '{exchangeName}' ..", exchangeName);
+
+    // Request total withdrawn.
+    using var totalWithdrawnResp = await _httpClient
+      .PostAsJsonAsync($"api/account/totals/withdrawn/{exchangeName}", apiCred);
+
+    // TODO: ERROR HANDLING ??
+    if (!totalWithdrawnResp.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        $"api/account/totals/withdrawn/{exchangeName}", (int)totalWithdrawnResp.StatusCode,
+        totalWithdrawnResp.ReasonPhrase, await totalWithdrawnResp.Content.ReadAsStringAsync());
+
+      throw new Exception("Error while requesting total withdrawn.");
+    }
+
+    // Read total withdrawn.
+    return (await totalWithdrawnResp.Content.ReadFromJsonAsync<decimal>())!;
+  }
 
   public async Task<BalanceDto> CurrentBalance(string exchangeName, ApiCredReqDto apiCred)
   {

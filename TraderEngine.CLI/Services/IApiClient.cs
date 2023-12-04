@@ -3,8 +3,12 @@ using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.CLI.Services;
 
-internal interface IApiClient
+public interface IApiClient
 {
+  public Task<decimal> TotalDeposited(string exchangeName, ApiCredReqDto apiCred);
+
+  public Task<decimal> TotalWithdrawn(string exchangeName, ApiCredReqDto apiCred);
+
   Task<BalanceDto> CurrentBalance(string exchangeName, ApiCredReqDto apiCred);
 
   Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto);
