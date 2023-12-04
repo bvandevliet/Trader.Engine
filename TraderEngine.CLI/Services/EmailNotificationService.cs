@@ -89,7 +89,7 @@ table td.trader-number {
     $"<td class=\"trader-number\">(V=o+v)</td>" +
     $"<td class=\"trader-number\">:</td>" +
     $"<td class=\"trader-number\">{cumulativeValue.Round(2)}</td>" +
-    $"<td class=\"trader-number\"{rebalanceDto.NewBalance.QuoteSymbol}></td>" +
+    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr style=\"border-top-width:1px;\">" +
     $"<td>Total gain</td>" +
     $"<td class=\"trader-number\">(V-i)</td>" +
