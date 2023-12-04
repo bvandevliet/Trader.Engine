@@ -6,6 +6,8 @@ using System.Web;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
+using TraderEngine.Common.Extensions;
 
 namespace TraderEngine.CLI.Services;
 
@@ -27,12 +29,17 @@ public class EmailNotificationService : IEmailNotificationService
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
+    var orderData = rebalanceDto.Orders.Select(order =>
+    $"{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}\n" +
+    $"{order.AmountFilled} {order.Market.BaseSymbol}\n" +
+    $"for {order.AmountQuoteFilled.Floor(2)} {order.Market.QuoteSymbol}");
+
     string htmlString =
       $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
-      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
-      $" and executed successfully!</p>" +
+      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
+      $"<p>A total fee of {rebalanceDto.Orders.Sum(order => order.FeePaid).Ceiling(2)} {rebalanceDto.NewBalance.QuoteSymbol} was paid.</p>" +
       $"<p>The below {rebalanceDto.Orders.Length} orders were executed:</p>" +
-      $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
+      $"<pre>{string.Join("</pre><pre>", orderData)}</pre>";
 
     using var message = new MimeMessage();
 
@@ -56,8 +63,7 @@ public class EmailNotificationService : IEmailNotificationService
 
     string htmlString =
       $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
-      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
-      $" but failed!</p>" +
+      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
       $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
       $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
 
@@ -81,8 +87,7 @@ public class EmailNotificationService : IEmailNotificationService
   {
     string htmlString =
       $"<p>Hi {HttpUtility.HtmlEncode("")},</p>" +
-      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}" +
-      $" but failed with an exception:</p>" +
+      $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
       $"<p>{exception.Message}:</p>" +
       $"<pre>{exception.StackTrace}</pre>";
 
