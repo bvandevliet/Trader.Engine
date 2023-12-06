@@ -31,20 +31,10 @@ code,
 kbd,
 tt,
 var,
-.monospace,
-.trader-number {
+.monospace {
   font-family: monospace;
   white-space: pre;
   background-color: unset;
-}
-.trader-number {
-  text-align: right;
-}
-table tr.trader-number th,
-table tr.trader-number td,
-table th.trader-number,
-table td.trader-number {
-  width: .1ch;
 }";
 
   public async Task SendAutomationSucceeded(
@@ -62,40 +52,40 @@ table td.trader-number {
     $"<table>" +
     $"<tr>" +
     $"<td>Total deposited</td>" +
-    $"<td class=\"trader-number\">(i)</td>" +
-    $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{totalDeposited.Round(2)}</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">(i)</td>" +
+    $"<td class=\"monospace\">:</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
+    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Total withdrawn</td>" +
-    $"<td class=\"trader-number\">(o)</td>" +
-    $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{totalWithdrawn.Round(2)}</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">(o)</td>" +
+    $"<td class=\"monospace\">:</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
+    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Current value</td>" +
-    $"<td class=\"trader-number\">(v)</td>" +
-    $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">(v)</td>" +
+    $"<td class=\"monospace\">:</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{rebalanceDto.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
+    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Cumulative value</td>" +
-    $"<td class=\"trader-number\">(V=o+v)</td>" +
-    $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{cumulativeValue.Floor(2)}</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">(V=o+v)</td>" +
+    $"<td class=\"monospace\">:</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
+    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr style=\"border-top-width:1px;\">" +
     $"<td>Total gain</td>" +
-    $"<td class=\"trader-number\">(V-i)</td>" +
-    $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{(cumulativeValue - totalDeposited).Round(2)}</td>" +
-    $"<td class=\"trader-number\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">(V-i)</td>" +
+    $"<td class=\"monospace\">:</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
+    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td></td>" +
-    $"<td class=\"trader-number\">(V/i-1)</td>" +
-    $"<td class=\"trader-number\">:</td>" +
-    $"<td class=\"trader-number\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
-    $"<td class=\"trader-number\">%</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">(V/i-1)</td>" +
+    $"<td class=\"monospace\">:</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
+    $"<td class=\"monospace\">%</td>" +
     $"</tr>" +
     $"</table></p>" +
     $"<p>The below {rebalanceDto.Orders.Length} orders were executed" +
@@ -104,10 +94,14 @@ table td.trader-number {
       string.Concat(rebalanceDto.Orders.Select(order =>
       $"<tr>" +
       $"<td>{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}</td>" +
-      $"<td class=\"trader-number\">{order.AmountFilled} {order.Market.BaseSymbol}</td>" +
-      $"<td class=\"trader-number\">for {order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
+      $"<td class=\"monospace\" style=\"text-align:right;\">{order.AmountFilled}</td>" +
+      $"<td class=\"monospace\">{order.Market.BaseSymbol}</td>" +
+      $"<td>for</td>" +
+      $"<td class=\"monospace\" style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)}</td>" +
+      $"<td class=\"monospace\">{order.Market.QuoteSymbol}</td>" +
       $"</tr>")) +
-    "</table>";
+    $"</table>" +
+    $"<p>This email was automatically generated. Happy trading!</p>";
 
     using var message = new MimeMessage();
 
@@ -132,9 +126,11 @@ table td.trader-number {
     string htmlString =
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
+    $"We will try again within an hour.</p>" +
     $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
-    $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>";
+    $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>" +
+    $"<p>This email was automatically generated. Happy trading!</p>";
 
     using var message = new MimeMessage();
 
