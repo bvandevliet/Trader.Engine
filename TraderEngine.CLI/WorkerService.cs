@@ -151,6 +151,7 @@ internal class WorkerService
             {
               _logger.LogError("Not all orders have ended for user '{userId}'.", userConfig.Key);
 
+              // Send failure notification.
               await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto);
 
               return;
@@ -164,13 +165,25 @@ internal class WorkerService
             // Save last rebalance timestamp.
             await _configRepo.SaveConfig(userConfig.Key, configReqDto);
 
-            await _emailNotification.SendAutomationSucceeded(userConfig.Key, now, rebalanceDto);
+            // Send success notification.
+            var totalDepositedTask = _apiClient.TotalDeposited(exchangeName, apiCred);
+            var totalWithdrawnTask = _apiClient.TotalWithdrawn(exchangeName, apiCred);
+            await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
+            await _emailNotification.SendAutomationSucceeded(userConfig.Key, now, totalDepositedTask.Result, totalWithdrawnTask.Result, rebalanceDto);
           }
           catch (Exception exception)
           {
             _logger.LogCritical(exception, "Error while processing automation for user '{userId}'.", userConfig.Key);
 
-            await _emailNotification.SendAutomationException(userConfig.Key, now, exception);
+            try
+            {
+              // Send exception notification.
+              await _emailNotification.SendAutomationException(userConfig.Key, now, exception);
+            }
+            catch (Exception exception2)
+            {
+              _logger.LogCritical(exception2, "Error while sending exception notification.");
+            }
           }
         }));
       }
