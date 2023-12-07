@@ -120,7 +120,7 @@ public class BitvavoExchange : IExchange
 
     var balance = new Balance(QuoteSymbol);
 
-    IEnumerable<Task<Allocation>> priceTasks =
+    var allocations = await Task.WhenAll(
       result
 
       // Filter out assets of which the amount is 0.
@@ -137,9 +137,7 @@ public class BitvavoExchange : IExchange
         var allocation = new Allocation(market, price, alloc.amount);
 
         return allocation;
-      });
-
-    Allocation[] allocations = await Task.WhenAll(priceTasks);
+      }));
 
     foreach (var allocation in allocations)
     {

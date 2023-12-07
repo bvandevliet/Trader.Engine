@@ -117,7 +117,7 @@ public static class WordPressDbSerializer
         elements.Add($"s:{propertyInfo.Name.Length}:\"{propertyInfo.Name}\";{Serialize(propertyInfo.GetValue(value)!)}");
       }
 
-      var objectName = type.GetCustomAttribute<WordPressObjectAttribute>()?.Name ?? type.Name;
+      string objectName = type.GetCustomAttribute<WordPressObjectAttribute>()?.Name ?? type.Name;
 
       return $"O:{objectName.Length}:\"{objectName}\":{elements.Count}:{{{string.Join("", elements)}}}";
     }

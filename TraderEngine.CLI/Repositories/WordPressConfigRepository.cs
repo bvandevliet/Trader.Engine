@@ -91,7 +91,7 @@ public class WordPressConfigRepository : IConfigRepository
 
     var sqlConn = GetConnection();
 
-    var result = await sqlConn.ExecuteAsync(
+    int result = await sqlConn.ExecuteAsync(
       $"UPDATE {_cmsDbSettings.TablePrefix}usermeta\n" +
       "SET meta_value = @MetaValue\n" +
       "WHERE user_id = @UserId AND meta_key = @MetaKey;",

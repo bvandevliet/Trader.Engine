@@ -123,7 +123,7 @@ public static partial class Trader
     this IExchange @this, IEnumerable<AllocDiffReqDto> allocDiffs)
   {
     // The sell task loop ..
-    IEnumerable<Task<OrderDto>> sellTasks =
+    return await Task.WhenAll(
       allocDiffs
 
       // We can't sell quote currency for quote currency.
@@ -140,9 +140,7 @@ public static partial class Trader
           allocDiff.AmountQuoteDiff))
 
         // Continue to verify sell order ended, within same task to optimize performance.
-        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap());
-
-    return await Task.WhenAll(sellTasks);
+        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap()));
   }
 
   /// <summary>
@@ -194,7 +192,7 @@ public static partial class Trader
     decimal ratio = totalBuy == 0 ? 0 : Math.Min(totalBuy, curBalance.AmountQuoteAvailable) / totalBuy;
 
     // The buy task loop, diffs are already filtered ..
-    IEnumerable<Task<OrderDto>> buyTasks =
+    return await Task.WhenAll(
       allocDiffs
 
       // Scale to avoid potentially oversized buy order sizes.
@@ -211,9 +209,7 @@ public static partial class Trader
            Math.Abs(allocDiff.AmountQuoteDiff)))
 
         // Continue to verify buy order ended, within same task to optimize performance.
-        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap());
-
-    return await Task.WhenAll(buyTasks);
+        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap()));
   }
 
   /// <summary>
