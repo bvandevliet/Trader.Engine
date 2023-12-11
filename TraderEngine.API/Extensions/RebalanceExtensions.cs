@@ -129,15 +129,22 @@ public static partial class Trader
       // We can't sell quote currency for quote currency.
       .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
 
-      // Positive quote differences refer to oversized allocations,
-      // and check if reached minimum order size.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff >= @this.MinOrderSizeInQuote)
+      // Initialize allocation.
+      .Select(allocDiff => new
+      {
+        Alloc = new Allocation(allocDiff.Market, allocDiff.Price, allocDiff.Amount),
+        AllocDiff = allocDiff,
+      })
+
+      // Positive quote differences refer to oversized allocations.
+      .Where(alloc =>
+        // Check if reached minimum order size,
+        alloc.AllocDiff.AmountQuoteDiff >= @this.MinOrderSizeInQuote ||
+        // or if we're dealing with dust.
+        (alloc.AllocDiff.AmountQuoteDiff > 0 && alloc.Alloc.AmountQuote <= @this.MinOrderSizeInQuote))
 
       // Sell ..
-      .Select(allocDiff =>
-        @this.NewOrder(@this.ConstructSellOrder(
-          new Allocation(allocDiff.Market, allocDiff.Price, allocDiff.Amount),
-          allocDiff.AmountQuoteDiff))
+      .Select(alloc => @this.NewOrder(@this.ConstructSellOrder(alloc.Alloc, alloc.AllocDiff.AmountQuoteDiff))
 
         // Continue to verify sell order ended, within same task to optimize performance.
         .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap()));
