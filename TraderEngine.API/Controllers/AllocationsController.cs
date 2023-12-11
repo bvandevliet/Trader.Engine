@@ -5,7 +5,6 @@ using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
-using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Controllers;
 
@@ -55,7 +54,7 @@ public class AllocationsController : ControllerBase
     exchange.ApiSecret = balanceReqDto.ExchangeApiCred.ApiSecret;
 
     // Get current balance object if needed.
-    Balance? curBalance =
+    var curBalance =
       null == balanceReqDto.QuoteSymbol || null == balanceReqDto.AmountQuoteTotal
       ? await exchange.GetBalance() : null;
 

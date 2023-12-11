@@ -78,11 +78,11 @@ public class MockExchange : IExchange
 
   public Task<OrderDto> NewOrder(OrderReqDto order)
   {
-    Allocation quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
+    var quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
 
-    Allocation? curAlloc = _curBalance.GetAllocation(order.Market.BaseSymbol);
+    var curAlloc = _curBalance.GetAllocation(order.Market.BaseSymbol);
 
-    Allocation newAlloc = curAlloc ?? new(order.Market);
+    var newAlloc = curAlloc ?? new(order.Market);
 
     var returnOrder = new OrderDto()
     {

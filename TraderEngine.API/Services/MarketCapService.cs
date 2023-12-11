@@ -87,17 +87,28 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Apply weighting and dampening.
       .Select(marketCap =>
       {
-        return new AbsAllocReqDto()
+        return new
         {
-          BaseSymbol = marketCap.MarketCapDataDto.Market.BaseSymbol,
-          AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+          MarketCap = marketCap,
+          AbsAllocDto = new AbsAllocReqDto()
+          {
+            BaseSymbol = marketCap.MarketCapDataDto.Market.BaseSymbol,
+            AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+          },
         };
       })
 
       // Sort by Market Cap EMA value.
-      .OrderByDescending(alloc => alloc.AbsAlloc)
+      .OrderByDescending(alloc => alloc.AbsAllocDto.AbsAlloc)
 
-      // Take the top count.
-      .Take(configReqDto.TopRankingCount);
+      // Take the top count, and any assets with a weighting.
+      .Where(alloc =>
+      {
+        configReqDto.TopRankingCount--;
+        return configReqDto.TopRankingCount >= 0 || alloc.MarketCap.HasWeighting;
+      })
+
+      // Return absolute allocations.
+      .Select(alloc => alloc.AbsAllocDto);
   }
 }

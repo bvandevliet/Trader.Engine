@@ -115,7 +115,7 @@ public class Balance
   /// <returns>The <see cref="Allocation"/> that was removed.</returns>
   public Allocation? RemoveAllocation(string baseSymbol)
   {
-    Allocation? allocation = GetAllocation(baseSymbol);
+    var allocation = GetAllocation(baseSymbol);
 
     if (allocation != null)
     {

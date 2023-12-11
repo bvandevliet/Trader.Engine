@@ -116,11 +116,10 @@ internal class WorkerService
               .GetAllocationQuoteDiffs(absAllocs, curBalanceDto)
               .ToList();
 
-            // Test if eligible.
+            // Test if any of the allocation diffs exceed the minimum order size.
             if (!allocDiffs.Any(allocDiff =>
-              ( // .. if any of the allocation diffs exceed the minimum order size.
               Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
-              Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100)))
+              Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
             {
               _logger.LogInformation("Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
 

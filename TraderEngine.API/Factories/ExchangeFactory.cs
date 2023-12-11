@@ -22,7 +22,7 @@ public class ExchangeFactory : INamedTypeFactory<IExchange>
 
   public IExchange GetService(string name)
   {
-    if (_exchangeTypes.TryGetValue(name, out Type? exchangeType)
+    if (_exchangeTypes.TryGetValue(name, out var exchangeType)
       && _serviceProvider.GetService(exchangeType) is IExchange exchange)
     {
       return exchange;

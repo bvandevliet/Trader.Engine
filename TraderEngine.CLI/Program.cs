@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using System.Diagnostics;
@@ -16,7 +15,7 @@ public class Program
 {
   static void Main(string[] args)
   {
-    IHost host = Host.CreateDefaultBuilder(args)
+    var host = Host.CreateDefaultBuilder(args)
 #if DEBUG
       // Add private appsettings.json file when debugging.
       .ConfigureAppConfiguration(config =>
@@ -93,7 +92,7 @@ public class Program
       .Build();
 
     // App logger.
-    ILogger<Program> logger = host.Services.GetService<ILogger<Program>>()!;
+    var logger = host.Services.GetService<ILogger<Program>>()!;
 
 #if DEBUG
     // Append app argument when debugging.
