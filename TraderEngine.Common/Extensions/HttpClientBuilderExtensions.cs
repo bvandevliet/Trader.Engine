@@ -18,7 +18,9 @@ public static class HttpClientBuilderExtensions
       })
       .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
       .AddTransientHttpErrorPolicy(policy =>
-        policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
+        policy
+          .OrResult(msg => ((int)msg.StatusCode) >= 500)
+          .WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
 
     return clientBuilder;
   }
