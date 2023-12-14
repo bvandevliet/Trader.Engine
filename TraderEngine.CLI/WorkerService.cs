@@ -1,6 +1,7 @@
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Enums;
 using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Repositories;
 
@@ -146,9 +147,9 @@ internal class WorkerService
             }
 
             // If any of the orders have not ended, return.
-            if (rebalanceDto.Orders.Any(order => !order.HasEnded))
+            if (rebalanceDto.Orders.Any(order => order.Status != OrderStatus.Filled))
             {
-              _logger.LogError("Not all orders have ended for user '{userId}'.", userConfig.Key);
+              _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
               // Send failure notification.
               await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto);
