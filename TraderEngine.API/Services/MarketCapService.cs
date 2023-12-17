@@ -84,9 +84,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Handle ignored tags, but not if asset has a weighting configured explicitly.
       .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoredTagsRegex.IsMatch(tag)))
 
-      // Sort by Market Cap EMA value.
-      .OrderByDescending(marketCap => marketCap.MarketCapDataDto.MarketCap)
-
       // Apply weighting and dampening.
       .Select(marketCap =>
       {
@@ -102,7 +99,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       })
 
       // Sort by weighted Market Cap EMA value.
-      //.OrderByDescending(alloc => alloc.AbsAllocDto.AbsAlloc)
+      .OrderByDescending(alloc => alloc.AbsAllocDto.AbsAlloc)
 
       // Take the top count, and any assets with a weighting.
       .Where(alloc =>
