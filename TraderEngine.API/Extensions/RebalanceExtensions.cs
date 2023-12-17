@@ -34,7 +34,7 @@ public static partial class Trader
 
     if (checks == 0)
     {
-      //order = await @thsis.CancelOrder(order.Id!, order.Market) ?? order;
+      order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
     }
 
     return order;

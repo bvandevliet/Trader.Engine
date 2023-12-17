@@ -93,6 +93,16 @@ internal class WorkerService
             // Get current balance DTO.
             var curBalanceDto = await _apiClient.CurrentBalance(exchangeName, apiCred);
 
+            // Check if any assets are allocated, if not, bail for safety.
+            if (curBalanceDto.AmountQuote == curBalanceDto.AmountQuoteTotal)
+            {
+              _logger.LogWarning(
+                "Skipping automation for user '{userId}' because no assets are allocated. " +
+                "Initial investments should be made manually.", userConfig.Key);
+
+              return;
+            }
+
             // Construct balance request DTO.
             var balanceReqDto = new BalanceReqDto()
             {
@@ -103,9 +113,9 @@ internal class WorkerService
             };
 
             // Get absolute balanced allocations DTO.
-            var absAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balanceReqDto);
+            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balanceReqDto);
 
-            if (null == absAllocs)
+            if (null == newAbsAllocs)
             {
               _logger.LogWarning("Balanced allocations could not be determined for user '{userId}'.", userConfig.Key);
 
@@ -114,7 +124,7 @@ internal class WorkerService
 
             // Get relative allocation diffs, as list since we're iterating it more than once.
             var allocDiffs = RebalanceHelpers
-              .GetAllocationQuoteDiffs(absAllocs, curBalanceDto)
+              .GetAllocationQuoteDiffs(newAbsAllocs, curBalanceDto)
               .ToList();
 
             // Test if any of the allocation diffs exceed the minimum order size.
@@ -131,7 +141,7 @@ internal class WorkerService
             var rebalanceReqDto = new RebalanceReqDto()
             {
               ExchangeApiCred = apiCred,
-              NewAbsAllocs = absAllocs,
+              NewAbsAllocs = newAbsAllocs,
               AllocDiffs = allocDiffs,
             };
 
@@ -152,7 +162,13 @@ internal class WorkerService
               _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
               // Send failure notification.
-              await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto);
+              await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto, new
+              {
+                curBalanceDto,
+                newAbsAllocs,
+                allocDiffs,
+                rebalanceDto,
+              });
 
               return;
             }

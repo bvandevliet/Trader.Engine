@@ -2,6 +2,7 @@ using MailKit.Net.Smtp;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Text;
+using System.Text.Json;
 using System.Web;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
@@ -119,11 +120,11 @@ var,
   }
 
   public async Task SendAutomationFailed(
-    int userId, DateTime timestamp, RebalanceDto rebalanceDto)
+    int userId, DateTime timestamp, RebalanceDto rebalanceDto, object debugData)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    string htmlString =
+    string userMsgBody =
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
@@ -132,28 +133,46 @@ var,
     $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>" +
     $"<p>This email was automatically generated. Happy trading!</p>";
 
-    using var message = new MimeMessage();
+    string adminMsgBody =
+    $"<style>{_cssString}</style>" +
+    $"<p>Hi Admin,</p>" +
+    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
+    $"<p>Debug data:</p>" +
+    $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), new JsonSerializerOptions() { WriteIndented = true })}</pre>" +
+    $"<p>This email was automatically generated. Happy trading!</p>";
 
-    message.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
-    message.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
-    message.Subject = "Trader automation failed";
-    message.Body = new TextPart(TextFormat.Html) { Text = htmlString };
+    using var userMessage = new MimeMessage();
+
+    userMessage.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    userMessage.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    userMessage.Subject = "Trader automation failed";
+    userMessage.Body = new TextPart(TextFormat.Html) { Text = userMsgBody };
+
+    using var adminMessage = new MimeMessage();
+
+    adminMessage.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    adminMessage.To.Add(new MailboxAddress("Trader Admin", _emailSettings.FromAddress));
+    adminMessage.Subject = "Trader automation failed";
+    adminMessage.Body = new TextPart(TextFormat.Html) { Text = adminMsgBody };
 
     using var client = new SmtpClient();
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(message);
+    await client.SendAsync(userMessage);
+    await client.SendAsync(adminMessage);
     await client.DisconnectAsync(true);
   }
 
   public async Task SendAutomationException(
     int userId, DateTime timestamp, Exception exception)
   {
+    var userInfo = await _configRepo.GetUserInfo(userId);
+
     string htmlString =
     $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode("")},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
+    $"<p>Hi Admin,</p>" +
+    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
     $"<p>{exception.Message}:</p>" +
     $"<pre>{exception.StackTrace}</pre>";
 

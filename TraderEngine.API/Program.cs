@@ -27,6 +27,11 @@ public class Program
     builder.Logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
 #endif
 
+    builder.Logging.AddSimpleConsole(options =>
+    {
+      options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+    });
+
     builder.Services.AddRouting(options =>
     {
       options.LowercaseUrls = true;
