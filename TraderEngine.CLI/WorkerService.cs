@@ -59,10 +59,10 @@ internal class WorkerService
 
         var userConfigs = await _configRepo.GetConfigs();
 
-        var now = DateTime.UtcNow;
-
         await Task.WhenAll(userConfigs.Select(async userConfig =>
         {
+          var now = DateTime.UtcNow;
+
           try
           {
             var configReqDto = userConfig.Value;
@@ -77,7 +77,7 @@ internal class WorkerService
 
             // Check if rebalance interval has elapsed.
             if (configReqDto.LastRebalance is DateTime lastRebalance &&
-              Math.Round((now - lastRebalance).TotalHours, MidpointRounding.ToNegativeInfinity) < configReqDto.IntervalHours)
+              Math.Round((now - lastRebalance).TotalHours, MidpointRounding.AwayFromZero) < configReqDto.IntervalHours)
             {
               _logger.LogInformation("Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
 
