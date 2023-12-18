@@ -16,9 +16,10 @@ public static partial class Trader
   /// </summary>
   /// <param name="this"></param>
   /// <param name="order"></param>
+  /// <param name="cancel"></param>
   /// <param name="checks"></param>
   /// <returns>Completes when verified that the given <paramref name="order"/> has ended.</returns>
-  public static async Task<OrderDto> VerifyOrderEnded(this IExchange @this, OrderDto order, int checks = 60)
+  public static async Task<OrderDto> VerifyOrderEnded(this IExchange @this, OrderDto order, bool cancel = true, int checks = 60)
   {
     while (
       checks > 0 &&
@@ -32,7 +33,7 @@ public static partial class Trader
       checks--;
     }
 
-    if (checks == 0)
+    if (cancel && checks == 0)
     {
       order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
     }
@@ -147,7 +148,7 @@ public static partial class Trader
       .Select(alloc => @this.NewOrder(@this.ConstructSellOrder(alloc.Alloc, alloc.AllocDiff.AmountQuoteDiff))
 
         // Continue to verify sell order ended, within same task to optimize performance.
-        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result)).Unwrap()));
+        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result, true)).Unwrap()));
   }
 
   /// <summary>
@@ -216,7 +217,7 @@ public static partial class Trader
            Math.Abs(allocDiff.AmountQuoteDiff)))
 
         // Continue to verify buy order ended, within same task to optimize performance.
-        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result)).Unwrap()));
+        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result, false)).Unwrap()));
   }
 
   /// <summary>
