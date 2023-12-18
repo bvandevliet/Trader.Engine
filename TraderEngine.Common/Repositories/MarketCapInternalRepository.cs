@@ -62,15 +62,16 @@ CREATE TABLE IF NOT EXISTS MarketCapData (
       return false;
     }
 
-    var lastRecord = await sqlConn.QueryFirstOrDefaultAsync<MarketCapDataDb>(@"
+    string sqlQuery = @"
 SELECT * FROM MarketCapData
 WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol
-ORDER BY Updated DESC LIMIT 1;",
-new
-{
-  marketCap.Market.QuoteSymbol,
-  marketCap.Market.BaseSymbol
-});
+ORDER BY Updated DESC LIMIT 1;";
+
+    var lastRecord = await sqlConn.QueryFirstOrDefaultAsync<MarketCapDataDb>(sqlQuery, new
+    {
+      marketCap.Market.QuoteSymbol,
+      marketCap.Market.BaseSymbol
+    });
 
     return null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance;
   }
@@ -91,10 +92,11 @@ new
     {
       var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
 
-      rowsAffected += await sqlConn.ExecuteAsync(@"
+      string sqlQuery = @"
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
-VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );",
-marketCapData);
+VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
+
+      rowsAffected += await sqlConn.ExecuteAsync(sqlQuery, marketCapData);
 
       if (0 == rowsAffected)
       {
@@ -131,16 +133,20 @@ marketCapData);
 
     var sqlConn = GetConnection();
 
-    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(@"
+    string sqlQuery = @"
 SELECT * FROM MarketCapData
-WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol
-  AND Updated >= @Updated ORDER BY Updated DESC;",
-  new
-  {
-    market.QuoteSymbol,
-    market.BaseSymbol,
-    Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
-  });
+WHERE
+  QuoteSymbol = @QuoteSymbol
+  AND BaseSymbol = @BaseSymbol
+  AND Updated >= @Updated
+ORDER BY Updated DESC;";
+
+    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(sqlQuery, new
+    {
+      market.QuoteSymbol,
+      market.BaseSymbol,
+      Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
+    });
 
     await sqlConn.CloseAsync();
 
@@ -154,21 +160,27 @@ WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol
 
     var sqlConn = GetConnection();
 
-    // Fetch recent records to determine relevant assets.
-    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(@"
+    string sqlQuery = @"
 SELECT * FROM MarketCapData
-WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol IN (
-  SELECT BaseSymbol FROM MarketCapData
-  WHERE QuoteSymbol = @QuoteSymbol
-    AND Updated >= @UpdatedRecent
-  GROUP BY BaseSymbol ORDER BY Updated DESC )
-  AND Updated >= @UpdatedSince ORDER BY Updated DESC;",
-  new
-  {
-    QuoteSymbol = quoteSymbol.ToUpper(),
-    UpdatedRecent = DateTime.UtcNow.AddHours(-(Math.Min(2, hours) + earlierTolerance / 60)),
-    UpdatedSince = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
-  });
+WHERE
+  QuoteSymbol = @QuoteSymbol
+  AND Updated >= @UpdatedSince
+  AND BaseSymbol IN (
+    SELECT BaseSymbol FROM MarketCapData
+    WHERE
+      QuoteSymbol = @QuoteSymbol
+      AND Updated >= @UpdatedRecent
+    GROUP BY BaseSymbol
+    ORDER BY Updated DESC )
+ORDER BY Updated DESC;";
+
+    // Fetch recent records to determine relevant assets.
+    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(sqlQuery, new
+    {
+      QuoteSymbol = quoteSymbol.ToUpper(),
+      UpdatedRecent = DateTime.UtcNow.AddHours(-(Math.Min(2, hours) + earlierTolerance / 60)),
+      UpdatedSince = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
+    });
 
     await sqlConn.CloseAsync();
 
