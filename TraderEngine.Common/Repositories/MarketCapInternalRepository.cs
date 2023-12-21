@@ -26,13 +26,22 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
     _sqlConnectionFactory = sqlConnectionFactory;
   }
 
-  private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("MySql");
+  private async Task<MySqlConnection> GetConnection()
+  {
+    var conn = _sqlConnectionFactory.GetService("MySql");
+
+    await conn.OpenAsync();
+
+    return conn;
+  }
 
   public async Task<int> InitDatabase()
   {
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    int result = await sqlConn.ExecuteAsync(@"
+    try
+    {
+      return await sqlConn.ExecuteAsync(@"
 CREATE TABLE IF NOT EXISTS MarketCapData (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   QuoteSymbol VARCHAR(12) NOT NULL,
@@ -41,86 +50,70 @@ CREATE TABLE IF NOT EXISTS MarketCapData (
   MarketCap VARCHAR(48) NOT NULL,
   Tags TEXT,
   Updated DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP );");
-
-    await sqlConn.CloseAsync();
-
-    return result;
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
   }
 
-  /// <summary>
-  /// Test whether the record meets the updated time requirement in order to be inserted to the database.
-  /// </summary>
-  /// <param name="sqlConn"></param>
-  /// <param name="marketCap"></param>
-  /// <returns></returns>
-  protected async Task<bool> ShouldInsert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
+  public async Task<int> TryInsert(MarketCapDataDto marketCap)
   {
+    _logger.LogDebug("Inserting market cap of '{market}' to database ..", marketCap.Market);
+
     if (!IsCloseToTheWholeHour(marketCap.Updated))
     {
       _logger.LogWarning("Market cap of '{market}' is not close to the whole hour.", marketCap.Market);
 
-      return false;
+      return 0;
     }
 
-    string sqlQuery = @"
+    var sqlConn = await GetConnection();
+
+    try
+    {
+      string sqlSelect = @"
 SELECT * FROM MarketCapData
 WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol
 ORDER BY Updated DESC LIMIT 1;";
 
-    var lastRecord = await sqlConn.QueryFirstOrDefaultAsync<MarketCapDataDb>(sqlQuery, new
-    {
-      marketCap.Market.QuoteSymbol,
-      marketCap.Market.BaseSymbol
-    });
+      var lastRecord = await sqlConn.QueryFirstOrDefaultAsync<MarketCapDataDb>(sqlSelect, new
+      {
+        marketCap.Market.QuoteSymbol,
+        marketCap.Market.BaseSymbol
+      });
 
-    return null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance;
-  }
+      int rowsAffected = 0;
 
-  /// <summary>
-  /// Saves a market cap object to the database.
-  /// </summary>
-  /// <param name="sqlConn"></param>
-  /// <param name="marketCap"></param>
-  /// <returns></returns>
-  protected async Task<int> Insert(MySqlConnection sqlConn, MarketCapDataDto marketCap)
-  {
-    _logger.LogDebug("Inserting market cap of '{market}' to database ..", marketCap.Market);
-
-    int rowsAffected = 0;
-
-    if (await ShouldInsert(sqlConn, marketCap))
-    {
-      var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
-
-      string sqlQuery = @"
+      if (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance)
+      {
+        string sqlInsert = @"
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
 VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
-      rowsAffected += await sqlConn.ExecuteAsync(sqlQuery, marketCapData);
+        var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
 
-      if (0 == rowsAffected)
-      {
-        _logger.LogError("Failed to insert market cap of '{market}' to database.", marketCap.Market);
+        rowsAffected += await sqlConn.ExecuteAsync(sqlInsert, marketCapData);
+
+        if (0 == rowsAffected)
+        {
+          _logger.LogError("Failed to insert market cap of '{market}' to database.", marketCap.Market);
+        }
       }
-    }
 
-    return rowsAffected;
+      return rowsAffected;
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
   }
 
-  public async Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps)
+  public async Task<int> TryInsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
     _logger.LogDebug("Inserting {count} market cap records into database ..", marketCaps.Count());
 
-    var sqlConn = GetConnection();
-
-    int rowsAffected = 0;
-
-    foreach (var marketCap in marketCaps)
-    {
-      rowsAffected += await Insert(sqlConn, marketCap);
-    }
-
-    await sqlConn.CloseAsync();
+    int rowsAffected = (await Task.WhenAll(marketCaps.Select(TryInsert))).Sum();
 
     _logger.LogInformation("Inserted {rows} market cap records into database.", rowsAffected);
 
@@ -131,9 +124,11 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
   {
     _logger.LogDebug("Listing historical market cap for '{market}' ..", market);
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    string sqlQuery = @"
+    try
+    {
+      string sqlQuery = @"
 SELECT * FROM MarketCapData
 WHERE
   QuoteSymbol = @QuoteSymbol
@@ -141,16 +136,19 @@ WHERE
   AND Updated >= @Updated
 ORDER BY Updated DESC;";
 
-    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(sqlQuery, new
+      var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(sqlQuery, new
+      {
+        market.QuoteSymbol,
+        market.BaseSymbol,
+        Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
+      });
+
+      return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
+    }
+    finally
     {
-      market.QuoteSymbol,
-      market.BaseSymbol,
-      Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
-    });
-
-    await sqlConn.CloseAsync();
-
-    return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
+      await sqlConn.CloseAsync();
+    }
   }
 
   // TODO: CACHE RECENT RECORDS TO AVOID REPEATED QUERIES !!
@@ -158,9 +156,11 @@ ORDER BY Updated DESC;";
   {
     _logger.LogDebug("Listing many historical market cap for '{QuoteSymbol}' ..", quoteSymbol);
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    string sqlQuery = @"
+    try
+    {
+      string sqlQuery = @"
 SELECT * FROM MarketCapData
 WHERE
   QuoteSymbol = @QuoteSymbol
@@ -174,25 +174,28 @@ WHERE
     ORDER BY Updated DESC )
 ORDER BY Updated DESC;";
 
-    // Fetch recent records to determine relevant assets.
-    var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(sqlQuery, new
+      // Fetch recent records to determine relevant assets.
+      var listHistorical = await sqlConn.QueryAsync<MarketCapDataDb>(sqlQuery, new
+      {
+        QuoteSymbol = quoteSymbol.ToUpper(),
+        UpdatedRecent = DateTime.UtcNow.AddHours(-(Math.Min(2, hours) + earlierTolerance / 60)),
+        UpdatedSince = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
+      });
+
+      // Group by asset base symbol.
+      var assetGroups = listHistorical.GroupBy(record => record.BaseSymbol);
+
+      // For each unique asset base symbol, return its historical market cap.
+      return assetGroups.Select(assetGroup =>
+      {
+        var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
+
+        return _mapper.Map<IEnumerable<MarketCapDataDto>>(assetGroup.AsEnumerable());
+      });
+    }
+    finally
     {
-      QuoteSymbol = quoteSymbol.ToUpper(),
-      UpdatedRecent = DateTime.UtcNow.AddHours(-(Math.Min(2, hours) + earlierTolerance / 60)),
-      UpdatedSince = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
-    });
-
-    await sqlConn.CloseAsync();
-
-    // Group by asset base symbol.
-    var assetGroups = listHistorical.GroupBy(record => record.BaseSymbol);
-
-    // For each unique asset base symbol, return its historical market cap.
-    return assetGroups.Select(assetGroup =>
-    {
-      var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
-
-      return _mapper.Map<IEnumerable<MarketCapDataDto>>(assetGroup.AsEnumerable());
-    });
+      await sqlConn.CloseAsync();
+    }
   }
 }

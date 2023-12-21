@@ -50,7 +50,7 @@ internal class WorkerService
 
         var latest = await _marketCapExtRepo.ListLatest("EUR");
 
-        await _marketCapIntRepo.InsertMany(latest);
+        await _marketCapIntRepo.TryInsertMany(latest);
       }
 
       if (_appArgs.DoAutomations)

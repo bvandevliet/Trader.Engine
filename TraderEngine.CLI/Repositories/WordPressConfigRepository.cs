@@ -29,56 +29,92 @@ public class WordPressConfigRepository : IConfigRepository
     _cmsDbSettings = cmsDbOptions.Value;
   }
 
-  private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("CMS");
+  private async Task<MySqlConnection> GetConnection()
+  {
+    var conn = _sqlConnectionFactory.GetService("CMS");
+
+    await conn.OpenAsync();
+
+    return conn;
+  }
 
   public async Task<WordPressUserDto> GetUserInfo(int userId)
   {
     _logger.LogDebug("Getting user info for user '{UserId}' ..", userId);
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    var result = (await sqlConn.QueryFirstOrDefaultAsync<WordPressUserDto>(
-      $"SELECT user_login, display_name, user_email FROM {_cmsDbSettings.TablePrefix}users\n" +
-      "WHERE ID = @UserId LIMIT 1;", new { UserId = userId }))!;
+    try
+    {
+      string sqlQuery = $@"
+SELECT user_login, display_name, user_email
+FROM {_cmsDbSettings.TablePrefix}users
+WHERE ID = @UserId LIMIT 1;";
 
-    await sqlConn.CloseAsync();
+      var result = (await sqlConn.QueryFirstOrDefaultAsync<WordPressUserDto>(sqlQuery, new
+      {
+        UserId = userId
+      }))!;
 
-    return result;
+      return result;
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
   }
 
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
     _logger.LogDebug("Getting config for user '{UserId}' ..", userId);
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    string dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(
-      $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
-      "WHERE user_id = @UserId AND meta_key = 'trader_configuration'\n" +
-      "LIMIT 1;", new { UserId = userId }))!;
+    try
+    {
+      string sqlQuery = $@"
+SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta
+WHERE user_id = @UserId AND meta_key = 'trader_configuration'
+LIMIT 1;";
 
-    await sqlConn.CloseAsync();
+      string dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(sqlQuery, new
+      {
+        UserId = userId
+      }))!;
 
-    var wpConfig = WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig);
+      var wpConfig = WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig);
 
-    return _mapper.Map<ConfigReqDto>(wpConfig);
+      return _mapper.Map<ConfigReqDto>(wpConfig);
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
   }
 
   public async Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs()
   {
     _logger.LogDebug("Getting configs for all users ..");
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    var dbConfigs = await sqlConn.QueryAsync<(int user_id, string meta_value)>(
-      $"SELECT user_id, meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
-      "WHERE meta_key = 'trader_configuration';");
+    try
+    {
+      string sqlQuery = $@"
+SELECT user_id, meta_value
+FROM {_cmsDbSettings.TablePrefix}usermeta
+WHERE meta_key = 'trader_configuration';";
 
-    await sqlConn.CloseAsync();
+      var dbConfigs = await sqlConn.QueryAsync<(int user_id, string meta_value)>(sqlQuery);
 
-    return dbConfigs
-      .Select(dbConfig => new KeyValuePair<int, ConfigReqDto>(dbConfig.user_id,
-      _mapper.Map<ConfigReqDto>(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.meta_value))));
+      return dbConfigs
+        .Select(dbConfig => new KeyValuePair<int, ConfigReqDto>(dbConfig.user_id,
+        _mapper.Map<ConfigReqDto>(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.meta_value))));
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
   }
 
   public async Task<int> SaveConfig(int userId, ConfigReqDto configReqDto)
@@ -89,21 +125,24 @@ public class WordPressConfigRepository : IConfigRepository
 
     string dbConfig = WordPressDbSerializer.Serialize(wpConfig);
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    int result = await sqlConn.ExecuteAsync(
-      $"UPDATE {_cmsDbSettings.TablePrefix}usermeta\n" +
-      "SET meta_value = @MetaValue\n" +
-      "WHERE user_id = @UserId AND meta_key = @MetaKey;",
-      new
+    try
+    {
+      string sqlQuery = $@"
+UPDATE {_cmsDbSettings.TablePrefix}usermeta
+SET meta_value = @MetaValue
+WHERE user_id = @UserId AND meta_key = 'trader_configuration';";
+
+      return await sqlConn.ExecuteAsync(sqlQuery, new
       {
         UserId = userId,
-        MetaKey = "trader_configuration",
         MetaValue = dbConfig,
       });
-
-    await sqlConn.CloseAsync();
-
-    return result;
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
   }
 }

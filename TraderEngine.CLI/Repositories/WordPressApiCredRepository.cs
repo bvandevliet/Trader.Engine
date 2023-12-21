@@ -28,21 +28,38 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
     _cryptographyService = cryptographyService;
   }
 
-  private MySqlConnection GetConnection() => _sqlConnectionFactory.GetService("CMS");
+  private async Task<MySqlConnection> GetConnection()
+  {
+    var conn = _sqlConnectionFactory.GetService("CMS");
+
+    await conn.OpenAsync();
+
+    return conn;
+  }
 
   public async Task<ApiCredReqDto> GetApiCred(int userId, string exchangeName)
   {
     _logger.LogDebug("Getting API credentials for user '{UserId}' and exchange '{ExchangeName}' ..", userId, exchangeName);
 
-    var sqlConn = GetConnection();
+    var sqlConn = await GetConnection();
 
-    // Get encrypted API credentials from WordPress database.
-    string userApiCred = (await sqlConn.QueryFirstOrDefaultAsync<string>(
-      $"SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta\n" +
-      "WHERE user_id = @UserId AND meta_key = @MetaKey\n" +
-      "LIMIT 1;", new { UserId = userId, MetaKey = "api_keys", }))!;
+    string userApiCred;
+    try
+    {
+      string sqlQuery = $@"
+SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta
+WHERE user_id = @UserId AND meta_key = 'api_keys' LIMIT 1;";
 
-    await sqlConn.CloseAsync();
+      // Get encrypted API credentials from WordPress database.
+      userApiCred = (await sqlConn.QueryFirstOrDefaultAsync<string>(sqlQuery, new
+      {
+        UserId = userId,
+      }))!;
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
 
     var encryptedApiCred = WordPressDbSerializer.Deserialize<Dictionary<string, string>>(userApiCred);
 

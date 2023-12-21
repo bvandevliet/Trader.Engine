@@ -11,11 +11,18 @@ public interface IMarketCapInternalRepository
   public Task<int> InitDatabase();
 
   /// <summary>
+  /// Saves a market cap object to the database.
+  /// </summary>
+  /// <param name="marketCap"></param>
+  /// <returns></returns>
+  Task<int> TryInsert(MarketCapDataDto marketCap);
+
+  /// <summary>
   /// Saves multiple market cap objects to the database.
   /// </summary>
   /// <param name="marketCaps"></param>
   /// <returns></returns>
-  Task<int> InsertMany(IEnumerable<MarketCapDataDto> marketCaps);
+  Task<int> TryInsertMany(IEnumerable<MarketCapDataDto> marketCaps);
 
   /// <summary>
   /// Get all historical market cap data for the specified <paramref name="market"/> within given amount of <paramref name="hours"/> ago.
