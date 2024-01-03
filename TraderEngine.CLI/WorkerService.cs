@@ -84,6 +84,12 @@ internal class WorkerService
               return;
             }
 
+            // TODO:
+            // 1. Get balanced allocations (without quote takeout, just relative, and skip tradable check, so no exchange is needed).
+            // 2. Simulate rebalance (do quote takeout and tradable check here instead).
+            // 3. Check if eligible for rebalance (minimum order size, minimum allocation difference).
+            // 4. Execute rebalance (use the the returned orders from simulation as input).
+
             // TODO: Make this configurable !!
             string exchangeName = "Bitvavo";
 
