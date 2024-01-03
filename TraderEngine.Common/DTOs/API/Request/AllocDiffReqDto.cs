@@ -1,18 +1,10 @@
 using System.ComponentModel.DataAnnotations;
+using TraderEngine.Common.DTOs.API.Response;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
-public class AllocDiffReqDto
+public class AllocDiffReqDto : AllocationDto
 {
-  [Required]
-  public MarketReqDto Market { get; set; } = null!;
-
-  [Required]
-  public decimal Price { get; set; }
-
-  [Required]
-  public decimal Amount { get; set; }
-
   [Required]
   public decimal AmountQuoteDiff { get; set; }
 
@@ -29,6 +21,7 @@ public class AllocDiffReqDto
     Market = market;
     Price = price;
     Amount = amount;
+    AmountQuote = price * amount;
     AmountQuoteDiff = amountQuoteDiff;
   }
 }
