@@ -2,11 +2,13 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
-public class BalanceReqDto
+public class BalancedReqDto
 {
-  public string? QuoteSymbol { get; set; }
+  [Required]
+  public string QuoteSymbol { get; set; } = null!;
 
-  public decimal? AmountQuoteTotal { get; set; }
+  [Required]
+  public decimal AmountQuoteTotal { get; set; }
 
   [Required]
   public ConfigReqDto Config { get; set; } = null!;

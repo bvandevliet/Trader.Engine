@@ -104,7 +104,7 @@ internal class WorkerService
             }
 
             // Construct balance request DTO.
-            var balanceReqDto = new BalanceReqDto()
+            var balancedReqDto = new BalancedReqDto()
             {
               QuoteSymbol = curBalanceDto.QuoteSymbol,
               AmountQuoteTotal = curBalanceDto.AmountQuoteTotal,
@@ -113,7 +113,7 @@ internal class WorkerService
             };
 
             // Get absolute balanced allocations DTO.
-            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balanceReqDto);
+            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balancedReqDto);
 
             if (null == newAbsAllocs)
             {

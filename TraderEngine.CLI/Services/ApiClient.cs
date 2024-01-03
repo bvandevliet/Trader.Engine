@@ -84,13 +84,13 @@ public class ApiClient : IApiClient
     return (await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>())!;
   }
 
-  public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
+  public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalancedReqDto balancedReqDto)
   {
     _logger.LogDebug("Requesting balanced absolute allocations for '{exchangeName}' ..", exchangeName);
 
     // Request absolute balanced allocations.
     using var absAllocsResp = await _httpClient
-      .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balanceReqDto);
+      .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balancedReqDto);
 
     if (!absAllocsResp.IsSuccessStatusCode)
     {

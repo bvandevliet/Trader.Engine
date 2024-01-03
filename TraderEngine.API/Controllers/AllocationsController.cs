@@ -44,38 +44,28 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("balanced/{exchangeName}")]
-  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalanceReqDto balanceReqDto)
+  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string exchangeName, BalancedReqDto balancedReqDto)
   {
     _logger.LogDebug("Handling BalancedAbsAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
-    var exchange = _exchangeFactory.GetService(exchangeName);
-
-    exchange.ApiKey = balanceReqDto.ExchangeApiCred.ApiKey;
-    exchange.ApiSecret = balanceReqDto.ExchangeApiCred.ApiSecret;
-
-    // Get current balance object if needed.
-    var curBalance =
-      null == balanceReqDto.QuoteSymbol || null == balanceReqDto.AmountQuoteTotal
-      ? await exchange.GetBalance() : null;
-
-    string quoteSymbol =
-      curBalance?.QuoteSymbol ?? balanceReqDto.QuoteSymbol ?? curBalance!.QuoteSymbol;
-    decimal amountQuoteTotal =
-      curBalance?.AmountQuoteTotal ?? balanceReqDto.AmountQuoteTotal ?? curBalance!.AmountQuoteTotal;
-
     // Get absolute balanced allocations.
     var absAllocs = await _marketCapService()
-      .BalancedAbsAllocs(quoteSymbol, balanceReqDto.Config);
+      .BalancedAbsAllocs(balancedReqDto.QuoteSymbol, balancedReqDto.Config);
 
     if (null == absAllocs)
     {
       return NotFound("No recent market cap records found.");
     }
 
+    var exchange = _exchangeFactory.GetService(exchangeName);
+
+    exchange.ApiKey = balancedReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = balancedReqDto.ExchangeApiCred.ApiSecret;
+
     // Get absolute balanced allocation tasks, to check if tradable.
     var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
     {
-      var marketDto = new MarketReqDto(quoteSymbol, absAlloc.BaseSymbol);
+      var marketDto = new MarketReqDto(balancedReqDto.QuoteSymbol, absAlloc.BaseSymbol);
 
       return new { absAlloc, marketData = await exchange.GetMarket(marketDto) };
     });
@@ -85,7 +75,7 @@ public class AllocationsController : ControllerBase
 
     // Relative quote allocation.
     decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
-      balanceReqDto.Config.QuoteTakeout / amountQuoteTotal + balanceReqDto.Config.QuoteAllocation / 100));
+      balancedReqDto.Config.QuoteTakeout / balancedReqDto.AmountQuoteTotal + balancedReqDto.Config.QuoteAllocation / 100));
 
     // Sum of all absolute allocation values.
     decimal totalAbsAlloc = 0;
@@ -94,6 +84,7 @@ public class AllocationsController : ControllerBase
     var absAllocsList = allocsMarketData
       // Filter for assets that are tradable.
       .Where(x => x.marketData?.Status == MarketStatus.Trading)
+      // Scale absolute allocation values to include relative quote allocation.
       .Select(x =>
       {
         totalAbsAlloc += x.absAlloc.AbsAlloc;
@@ -106,7 +97,7 @@ public class AllocationsController : ControllerBase
       .ToList();
 
     // Add quote allocation.
-    absAllocsList.Add(new AbsAllocReqDto(quoteSymbol, totalAbsAlloc * quoteRelAlloc));
+    absAllocsList.Add(new AbsAllocReqDto(balancedReqDto.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
 
     return Ok(absAllocsList);
   }
