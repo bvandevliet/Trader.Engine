@@ -49,6 +49,7 @@ public class RebalanceController : ControllerBase
     return Ok(new RebalanceDto()
     {
       Orders = orders,
+      CurBalance = _mapper.Map<BalanceDto>(curBalance),
       NewBalance = _mapper.Map<BalanceDto>(newBalance),
     });
   }
@@ -88,10 +89,13 @@ public class RebalanceController : ControllerBase
       newBalance = await simExchange.GetBalance();
     }
 
+    var balanceDto = _mapper.Map<BalanceDto>(newBalance);
+
     return Ok(new RebalanceDto()
     {
       Orders = orders,
-      NewBalance = _mapper.Map<BalanceDto>(newBalance),
+      CurBalance = balanceDto,
+      NewBalance = balanceDto,
     });
   }
 }

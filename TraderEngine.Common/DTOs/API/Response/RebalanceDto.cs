@@ -6,5 +6,7 @@ public class RebalanceDto
 
   public decimal TotalFee => Orders.Sum(order => order.FeePaid);
 
+  public BalanceDto CurBalance { get; set; } = null!;
+
   public BalanceDto NewBalance { get; set; } = null!;
 }
