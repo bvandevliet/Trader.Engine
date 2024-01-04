@@ -7,10 +7,18 @@ public class RebalanceReqDto
   [Required]
   public ApiCredReqDto ExchangeApiCred { get; set; } = null!;
 
-  /// <inheritdoc cref="AbsAllocReqDto"/>
   [Required]
-  public List<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
+  public OrderReqDto[] Orders { get; set; } = Array.Empty<OrderReqDto>();
 
-  /// <inheritdoc cref="AllocDiffReqDto"/>
-  public List<AllocDiffReqDto>? AllocDiffs { get; set; } = null;
+  public RebalanceReqDto()
+  {
+  }
+
+  public RebalanceReqDto(
+    ApiCredReqDto exchangeApiCred,
+    OrderReqDto[] orders)
+  {
+    ExchangeApiCred = exchangeApiCred;
+    Orders = orders;
+  }
 }

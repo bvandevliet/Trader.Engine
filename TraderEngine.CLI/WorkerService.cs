@@ -2,7 +2,6 @@ using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
-using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.CLI;
@@ -48,6 +47,7 @@ internal class WorkerService
       {
         _logger.LogInformation("Updating market cap data ..");
 
+        // TODO: Put quote symbol for market cap records in appsettings.
         var latest = await _marketCapExtRepo.ListLatest("EUR");
 
         await _marketCapIntRepo.TryInsertMany(latest);
@@ -84,42 +84,11 @@ internal class WorkerService
               return;
             }
 
-            // TODO:
-            // 1. Get balanced allocations (without quote takeout, just relative, and skip tradable check, so no exchange is needed).
-            // 2. Simulate rebalance (do quote takeout and tradable check here instead).
-            // 3. Check if eligible for rebalance (minimum order size, minimum allocation difference).
-            // 4. Execute rebalance (use the the returned orders from simulation as input).
-
-            // TODO: Make this configurable !!
-            string exchangeName = "Bitvavo";
-
-            // Get API credentials.
-            var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
-
-            // Get current balance DTO.
-            var curBalanceDto = await _apiClient.CurrentBalance(exchangeName, apiCred);
-
-            // Check if any assets are allocated, if not, bail for safety.
-            if (curBalanceDto.AmountQuote == curBalanceDto.AmountQuoteTotal)
-            {
-              _logger.LogWarning(
-                "Skipping automation for user '{userId}' because no assets are allocated. " +
-                "Initial investments should be made manually.", userConfig.Key);
-
-              return;
-            }
-
-            // Construct balance request DTO.
-            var balancedReqDto = new BalancedReqDto()
-            {
-              QuoteSymbol = curBalanceDto.QuoteSymbol,
-              AmountQuoteTotal = curBalanceDto.AmountQuoteTotal,
-              Config = configReqDto,
-              ExchangeApiCred = apiCred,
-            };
+            // TODO: Put quote symbol for market cap records in appsettings.
+            string quoteSymbol = "EUR";
 
             // Get absolute balanced allocations DTO.
-            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(exchangeName, balancedReqDto);
+            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(quoteSymbol, configReqDto);
 
             if (null == newAbsAllocs)
             {
@@ -128,15 +97,25 @@ internal class WorkerService
               return;
             }
 
-            // Get relative allocation diffs, as list since we're iterating it more than once.
-            var allocDiffs = RebalanceHelpers
-              .GetAllocationQuoteDiffs(newAbsAllocs, curBalanceDto)
-              .ToList();
+            // TODO: Make this configurable !!
+            string exchangeName = "Bitvavo";
+
+            // Get API credentials.
+            var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
+
+            // Construct balance request DTO.
+            var simulationReqDto = new SimulationReqDto(
+              apiCred,
+              newAbsAllocs,
+              configReqDto);
+
+            // Get current balance and simulated rebalance.
+            var simulated = await _apiClient.SimulateRebalance(exchangeName, simulationReqDto);
 
             // Test if any of the allocation diffs exceed the minimum order size.
-            if (!allocDiffs.Any(allocDiff =>
-              Math.Abs(allocDiff.AmountQuoteDiff) >= configReqDto.MinimumDiffQuote &&
-              Math.Abs(allocDiff.AmountQuoteDiff) / curBalanceDto.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
+            if (!simulated.Orders.Any(order =>
+              order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
+              order.AmountQuoteFilled / simulated.CurBalance.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
             {
               _logger.LogInformation("Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
 
@@ -144,18 +123,15 @@ internal class WorkerService
             }
 
             // Construct rebalance request DTO.
-            var rebalanceReqDto = new RebalanceReqDto()
-            {
-              ExchangeApiCred = apiCred,
-              NewAbsAllocs = newAbsAllocs,
-              AllocDiffs = allocDiffs,
-            };
+            var rebalanceReqDto = new RebalanceReqDto(
+              apiCred,
+              simulated.Orders);
 
             // Execute and return resulting rebalance DTO.
-            var rebalanceDto = await _apiClient.ExecuteRebalance(exchangeName, rebalanceReqDto);
+            var ordersExecuted = await _apiClient.ExecuteRebalance(exchangeName, rebalanceReqDto);
 
             // If no orders were placed, return.
-            if (rebalanceDto.Orders.Length == 0)
+            if (ordersExecuted.Length == 0)
             {
               _logger.LogWarning("No orders were placed for user '{userId}'.", userConfig.Key);
 
@@ -163,17 +139,17 @@ internal class WorkerService
             }
 
             // If any of the orders have not ended, return.
-            if (rebalanceDto.Orders.Any(order => order.Status != OrderStatus.Filled))
+            if (ordersExecuted.Any(order => order.Status != OrderStatus.Filled))
             {
               _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
               // Send failure notification.
-              await _emailNotification.SendAutomationFailed(userConfig.Key, now, rebalanceDto, new
+              await _emailNotification.SendAutomationFailed(userConfig.Key, now, ordersExecuted, new
               {
-                curBalanceDto,
+                simulated.CurBalance,
                 newAbsAllocs,
-                allocDiffs,
-                rebalanceDto,
+                simulated.Orders,
+                ordersExecuted,
               });
 
               return;
@@ -191,7 +167,7 @@ internal class WorkerService
             var totalDepositedTask = _apiClient.TotalDeposited(exchangeName, apiCred);
             var totalWithdrawnTask = _apiClient.TotalWithdrawn(exchangeName, apiCred);
             await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
-            await _emailNotification.SendAutomationSucceeded(userConfig.Key, now, totalDepositedTask.Result, totalWithdrawnTask.Result, rebalanceDto);
+            await _emailNotification.SendAutomationSucceeded(userConfig.Key, now, totalDepositedTask.Result, totalWithdrawnTask.Result, simulated, ordersExecuted);
           }
           catch (Exception exception)
           {

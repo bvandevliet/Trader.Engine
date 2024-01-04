@@ -68,7 +68,12 @@ public class MockExchange : IExchange
 
   public Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
-    throw new NotImplementedException();
+    return Task.FromResult(new MarketDataDto()
+    {
+      Status = MarketStatus.Trading,
+      PricePrecision = 2,
+      MinOrderSizeInQuote = MinOrderSizeInQuote,
+    })!;
   }
 
   public Task<decimal> GetPrice(MarketReqDto market)

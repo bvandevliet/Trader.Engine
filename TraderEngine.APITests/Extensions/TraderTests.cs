@@ -1,7 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.DTOs.API.Request;
-using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions.Tests;
@@ -39,22 +38,6 @@ public class TraderTests
   }
 
   [TestMethod()]
-  public async Task AllocDiffsTest()
-  {
-    Balance curBalance = await _exchangeService.GetBalance();
-
-    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
-
-    Assert.AreEqual(5, allocDiffs.Count);
-
-    Assert.AreEqual(-005, (double)Math.Round(allocDiffs[0].AmountQuoteDiff, 1));
-    Assert.AreEqual(0040, (double)Math.Round(allocDiffs[1].AmountQuoteDiff, 1));
-    Assert.AreEqual(0015, (double)Math.Round(allocDiffs[2].AmountQuoteDiff, 1));
-    Assert.AreEqual(0225, (double)Math.Round(allocDiffs[3].AmountQuoteDiff, 1));
-    Assert.AreEqual(-275, (double)Math.Round(allocDiffs[4].AmountQuoteDiff, 1));
-  }
-
-  [TestMethod()]
   public async Task RebalanceTest()
   {
     var rebalanceOrders = (await _exchangeService.Rebalance(_absAssetAlloc)).ToList();
@@ -68,16 +51,6 @@ public class TraderTests
     Assert.IsNotNull(rebalanceOrders[2].Amount); // expected to sell whole position
     Assert.IsNull(rebalanceOrders[3].Amount);
 
-    Balance curBalance = await _exchangeService.GetBalance();
-
-    var allocDiffs = RebalanceHelpers.GetAllocationQuoteDiffs(_absAssetAlloc, curBalance).ToList();
-
-    Assert.AreEqual(5, allocDiffs.Count);
-
-    Assert.AreEqual(0, (double)Math.Round(allocDiffs[0].AmountQuoteDiff));
-    Assert.AreEqual(0, (double)Math.Round(allocDiffs[1].AmountQuoteDiff));
-    Assert.AreEqual(0, (double)Math.Round(allocDiffs[2].AmountQuoteDiff));
-    Assert.AreEqual(0, (double)Math.Round(allocDiffs[3].AmountQuoteDiff));
-    Assert.AreEqual(0, (double)Math.Round(allocDiffs[4].AmountQuoteDiff));
+    //Balance curBalance = await _exchangeService.GetBalance();
   }
 }

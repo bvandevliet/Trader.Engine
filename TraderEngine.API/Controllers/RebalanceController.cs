@@ -5,7 +5,6 @@ using TraderEngine.API.Extensions;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
-using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Controllers;
 
@@ -27,26 +26,24 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("simulate/{exchangeName}")]
-  public async Task<ActionResult<RebalanceDto>> SimulateRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
     _logger.LogDebug("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
-    exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
+    exchange.ApiKey = simulationReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
 
     var curBalance = await exchange.GetBalance();
 
     var simExchange = new SimExchange(exchange, curBalance);
 
-    var orders = null != rebalanceReqDto.AllocDiffs
-      ? await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.AllocDiffs)
-      : await simExchange.Rebalance(rebalanceReqDto.NewAbsAllocs, curBalance);
+    var orders = await simExchange.Rebalance(simulationReqDto.NewAbsAllocs/*, simulationReqDto.Config*/, curBalance);
 
     var newBalance = await simExchange.GetBalance();
 
-    return Ok(new RebalanceDto()
+    return Ok(new SimulationDto()
     {
       Orders = orders,
       CurBalance = _mapper.Map<BalanceDto>(curBalance),
@@ -55,7 +52,7 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("execute/{exchangeName}")]
-  public async Task<ActionResult<RebalanceDto>> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  public async Task<ActionResult<OrderDto[]>> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
     _logger.LogDebug("Handling ExecuteRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -64,38 +61,8 @@ public class RebalanceController : ControllerBase
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
-    OrderDto[] orders;
+    var orders = await exchange.Rebalance(rebalanceReqDto.Orders);
 
-    Balance? newBalance;
-
-    // If allocation diffs are provided, there is no need to get the current balance.
-    if (null != rebalanceReqDto.AllocDiffs)
-    {
-      orders = await exchange.Rebalance(rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.AllocDiffs);
-
-      newBalance = await exchange.GetBalance();
-    }
-    // Else, get the current balance and calculate the new balance using the simulated exchange to reduce API calls.
-    else
-    {
-      var curBalance = await exchange.GetBalance();
-
-      orders = await exchange.Rebalance(rebalanceReqDto.NewAbsAllocs, curBalance);
-
-      var simExchange = new SimExchange(exchange, curBalance);
-
-      await simExchange.ProcessOrders(orders);
-
-      newBalance = await simExchange.GetBalance();
-    }
-
-    var balanceDto = _mapper.Map<BalanceDto>(newBalance);
-
-    return Ok(new RebalanceDto()
-    {
-      Orders = orders,
-      CurBalance = balanceDto,
-      NewBalance = balanceDto,
-    });
+    return Ok(orders);
   }
 }

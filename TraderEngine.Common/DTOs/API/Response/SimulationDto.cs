@@ -1,6 +1,6 @@
 namespace TraderEngine.Common.DTOs.API.Response;
 
-public class RebalanceDto
+public class SimulationDto
 {
   public OrderDto[] Orders { get; set; } = Array.Empty<OrderDto>();
 

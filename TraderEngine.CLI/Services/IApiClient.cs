@@ -11,7 +11,9 @@ public interface IApiClient
 
   Task<BalanceDto> CurrentBalance(string exchangeName, ApiCredReqDto apiCred);
 
-  Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalancedReqDto balancedReqDto);
+  Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto config);
 
-  Task<RebalanceDto> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto);
+  Task<SimulationDto> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto);
+
+  Task<OrderDto[]> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto);
 }
