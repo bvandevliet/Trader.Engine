@@ -2,6 +2,7 @@ using TraderEngine.API.Exchanges;
 using TraderEngine.API.Extensions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
 using TraderEngine.Common.Helpers;
 using TraderEngine.Common.Models;
 
@@ -53,8 +54,8 @@ public static partial class Trader
     return new OrderReqDto()
     {
       Market = curAlloc.Market,
-      Side = Common.Enums.OrderSide.Buy,
-      Type = Common.Enums.OrderType.Market,
+      Side = OrderSide.Buy,
+      Type = OrderType.Market,
       AmountQuote = Math.Floor(amountQuote * 100) / 100,
     };
   }
@@ -71,8 +72,8 @@ public static partial class Trader
     var order = new OrderReqDto()
     {
       Market = curAlloc.Market,
-      Side = Common.Enums.OrderSide.Sell,
-      Type = Common.Enums.OrderType.Market,
+      Side = OrderSide.Sell,
+      Type = OrderType.Market,
     };
 
     // Prevent dust.
