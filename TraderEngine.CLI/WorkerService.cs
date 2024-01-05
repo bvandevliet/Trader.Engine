@@ -72,7 +72,8 @@ internal class WorkerService
             // Only handle automation enabled configs.
             if (!configReqDto.AutomationEnabled)
             {
-              _logger.LogInformation("Automation is disabled for user '{userId}'.", userConfig.Key);
+              _logger.LogInformation(
+                "Automation is disabled for user '{userId}'.", userConfig.Key);
 
               return;
             }
@@ -81,39 +82,51 @@ internal class WorkerService
             if (configReqDto.LastRebalance is DateTime lastRebalance &&
               Math.Round((now - lastRebalance).TotalHours, MidpointRounding.AwayFromZero) < configReqDto.IntervalHours)
             {
-              _logger.LogInformation("Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
-
-              return;
-            }
-
-            // Get absolute balanced allocations DTO.
-            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(_quoteSymbol, configReqDto);
-
-            if (null == newAbsAllocs)
-            {
-              _logger.LogWarning("Balanced allocations could not be determined for user '{userId}'.", userConfig.Key);
+              _logger.LogInformation(
+                "Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
 
               return;
             }
 
             // TODO: Make this configurable !!
+            //       And if single exchange, directly call into "simulate",
+            //       otherwise, first call into "balanced" and then into "simulate" for each exchange.
             string exchangeName = "Bitvavo";
 
             // Get API credentials.
             var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
             // Construct balance request DTO.
-            var simulationReqDto = new SimulationReqDto(apiCred, configReqDto) { NewAbsAllocs = newAbsAllocs };
+            var simulationReqDto = new SimulationReqDto(apiCred, configReqDto);
 
             // Get current balance and simulated rebalance.
             var simulated = await _apiClient.SimulateRebalance(exchangeName, simulationReqDto);
+
+            if (null == simulated)
+            {
+              _logger.LogWarning(
+                "Balanced allocations could not be determined for user '{userId}'.", userConfig.Key);
+
+              return;
+            }
+
+            // Check if any assets are allocated, if not, bail for safety.
+            if (simulated.CurBalance.AmountQuote == simulated.CurBalance.AmountQuoteTotal)
+            {
+              _logger.LogWarning(
+                "Skipping automation for user '{userId}' because no assets are allocated. " +
+                "Initial investments should be made manually.", userConfig.Key);
+
+              return;
+            }
 
             // Test if any of the allocation diffs exceed the minimum order size.
             if (!simulated.Orders.Any(order =>
               order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
               order.AmountQuoteFilled / simulated.CurBalance.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
             {
-              _logger.LogInformation("Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
+              _logger.LogInformation(
+                "Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
 
               return;
             }
@@ -127,7 +140,8 @@ internal class WorkerService
             // If no orders were placed, return.
             if (ordersExecuted.Length == 0)
             {
-              _logger.LogWarning("No orders were placed for user '{userId}'.", userConfig.Key);
+              _logger.LogWarning(
+                "No orders were placed for user '{userId}'.", userConfig.Key);
 
               return;
             }
@@ -140,9 +154,7 @@ internal class WorkerService
               // Send failure notification.
               await _emailNotification.SendAutomationFailed(userConfig.Key, now, ordersExecuted, new
               {
-                simulated.CurBalance,
-                newAbsAllocs,
-                simulated.Orders,
+                simulated,
                 ordersExecuted,
               });
 

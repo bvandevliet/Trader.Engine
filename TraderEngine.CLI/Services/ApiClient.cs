@@ -104,7 +104,7 @@ public class ApiClient : IApiClient
     return (await absAllocsResp.Content.ReadFromJsonAsync<List<AbsAllocReqDto>>())!;
   }
 
-  public async Task<SimulationDto> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
+  public async Task<SimulationDto?> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
     _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
 
@@ -114,6 +114,13 @@ public class ApiClient : IApiClient
     // TODO: ERROR HANDLING ??
     if (!simulationResp.IsSuccessStatusCode)
     {
+      if (simulationResp.StatusCode == HttpStatusCode.NotFound)
+      {
+        _logger.LogWarning("No recent market cap records found.");
+
+        return null;
+      }
+
       _logger.LogError("{url} returned {code} {reason} : {response}",
         $"api/rebalance/simulate/{exchangeName}", (int)simulationResp.StatusCode,
         simulationResp.ReasonPhrase, await simulationResp.Content.ReadAsStringAsync());

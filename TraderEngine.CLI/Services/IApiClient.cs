@@ -13,7 +13,7 @@ public interface IApiClient
 
   Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto config);
 
-  Task<SimulationDto> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto);
+  Task<SimulationDto?> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto);
 
   Task<OrderDto[]> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto);
 }
