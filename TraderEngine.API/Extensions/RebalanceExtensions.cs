@@ -178,7 +178,7 @@ public static partial class Trader
     };
 
     // Prevent dust.
-    if (curAlloc.AmountQuote - amountQuote <= @this.MinOrderSizeInQuote)
+    if (curAlloc.AmountQuote - amountQuote < @this.MinOrderSizeInQuote)
     {
       order.Amount = curAlloc.Amount;
     }
