@@ -8,6 +8,9 @@ namespace TraderEngine.CLI;
 
 internal class WorkerService
 {
+  // TODO: Put quote symbol for market cap records in appsettings.
+  private readonly string _quoteSymbol = "EUR";
+
   private readonly Program.AppArgs _appArgs;
   private readonly ILogger<WorkerService> _logger;
   private readonly IMarketCapExternalRepository _marketCapExtRepo;
@@ -47,8 +50,7 @@ internal class WorkerService
       {
         _logger.LogInformation("Updating market cap data ..");
 
-        // TODO: Put quote symbol for market cap records in appsettings.
-        var latest = await _marketCapExtRepo.ListLatest("EUR");
+        var latest = await _marketCapExtRepo.ListLatest(_quoteSymbol);
 
         await _marketCapIntRepo.TryInsertMany(latest);
       }
@@ -84,11 +86,8 @@ internal class WorkerService
               return;
             }
 
-            // TODO: Put quote symbol for market cap records in appsettings.
-            string quoteSymbol = "EUR";
-
             // Get absolute balanced allocations DTO.
-            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(quoteSymbol, configReqDto);
+            var newAbsAllocs = await _apiClient.BalancedAbsAllocs(_quoteSymbol, configReqDto);
 
             if (null == newAbsAllocs)
             {

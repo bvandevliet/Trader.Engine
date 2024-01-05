@@ -10,6 +10,9 @@ namespace TraderEngine.API.Controllers;
 [ApiController, Route("api/[controller]")]
 public class AllocationsController : ControllerBase
 {
+  // TODO: Put quote symbol for market cap records in appsettings.
+  private readonly string _quoteSymbol = "EUR";
+
   private readonly ILogger<AllocationsController> _logger;
   private readonly IMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
@@ -28,28 +31,28 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("current/{exchangeName}")]
-  public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredentials)
+  public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredReqDto)
   {
     _logger.LogDebug("Handling CurrentBalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
-    exchange.ApiKey = apiCredentials.ApiKey;
-    exchange.ApiSecret = apiCredentials.ApiSecret;
+    exchange.ApiKey = apiCredReqDto.ApiKey;
+    exchange.ApiSecret = apiCredReqDto.ApiSecret;
 
     var balance = await exchange.GetBalance();
 
     return Ok(_mapper.Map<BalanceDto>(balance));
   }
 
-  [HttpPost("balanced/{quoteSymbol}")]
-  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto config)
+  [HttpPost("balanced")]
+  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(ConfigReqDto configReqDto)
   {
     _logger.LogDebug(
       "Handling BalancedAbsAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var absAllocs = await _marketCapService()
-      .BalancedAbsAllocs(quoteSymbol, config);
+      .BalancedAbsAllocs(_quoteSymbol, configReqDto);
 
     return absAllocs != null ? Ok(absAllocs) : NotFound("No recent market cap records found.");
   }
