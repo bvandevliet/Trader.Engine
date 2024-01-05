@@ -39,11 +39,11 @@ var,
 }";
 
   public async Task SendAutomationSucceeded(
-    int userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, RebalanceDto rebalanceDto)
+    int userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, SimulationDto simulated, OrderDto[] ordersExecuted)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    decimal cumulativeValue = rebalanceDto.NewBalance.AmountQuoteTotal + totalWithdrawn;
+    decimal cumulativeValue = simulated.NewBalance.AmountQuoteTotal + totalWithdrawn;
 
     string htmlString =
     $"<style>{_cssString}</style>" +
@@ -56,31 +56,31 @@ var,
     $"<td class=\"monospace\" style=\"text-align:right;\">(i)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
-    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Total withdrawn</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(o)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
-    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Current value</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(v)</td>" +
     $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{rebalanceDto.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
-    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\" style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
+    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Cumulative value</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(V=o+v)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
-    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr style=\"border-top-width:1px;\">" +
     $"<td>Total gain</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(V-i)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
-    $"<td class=\"monospace\">{rebalanceDto.NewBalance.QuoteSymbol}</td>" +
+    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td></td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(V/i-1)</td>" +
@@ -89,10 +89,10 @@ var,
     $"<td class=\"monospace\">%</td>" +
     $"</tr>" +
     $"</table></p>" +
-    $"<p>The below {rebalanceDto.Orders.Length} orders were executed" +
-    $" with a total fee paid of {rebalanceDto.TotalFee.Ceiling(2)} {rebalanceDto.NewBalance.QuoteSymbol}.</p>" +
+    $"<p>The below {ordersExecuted.Length} orders were executed" +
+    $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
     $"<table>" +
-      string.Concat(rebalanceDto.Orders.Select(order =>
+      string.Concat(ordersExecuted.Select(order =>
       $"<tr>" +
       $"<td>{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}</td>" +
       $"<td class=\"monospace\" style=\"text-align:right;\">{order.AmountFilled}</td>" +
@@ -115,12 +115,12 @@ var,
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(message);
+    _ = await client.SendAsync(message);
     await client.DisconnectAsync(true);
   }
 
   public async Task SendAutomationFailed(
-    int userId, DateTime timestamp, RebalanceDto rebalanceDto, object debugData)
+    int userId, DateTime timestamp, OrderDto[] ordersAttempted, object debugData)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
@@ -129,8 +129,8 @@ var,
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
     $"We will try again within an hour.</p>" +
-    $"<p>The below {rebalanceDto.Orders.Length} orders were attempted:</p>" +
-    $"<pre>{string.Join("</pre><pre>", (object[])rebalanceDto.Orders)}</pre>" +
+    $"<p>The below {ordersAttempted.Length} orders were attempted:</p>" +
+    $"<pre>{string.Join("</pre><pre>", (object[])ordersAttempted)}</pre>" +
     $"<p>This email was automatically generated. Happy trading!</p>";
 
     string adminMsgBody =
@@ -159,8 +159,8 @@ var,
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(userMessage);
-    await client.SendAsync(adminMessage);
+    _ = await client.SendAsync(userMessage);
+    _ = await client.SendAsync(adminMessage);
     await client.DisconnectAsync(true);
   }
 
@@ -187,7 +187,7 @@ var,
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(message);
+    _ = await client.SendAsync(message);
     await client.DisconnectAsync(true);
   }
 }

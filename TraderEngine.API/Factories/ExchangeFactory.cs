@@ -3,7 +3,6 @@ using TraderEngine.Common.Factories;
 
 namespace TraderEngine.API.Factories;
 
-
 /// <summary>
 /// Exchange factory used to get the exchange by name.
 /// </summary>

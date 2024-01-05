@@ -22,7 +22,6 @@ public class ApiClient : IApiClient
   {
     _logger.LogDebug("Requesting total deposited for '{exchangeName}' ..", exchangeName);
 
-    // Request total deposited.
     using var totalDepositedResp = await _httpClient
       .PostAsJsonAsync($"api/account/totals/deposited/{exchangeName}", apiCred);
 
@@ -36,7 +35,6 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting total deposited.");
     }
 
-    // Read total deposited.
     return (await totalDepositedResp.Content.ReadFromJsonAsync<decimal>())!;
   }
 
@@ -44,7 +42,6 @@ public class ApiClient : IApiClient
   {
     _logger.LogDebug("Requesting total withdrawn for '{exchangeName}' ..", exchangeName);
 
-    // Request total withdrawn.
     using var totalWithdrawnResp = await _httpClient
       .PostAsJsonAsync($"api/account/totals/withdrawn/{exchangeName}", apiCred);
 
@@ -58,7 +55,6 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting total withdrawn.");
     }
 
-    // Read total withdrawn.
     return (await totalWithdrawnResp.Content.ReadFromJsonAsync<decimal>())!;
   }
 
@@ -66,7 +62,6 @@ public class ApiClient : IApiClient
   {
     _logger.LogDebug("Requesting current balance for '{exchangeName}' ..", exchangeName);
 
-    // Request current balance.
     using var curBalanceResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/current/{exchangeName}", apiCred);
 
@@ -80,17 +75,15 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting current balance.");
     }
 
-    // Read current balance DTO.
     return (await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>())!;
   }
 
-  public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string exchangeName, BalancedReqDto balancedReqDto)
+  public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto config)
   {
-    _logger.LogDebug("Requesting balanced absolute allocations for '{exchangeName}' ..", exchangeName);
+    _logger.LogDebug("Requesting balanced absolute allocations for '{quoteSymbol}' ..", quoteSymbol);
 
-    // Request absolute balanced allocations.
     using var absAllocsResp = await _httpClient
-      .PostAsJsonAsync($"api/allocations/balanced/{exchangeName}", balancedReqDto);
+      .PostAsJsonAsync($"api/allocations/balanced/{quoteSymbol}", config);
 
     if (!absAllocsResp.IsSuccessStatusCode)
     {
@@ -101,28 +94,49 @@ public class ApiClient : IApiClient
       else
       {
         _logger.LogError("{url} returned {code} {reason} : {response}",
-          $"api/allocations/balanced/{exchangeName}", (int)absAllocsResp.StatusCode,
+          $"api/allocations/balanced/{quoteSymbol}", (int)absAllocsResp.StatusCode,
           absAllocsResp.ReasonPhrase, await absAllocsResp.Content.ReadAsStringAsync());
       }
 
       return null;
     }
 
-    // Read absolute balanced allocations DTO.
     return (await absAllocsResp.Content.ReadFromJsonAsync<List<AbsAllocReqDto>>())!;
   }
 
-  //public void SimulateRebalance()
-  //{
-  //}
-
-  public async Task<RebalanceDto> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  public async Task<SimulationDto?> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
     _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
 
-    // Execute rebalance.
+    using var simulationResp = await _httpClient
+      .PostAsJsonAsync($"api/rebalance/simulate/{exchangeName}", simulationReqDto);
+
+    // TODO: ERROR HANDLING ??
+    if (!simulationResp.IsSuccessStatusCode)
+    {
+      if (simulationResp.StatusCode == HttpStatusCode.NotFound)
+      {
+        _logger.LogWarning("No recent market cap records found.");
+
+        return null;
+      }
+
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        $"api/rebalance/simulate/{exchangeName}", (int)simulationResp.StatusCode,
+        simulationResp.ReasonPhrase, await simulationResp.Content.ReadAsStringAsync());
+
+      throw new Exception("Error while requesting rebalance execution.");
+    }
+
+    return (await simulationResp.Content.ReadFromJsonAsync<SimulationDto>())!;
+  }
+
+  public async Task<OrderDto[]> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  {
+    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
+
     using var rebalanceResp = await _httpClient
-      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", rebalanceReqDto);
+      .PostAsJsonAsync($"api/rebalance/{exchangeName}", rebalanceReqDto);
 
     // TODO: ERROR HANDLING ??
     if (!rebalanceResp.IsSuccessStatusCode)
@@ -134,7 +148,26 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting rebalance execution.");
     }
 
-    // Return resulting rebalance DTO.
-    return (await rebalanceResp.Content.ReadFromJsonAsync<RebalanceDto>())!;
+    return (await rebalanceResp.Content.ReadFromJsonAsync<OrderDto[]>())!;
+  }
+
+  public async Task<OrderDto[]> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
+  {
+    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
+
+    using var rebalanceResp = await _httpClient
+      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", executeOrdersReqDto);
+
+    // TODO: ERROR HANDLING ??
+    if (!rebalanceResp.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        $"api/rebalance/execute/{exchangeName}", (int)rebalanceResp.StatusCode,
+        rebalanceResp.ReasonPhrase, await rebalanceResp.Content.ReadAsStringAsync());
+
+      throw new Exception("Error while requesting rebalance execution.");
+    }
+
+    return (await rebalanceResp.Content.ReadFromJsonAsync<OrderDto[]>())!;
   }
 }

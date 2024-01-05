@@ -10,7 +10,7 @@ public class BitvavoProfile : Profile
 {
   public BitvavoProfile()
   {
-    CreateMap<BitvavoMarketDataDto, MarketDataDto>()
+    _ = CreateMap<BitvavoMarketDataDto, MarketDataDto>()
       .ForMember(
         dest => dest.MinOrderSizeInQuote, opt => opt.MapFrom(
           src => src.MinOrderInQuoteAsset))
@@ -18,7 +18,7 @@ public class BitvavoProfile : Profile
         dest => dest.MinOrderSizeInBase, opt => opt.MapFrom(
           src => src.MinOrderInBaseAsset));
 
-    CreateMap<OrderReqDto, BitvavoOrderReqDto>()
+    _ = CreateMap<OrderReqDto, BitvavoOrderReqDto>()
       .ForMember(
         dest => dest.Market, opt => opt.MapFrom(
           src => $"{src.Market.BaseSymbol}-{src.Market.QuoteSymbol}"))
@@ -29,7 +29,7 @@ public class BitvavoProfile : Profile
         dest => dest.OrderType, opt => opt.MapFrom(
           src => src.Type));
 
-    CreateMap<BitvavoOrderDto, OrderDto>()
+    _ = CreateMap<BitvavoOrderDto, OrderDto>()
       .ForMember(
         dest => dest.Id, opt => opt.MapFrom(
           src => src.OrderId))

@@ -2,15 +2,22 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
-public class RebalanceReqDto
+public class RebalanceReqDto : SimulationReqDto
 {
   [Required]
-  public ApiCredReqDto ExchangeApiCred { get; set; } = null!;
+  public new IEnumerable<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
 
-  /// <inheritdoc cref="AbsAllocReqDto"/>
-  [Required]
-  public List<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
+  public RebalanceReqDto()
+  {
+  }
 
-  /// <inheritdoc cref="AllocDiffReqDto"/>
-  public List<AllocDiffReqDto>? AllocDiffs { get; set; } = null;
+  public RebalanceReqDto(
+    ApiCredReqDto exchangeApiCred,
+    ConfigReqDto config,
+    IEnumerable<AbsAllocReqDto> newAbsAllocs)
+  {
+    ExchangeApiCred = exchangeApiCred;
+    Config = config;
+    NewAbsAllocs = newAbsAllocs;
+  }
 }
