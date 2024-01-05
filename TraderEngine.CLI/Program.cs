@@ -13,7 +13,7 @@ namespace TraderEngine.CLI;
 
 public class Program
 {
-  static void Main(string[] args)
+  public static void Main(string[] args)
   {
     var host = Host.CreateDefaultBuilder(args)
 #if DEBUG

@@ -44,7 +44,7 @@ public class MockExchange : IExchange
     _curBalance = curBalance;
 
     // Add quote allocation if not present.
-    _curBalance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
+    _ = _curBalance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
   }
 
   /// <summary>
@@ -132,7 +132,7 @@ public class MockExchange : IExchange
 
     if (null == curAlloc)
     {
-      _curBalance?.TryAddAllocation(newAlloc);
+      _ = (_curBalance?.TryAddAllocation(newAlloc));
     }
 
     return Task.FromResult(returnOrder);
@@ -200,10 +200,11 @@ public class SimExchange : MockExchange, IExchange
         order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled : order.AmountQuote;
       }
 
-      await NewOrder(order);
+      _ = await NewOrder(order);
     }
   }
 
-  new public Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
-  new public Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
+  public new Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
+
+  public new Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

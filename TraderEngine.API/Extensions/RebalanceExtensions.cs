@@ -57,7 +57,7 @@ public static partial class Trader
       {
         totalAbsAlloc += absAlloc.AbsAlloc;
 
-        absAlloc.AbsAlloc *= (1 - quoteRelAlloc);
+        absAlloc.AbsAlloc *= 1 - quoteRelAlloc;
 
         return absAlloc;
       })
@@ -354,7 +354,7 @@ public static partial class Trader
     curBalance ??= await @this.GetBalance();
 
     // Clear the path ..
-    await @this.CancelAllOpenOrders();
+    _ = await @this.CancelAllOpenOrders();
 
     // Get absolute balanced allocations for tradable assets.
     var allocsMarketDataTasks = newAbsAllocs.Select(async absAlloc =>
@@ -399,7 +399,7 @@ public static partial class Trader
     IEnumerable<OrderReqDto> orders)
   {
     // Clear the path ..
-    await @this.CancelAllOpenOrders();
+    _ = await @this.CancelAllOpenOrders();
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.

@@ -115,7 +115,7 @@ var,
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(message);
+    _ = await client.SendAsync(message);
     await client.DisconnectAsync(true);
   }
 
@@ -159,8 +159,8 @@ var,
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(userMessage);
-    await client.SendAsync(adminMessage);
+    _ = await client.SendAsync(userMessage);
+    _ = await client.SendAsync(adminMessage);
     await client.DisconnectAsync(true);
   }
 
@@ -187,7 +187,7 @@ var,
 
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
-    await client.SendAsync(message);
+    _ = await client.SendAsync(message);
     await client.DisconnectAsync(true);
   }
 }

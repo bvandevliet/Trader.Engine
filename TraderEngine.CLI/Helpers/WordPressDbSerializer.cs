@@ -187,7 +187,7 @@ public static class WordPressDbSerializer
 
         endIndex += valEnd;
 
-        dictionaryType.GetMethod("Add")!.Invoke(instance, new[] { key, val });
+        _ = dictionaryType.GetMethod("Add")!.Invoke(instance, new[] { key, val });
       }
 
       // To account for closing '}'.

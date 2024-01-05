@@ -44,7 +44,7 @@ internal class WorkerService
   {
     try
     {
-      await _marketCapIntRepo.InitDatabase();
+      _ = await _marketCapIntRepo.InitDatabase();
 
       if (_appArgs.DoUpdateMarketCap)
       {
@@ -52,7 +52,7 @@ internal class WorkerService
 
         var latest = await _marketCapExtRepo.ListLatest(_quoteSymbol);
 
-        await _marketCapIntRepo.TryInsertMany(latest);
+        _ = await _marketCapIntRepo.TryInsertMany(latest);
       }
 
       if (_appArgs.DoAutomations)
@@ -155,12 +155,12 @@ internal class WorkerService
             configReqDto.LastRebalance = now;
 
             // Save last rebalance timestamp.
-            await _configRepo.SaveConfig(userConfig.Key, configReqDto);
+            _ = await _configRepo.SaveConfig(userConfig.Key, configReqDto);
 
             // Send success notification.
             var totalDepositedTask = _apiClient.TotalDeposited(exchangeName, apiCred);
             var totalWithdrawnTask = _apiClient.TotalWithdrawn(exchangeName, apiCred);
-            await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
+            _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
             await _emailNotification.SendAutomationSucceeded(userConfig.Key, now, totalDepositedTask.Result, totalWithdrawnTask.Result, simulated, ordersExecuted);
           }
           catch (Exception exception)

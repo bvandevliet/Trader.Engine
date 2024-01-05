@@ -48,11 +48,11 @@ public class BitvavoExchange : IExchange
   {
     var hashString = new StringBuilder();
 
-    hashString.Append(timestamp).Append(method).Append(url);
+    _ = hashString.Append(timestamp).Append(method).Append(url);
 
     if (payload != null)
     {
-      hashString.Append(payload);
+      _ = hashString.Append(payload);
     }
 
     using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(ApiSecret));
@@ -147,11 +147,11 @@ public class BitvavoExchange : IExchange
 
     foreach (var allocation in allocations)
     {
-      balance.TryAddAllocation(allocation);
+      _ = balance.TryAddAllocation(allocation);
     }
 
     // Add quote allocation if not present.
-    balance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
+    _ = balance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
 
     return balance;
   }
