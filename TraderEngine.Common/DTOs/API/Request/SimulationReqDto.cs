@@ -8,10 +8,9 @@ public class SimulationReqDto
   public ApiCredReqDto ExchangeApiCred { get; set; } = null!;
 
   [Required]
-  public List<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
-
-  [Required]
   public ConfigReqDto Config { get; set; } = null!;
+
+  public IEnumerable<AbsAllocReqDto>? NewAbsAllocs { get; set; }
 
   public SimulationReqDto()
   {
@@ -19,11 +18,9 @@ public class SimulationReqDto
 
   public SimulationReqDto(
     ApiCredReqDto exchangeApiCred,
-    List<AbsAllocReqDto> newAbsAllocs,
     ConfigReqDto config)
   {
     ExchangeApiCred = exchangeApiCred;
-    NewAbsAllocs = newAbsAllocs;
     Config = config;
   }
 }

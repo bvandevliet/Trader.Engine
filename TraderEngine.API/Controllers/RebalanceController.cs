@@ -3,26 +3,34 @@ using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Extensions;
 using TraderEngine.API.Factories;
+using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Controllers;
 
 [ApiController, Route("api/[controller]")]
 public class RebalanceController : ControllerBase
 {
+  // TODO: Put quote symbol for market cap records in appsettings.
+  private readonly string _quoteSymbol = "EUR";
+
   private readonly ILogger<RebalanceController> _logger;
   private readonly IMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
+  private readonly Func<IMarketCapService> _marketCapService;
 
   public RebalanceController(
     ILogger<RebalanceController> logger,
+    IServiceProvider serviceProvider,
     IMapper mapper,
     ExchangeFactory exchangeFactory)
   {
     _logger = logger;
     _mapper = mapper;
     _exchangeFactory = exchangeFactory;
+    _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
   }
 
   [HttpPost("simulate/{exchangeName}")]
@@ -35,11 +43,32 @@ public class RebalanceController : ControllerBase
     exchange.ApiKey = simulationReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
 
-    var curBalance = await exchange.GetBalance();
+    var absAllocs = simulationReqDto.NewAbsAllocs;
+    Balance curBalance;
+
+    if (null == absAllocs)
+    {
+      var absAllocsTask = _marketCapService()
+        .BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config);
+
+      var curBalanceTask = exchange.GetBalance();
+
+      await Task.WhenAll(absAllocsTask, curBalanceTask);
+
+      absAllocs = absAllocsTask.Result;
+      curBalance = curBalanceTask.Result;
+
+      if (null == absAllocs)
+        return NotFound("No recent market cap records found.");
+    }
+    else
+    {
+      curBalance = await exchange.GetBalance();
+    }
 
     var simExchange = new SimExchange(exchange, curBalance);
 
-    var orders = await simExchange.Rebalance(simulationReqDto.NewAbsAllocs/*, simulationReqDto.Config*/, curBalance);
+    var orders = await simExchange.Rebalance(absAllocs/*, simulationReqDto.Config*/, curBalance);
 
     var newBalance = await simExchange.GetBalance();
 
