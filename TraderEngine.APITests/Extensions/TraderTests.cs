@@ -42,7 +42,7 @@ public class TraderTests
   [TestMethod()]
   public async Task RebalanceTest()
   {
-    var rebalanceOrders = (await _exchangeService.Rebalance(_absAssetAlloc, _configReqDto)).ToList();
+    var rebalanceOrders = (await _exchangeService.Rebalance(_configReqDto, _absAssetAlloc)).ToList();
 
     Assert.AreEqual(4, rebalanceOrders.Count);
 

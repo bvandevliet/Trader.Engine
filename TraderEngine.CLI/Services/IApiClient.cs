@@ -15,5 +15,7 @@ public interface IApiClient
 
   Task<SimulationDto?> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto);
 
-  Task<OrderDto[]> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto);
+  Task<OrderDto[]> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto);
+
+  Task<OrderDto[]> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto);
 }

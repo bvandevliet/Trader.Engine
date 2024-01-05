@@ -1,3 +1,5 @@
+using TraderEngine.Common.DTOs.API.Request;
+
 namespace TraderEngine.Common.DTOs.API.Response;
 
 public class SimulationDto
@@ -9,4 +11,6 @@ public class SimulationDto
   public BalanceDto CurBalance { get; set; } = null!;
 
   public BalanceDto NewBalance { get; set; } = null!;
+
+  public IEnumerable<AbsAllocReqDto> NewAbsAllocsTradable { get; set; } = null!;
 }

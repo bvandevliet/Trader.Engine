@@ -306,6 +306,9 @@ public static partial class Trader
       // We can't trade quote currency for quote currency.
       .Where(buyOrder => !buyOrder.Market.BaseSymbol.Equals(@this.QuoteSymbol))
 
+      // Check if reached minimum order size.
+      .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
+
       // Sum of all negative quote differences.
       .Sum(buyOrder =>
       {
@@ -326,7 +329,11 @@ public static partial class Trader
       // Scale to avoid potentially oversized buy order sizes.
       .Select(buyOrder => { buyOrder.AmountQuote *= ratio; return buyOrder; })
 
-      // Check if reached minimum order size.
+      // Round down to avoid invalid order sizes.
+      // TODO: Can we make this DRY since it's also done in ConstructBuyOrder ??
+      .Select(buyOrder => { buyOrder.AmountQuote = Math.Floor((decimal)buyOrder.AmountQuote! * 100) / 100; return buyOrder; })
+
+      // Check if still reached minimum order size.
       .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
 
       // Buy ..
@@ -338,17 +345,16 @@ public static partial class Trader
 
   /// <summary>
   /// Asynchronously performs a portfolio rebalance.
-  /// Only tradable assets will be considered.
   /// Quote allocation and takeout will be handled.
   /// </summary>
   /// <param name="this"></param>
-  /// <param name="newAbsAllocs"></param>
   /// <param name="config"></param>
+  /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
   public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
     ConfigReqDto config,
+    IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null)
   {
     curBalance ??= await @this.GetBalance();
@@ -356,28 +362,12 @@ public static partial class Trader
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 
-    // Get absolute balanced allocations for tradable assets.
-    var allocsMarketDataTasks = newAbsAllocs.Select(async absAlloc =>
-    {
-      var marketDto = new MarketReqDto(@this.QuoteSymbol, absAlloc.BaseSymbol);
-
-      return new { absAlloc, marketData = await @this.GetMarket(marketDto) };
-    });
-
-    // Wait for all tasks to complete.
-    var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
-
-    // Filter for assets that are tradable.
-    var absAllocsList = allocsMarketData
-      .Where(x => x.marketData?.Status == MarketStatus.Trading)
-      .Select(x => x.absAlloc);
-
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocsList, config, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(newAbsAllocs, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsList, config);
+    var buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

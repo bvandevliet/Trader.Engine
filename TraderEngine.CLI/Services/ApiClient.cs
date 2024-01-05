@@ -131,13 +131,32 @@ public class ApiClient : IApiClient
     return (await simulationResp.Content.ReadFromJsonAsync<SimulationDto>())!;
   }
 
-
-  public async Task<OrderDto[]> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  public async Task<OrderDto[]> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
     _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
 
     using var rebalanceResp = await _httpClient
-      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", rebalanceReqDto);
+      .PostAsJsonAsync($"api/rebalance/{exchangeName}", rebalanceReqDto);
+
+    // TODO: ERROR HANDLING ??
+    if (!rebalanceResp.IsSuccessStatusCode)
+    {
+      _logger.LogError("{url} returned {code} {reason} : {response}",
+        $"api/rebalance/execute/{exchangeName}", (int)rebalanceResp.StatusCode,
+        rebalanceResp.ReasonPhrase, await rebalanceResp.Content.ReadAsStringAsync());
+
+      throw new Exception("Error while requesting rebalance execution.");
+    }
+
+    return (await rebalanceResp.Content.ReadFromJsonAsync<OrderDto[]>())!;
+  }
+
+  public async Task<OrderDto[]> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
+  {
+    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
+
+    using var rebalanceResp = await _httpClient
+      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", executeOrdersReqDto);
 
     // TODO: ERROR HANDLING ??
     if (!rebalanceResp.IsSuccessStatusCode)

@@ -6,6 +6,7 @@ using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Controllers;
@@ -44,7 +45,7 @@ public class RebalanceController : ControllerBase
     exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
 
     var absAllocs = simulationReqDto.NewAbsAllocs;
-    Balance curBalance;
+    Balance balance;
 
     if (null == absAllocs)
     {
@@ -56,41 +57,82 @@ public class RebalanceController : ControllerBase
       await Task.WhenAll(absAllocsTask, curBalanceTask);
 
       absAllocs = absAllocsTask.Result;
-      curBalance = curBalanceTask.Result;
+      balance = curBalanceTask.Result;
 
       if (null == absAllocs)
         return NotFound("No recent market cap records found.");
     }
     else
     {
-      curBalance = await exchange.GetBalance();
+      balance = await exchange.GetBalance();
     }
 
-    var simExchange = new SimExchange(exchange, curBalance);
+    // Map here to retain current balance as it will be
+    // modified by the simulation since it is passed by reference.
+    var curBalanceDto = _mapper.Map<BalanceDto>(balance);
 
-    var orders = await simExchange.Rebalance(absAllocs, simulationReqDto.Config, curBalance);
+    var simExchange = new SimExchange(exchange, balance);
 
-    var newBalance = await simExchange.GetBalance();
+    // Get absolute balanced allocations for tradable assets.
+    // TODO: Get and set price for assets that we do not know price of yet (those not in current balance) ??
+    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
+    {
+      var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.BaseSymbol);
+
+      return new { absAlloc, marketData = await exchange.GetMarket(marketDto) };
+    });
+
+    // Wait for all tasks to complete.
+    var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
+
+    // Filter for assets that are tradable.
+    var absAllocsTradable = allocsMarketData
+      .Where(x => x.marketData?.Status == MarketStatus.Trading)
+      .Select(x => x.absAlloc).ToList();
+
+    // Simulate rebalance.
+    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance);
+
+    //var newBalance = await simExchange.GetBalance();
+    var newBalanceDto = _mapper.Map<BalanceDto>(balance);
 
     return Ok(new SimulationDto()
     {
       Orders = orders,
-      CurBalance = _mapper.Map<BalanceDto>(curBalance),
-      NewBalance = _mapper.Map<BalanceDto>(newBalance),
+      NewAbsAllocsTradable = absAllocsTradable,
+      CurBalance = curBalanceDto,
+      NewBalance = newBalanceDto,
     });
   }
 
-  [HttpPost("execute/{exchangeName}")]
-  public async Task<ActionResult<OrderDto[]>> ExecuteRebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  [HttpPost("{exchangeName}")]
+  public async Task<ActionResult<OrderDto[]>> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
-    _logger.LogDebug("Handling ExecuteRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogDebug("Handling Rebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
-    var orders = await exchange.Rebalance(rebalanceReqDto.Orders);
+    // Execute rebalance.
+    var orders = await exchange.Rebalance(rebalanceReqDto.Config, rebalanceReqDto.NewAbsAllocs);
+
+    return Ok(orders);
+  }
+
+  [HttpPost("execute/{exchangeName}")]
+  public async Task<ActionResult<OrderDto[]>> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
+  {
+    _logger.LogDebug("Handling ExecuteOrders request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
+    var exchange = _exchangeFactory.GetService(exchangeName);
+
+    exchange.ApiKey = executeOrdersReqDto.ExchangeApiCred.ApiKey;
+    exchange.ApiSecret = executeOrdersReqDto.ExchangeApiCred.ApiSecret;
+
+    // Execute rebalance orders.
+    var orders = await exchange.Rebalance(executeOrdersReqDto.Orders);
 
     return Ok(orders);
   }

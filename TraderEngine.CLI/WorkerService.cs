@@ -132,10 +132,10 @@ internal class WorkerService
             }
 
             // Construct rebalance request DTO.
-            var rebalanceReqDto = new RebalanceReqDto(apiCred, simulated.Orders);
+            var rebalanceReqDto = new ExecuteOrdersReqDto(apiCred, simulated.Orders);
 
             // Execute and return resulting rebalance DTO.
-            var ordersExecuted = await _apiClient.ExecuteRebalance(exchangeName, rebalanceReqDto);
+            var ordersExecuted = await _apiClient.ExecuteOrders(exchangeName, rebalanceReqDto);
 
             // If no orders were placed, return.
             if (ordersExecuted.Length == 0)
