@@ -21,6 +21,8 @@ public class TraderTests
     //                               100%
   };
 
+  private readonly ConfigReqDto _configReqDto = new();
+
   [TestInitialize()]
   public void TestInit()
   {
@@ -32,7 +34,7 @@ public class TraderTests
     curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BTC"), price: 18_000, amount: .40m * deposit / 15_000));
     curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "ETH"), price: 01_610, amount: .30m * deposit / 01_400));
     curBalance.TryAddAllocation(new(market: new MarketReqDto(_quoteSymbol, baseSymbol: "BNB"), price: 000306, amount: .25m * deposit / 000340));
-    //                                                                                                             100%
+    //                                                                                                                100%
 
     _exchangeService = new(_quoteSymbol, 5, .0015m, .0025m, curBalance);
   }
@@ -40,7 +42,7 @@ public class TraderTests
   [TestMethod()]
   public async Task RebalanceTest()
   {
-    var rebalanceOrders = (await _exchangeService.Rebalance(_absAssetAlloc)).ToList();
+    var rebalanceOrders = (await _exchangeService.Rebalance(_absAssetAlloc, _configReqDto)).ToList();
 
     Assert.AreEqual(4, rebalanceOrders.Count);
 

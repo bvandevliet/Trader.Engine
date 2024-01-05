@@ -32,23 +32,41 @@ public static partial class Trader
   /// <paramref name="newAbsAllocs"/> against current allocations in <paramref name="curBalance"/>.
   /// </summary>
   /// <param name="newAbsAllocs"></param>
+  /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
-  private static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance curBalance)
+  private static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance curBalance)
   {
-    // Initialize absolute asset allocation List,
-    // being filled using a multi-purpose foreach to eliminate redundant iterations.
-    List<AbsAllocReqDto> newAbsAllocsList = new();
+    // Relative quote allocation (including takeout).
+    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
+      config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Sum of all absolute allocation values.
-    // being summed up using a multi-purpose foreach to eliminate redundant iterations.
-    decimal totalAbsAlloc =
-      newAbsAllocs.Sum(absAlloc =>
-      {
-        newAbsAllocsList.Add(absAlloc);
+    decimal totalAbsAlloc = 0;
 
-        return absAlloc.AbsAlloc;
-      });
+    // Absolute asset allocations to be used for rebalancing.
+    var newAbsAllocsList =
+      newAbsAllocs
+
+      // Quote allocation is not expected here, but filter it out just in case.
+      .Where(absAlloc => !absAlloc.BaseSymbol.Equals(@this.QuoteSymbol))
+
+      // Scale absolute allocation values to include relative quote allocation.
+      .Select(absAlloc =>
+      {
+        totalAbsAlloc += absAlloc.AbsAlloc;
+
+        absAlloc.AbsAlloc *= (1 - quoteRelAlloc);
+
+        return absAlloc;
+      })
+
+      // As list since we're using a summed total.
+      .ToList();
+
+    // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
+    //newAbsAllocsList.Add(new AbsAllocReqDto(@this.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
 
     // Loop through current allocations and determine quote diffs.
     foreach (var curAlloc in curBalance.Allocations)
@@ -178,15 +196,16 @@ public static partial class Trader
   /// </summary>
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
+  /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance? curBalance = null)
   {
     curBalance ??= await @this.GetBalance();
 
     var orders =
-      GetAllocationQuoteDiffs(newAbsAllocs, curBalance)
+      @this.GetAllocationQuoteDiffs(newAbsAllocs, config, curBalance)
 
       // We can't trade quote currency for quote currency.
       .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
@@ -237,15 +256,16 @@ public static partial class Trader
   /// </summary>
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
+  /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance? curBalance = null)
   {
     curBalance ??= await @this.GetBalance();
 
     var orders =
-      GetAllocationQuoteDiffs(newAbsAllocs, curBalance)
+      @this.GetAllocationQuoteDiffs(newAbsAllocs, config, curBalance)
 
       // We can't trade quote currency for quote currency.
       .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
@@ -318,6 +338,8 @@ public static partial class Trader
 
   /// <summary>
   /// Asynchronously performs a portfolio rebalance.
+  /// Only tradable assets will be considered.
+  /// Quote allocation and takeout will be handled.
   /// </summary>
   /// <param name="this"></param>
   /// <param name="newAbsAllocs"></param>
@@ -326,7 +348,7 @@ public static partial class Trader
   public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
-    //ConfigReqDto config,
+    ConfigReqDto config,
     Balance? curBalance = null)
   {
     curBalance ??= await @this.GetBalance();
@@ -352,10 +374,10 @@ public static partial class Trader
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocsList, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(absAllocsList, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsList);
+    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsList, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
@@ -368,6 +390,7 @@ public static partial class Trader
 
   /// <summary>
   /// Asynchronously performs a portfolio rebalance.
+  /// Just executes the given orders, without any checks.
   /// </summary>
   /// <param name="this"></param>
   /// <param name="orders"></param>
