@@ -144,53 +144,6 @@ public static partial class Trader
   }
 
   /// <summary>
-  /// Get a buy order request dto.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="curAlloc"></param>
-  /// <param name="amountQuote"></param>
-  /// <returns></returns>
-  public static OrderReqDto ConstructBuyOrder(this IExchange @this, Allocation curAlloc, decimal amountQuote)
-  {
-    return new OrderReqDto()
-    {
-      Market = curAlloc.Market,
-      Side = OrderSide.Buy,
-      Type = OrderType.Market,
-      AmountQuote = Math.Floor(amountQuote * 100) / 100,
-    };
-  }
-
-  /// <summary>
-  /// Get a sell order request dto.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="curAlloc"></param>
-  /// <param name="amountQuote"></param>
-  /// <returns></returns>
-  public static OrderReqDto ConstructSellOrder(this IExchange @this, Allocation curAlloc, decimal amountQuote)
-  {
-    var order = new OrderReqDto()
-    {
-      Market = curAlloc.Market,
-      Side = OrderSide.Sell,
-      Type = OrderType.Market,
-    };
-
-    // Prevent dust.
-    if (curAlloc.AmountQuote - amountQuote < @this.MinOrderSizeInQuote)
-    {
-      order.Amount = curAlloc.Amount;
-    }
-    else
-    {
-      order.AmountQuote = Math.Ceiling(amountQuote * 100) / 100;
-    }
-
-    return order;
-  }
-
-  /// <summary>
   /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
@@ -214,8 +167,27 @@ public static partial class Trader
       .Where(allocDiff => allocDiff.AmountQuoteDiff > 0)
 
       // Construct sell order.
-      .Select(allocDiff => @this.ConstructSellOrder(new Allocation(
-        allocDiff.Market, allocDiff.Price, allocDiff.Amount), Math.Abs(allocDiff.AmountQuoteDiff)));
+      .Select(allocDiff =>
+      {
+        var order = new OrderReqDto()
+        {
+          Market = allocDiff.Market,
+          Side = OrderSide.Sell,
+          Type = OrderType.Market,
+        };
+
+        // Prevent dust.
+        if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < @this.MinOrderSizeInQuote)
+        {
+          order.Amount = allocDiff.Amount;
+        }
+        else
+        {
+          order.AmountQuote = allocDiff.AmountQuoteDiff;
+        }
+
+        return order;
+      });
 
     return await @this.SellOveragesAndVerify(orders);
   }
@@ -242,6 +214,15 @@ public static partial class Trader
 
       // Check if reached minimum order size.
       .Where(sellOrder => sellOrder.AmountQuote >= @this.MinOrderSizeInQuote || sellOrder.Amount > 0)
+
+      // Round to avoid potentially invalid amount quote.
+      .Select(sellOrder =>
+      {
+        if (sellOrder.AmountQuote is decimal amountQuote)
+          sellOrder.AmountQuote = Math.Ceiling(amountQuote * 100) / 100;
+
+        return sellOrder;
+      })
 
       // Sell ..
       .Select(alloc => @this.NewOrder(alloc)
@@ -274,8 +255,13 @@ public static partial class Trader
       .Where(allocDiff => allocDiff.AmountQuoteDiff < 0)
 
       // Construct buy order.
-      .Select(allocDiff => @this.ConstructBuyOrder(new Allocation(
-        allocDiff.Market, allocDiff.Price, allocDiff.Amount), Math.Abs(allocDiff.AmountQuoteDiff)));
+      .Select(allocDiff => new OrderReqDto()
+      {
+        Market = allocDiff.Market,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
+      });
 
     return await @this.BuyUnderagesAndVerify(orders, curBalance);
   }
@@ -326,12 +312,15 @@ public static partial class Trader
     return await Task.WhenAll(
       buyOrders
 
-      // Scale to avoid potentially oversized buy order sizes.
-      .Select(buyOrder => { buyOrder.AmountQuote *= ratio; return buyOrder; })
+      // Scale to avoid potentially oversized buy order size,
+      // and round to avoid potentially invalid amount quote.
+      .Select(buyOrder =>
+      {
+        buyOrder.AmountQuote *= ratio;
+        buyOrder.AmountQuote = Math.Floor((decimal)buyOrder.AmountQuote! * 100) / 100;
 
-      // Round down to avoid invalid order sizes.
-      // TODO: Can we make this DRY since it's also done in ConstructBuyOrder ??
-      .Select(buyOrder => { buyOrder.AmountQuote = Math.Floor((decimal)buyOrder.AmountQuote! * 100) / 100; return buyOrder; })
+        return buyOrder;
+      })
 
       // Check if still reached minimum order size.
       .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
