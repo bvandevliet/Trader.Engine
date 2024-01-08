@@ -3,6 +3,7 @@ using TraderEngine.API.Extensions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Extensions;
@@ -72,11 +73,11 @@ public static partial class Trader
     foreach (var curAlloc in curBalance.Allocations)
     {
       // Find associated absolute allocation.
-      decimal absAlloc =
-        newAbsAllocsList.Find(absAlloc => absAlloc.BaseSymbol.Equals(curAlloc.Market.BaseSymbol))?.AbsAlloc ?? 0;
+      var newAbsAlloc = newAbsAllocsList
+        .FindAndRemove(absAlloc => absAlloc.BaseSymbol.Equals(curAlloc.Market.BaseSymbol));
 
       // Determine relative allocation.
-      decimal relAlloc = totalAbsAlloc == 0 ? 0 : absAlloc / totalAbsAlloc;
+      decimal relAlloc = totalAbsAlloc == 0 || newAbsAlloc == null ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
 
       // Determine new quote amount.
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
@@ -88,23 +89,17 @@ public static partial class Trader
         curAlloc.AmountQuote - newAmountQuote);
     }
 
-    // Loop through absolute asset allocations and determine yet missing quote diffs.
-    foreach (var absAlloc in newAbsAllocsList)
+    // Loop through remaining absolute asset allocations and determine yet missing quote diffs.
+    foreach (var newAbsAlloc in newAbsAllocsList)
     {
-      if (null != curBalance.GetAllocation(absAlloc.BaseSymbol))
-      {
-        // Already covered in previous foreach.
-        continue;
-      }
-
       // Determine relative allocation.
-      decimal relAlloc = totalAbsAlloc == 0 ? 0 : absAlloc.AbsAlloc / totalAbsAlloc;
+      decimal relAlloc = totalAbsAlloc == 0 ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
 
       // Determine new quote amount.
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
       yield return new AllocDiffReqDto(
-        new MarketReqDto(curBalance.QuoteSymbol, absAlloc.BaseSymbol),
+        new MarketReqDto(curBalance.QuoteSymbol, newAbsAlloc.BaseSymbol),
         0,
         0,
         -newAmountQuote);
