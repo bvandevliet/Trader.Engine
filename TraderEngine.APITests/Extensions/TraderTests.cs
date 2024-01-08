@@ -14,11 +14,11 @@ public class TraderTests
 
   private readonly List<AbsAllocReqDto> _absAssetAlloc = new()
   {
-    new(baseSymbol: "EUR", absAlloc: .05m),
-    new(baseSymbol: "BTC", absAlloc: .40m),
-    new(baseSymbol: "ETH", absAlloc: .30m),
-    new(baseSymbol: "ADA", absAlloc: .25m),
-    //                               100%
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "EUR"), absAlloc: .05m),
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "BTC"), absAlloc: .40m),
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "ETH"), absAlloc: .30m),
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "ADA"), absAlloc: .25m),
+    //                                                                 100%
   };
 
   private readonly ConfigReqDto _configReqDto = new();

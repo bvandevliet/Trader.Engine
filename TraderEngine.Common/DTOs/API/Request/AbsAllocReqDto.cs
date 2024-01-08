@@ -1,24 +1,27 @@
 using System.ComponentModel.DataAnnotations;
+using TraderEngine.Common.Enums;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
 public class AbsAllocReqDto
 {
   [Required]
-  public string BaseSymbol { get; set; } = null!;
+  public MarketReqDto Market { get; set; } = null!;
 
   [Required]
   public decimal AbsAlloc { get; set; }
+
+  public MarketStatus MarketStatus { get; set; } = MarketStatus.Unknown;
 
   public AbsAllocReqDto()
   {
   }
 
-  /// <param name="baseSymbol"><inheritdoc cref="BaseSymbol"/></param>
+  /// <param name="market"><inheritdoc cref="BaseSymbol"/></param>
   /// <param name="absAlloc"><inheritdoc cref="AbsAlloc"/></param>
-  public AbsAllocReqDto(string baseSymbol, decimal absAlloc)
+  public AbsAllocReqDto(MarketReqDto market, decimal absAlloc)
   {
-    BaseSymbol = baseSymbol;
+    Market = market;
     AbsAlloc = absAlloc;
   }
 }
