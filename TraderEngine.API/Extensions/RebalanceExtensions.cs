@@ -50,8 +50,15 @@ public static partial class Trader
     var newAbsAllocsList =
       newAbsAllocs
 
+      // Filter for tradable assets.
+      .Where(absAlloc => absAlloc.MarketStatus is MarketStatus.Trading
+      || null != curBalance.GetAllocation(absAlloc.Market.BaseSymbol))
+
+      // Filter for quote currency.
+      .Where(absAlloc => absAlloc.Market.QuoteSymbol.Equals(@this.QuoteSymbol))
+
       // Quote allocation is not expected here, but filter it out just in case.
-      .Where(absAlloc => !absAlloc.BaseSymbol.Equals(@this.QuoteSymbol))
+      .Where(absAlloc => !absAlloc.Market.BaseSymbol.Equals(@this.QuoteSymbol))
 
       // Scale absolute allocation values to include relative quote allocation.
       .Select(absAlloc =>
@@ -74,7 +81,13 @@ public static partial class Trader
     {
       // Find associated absolute allocation.
       var newAbsAlloc = newAbsAllocsList
-        .FindAndRemove(absAlloc => absAlloc.BaseSymbol.Equals(curAlloc.Market.BaseSymbol));
+        .FindAndRemove(absAlloc => absAlloc.Market.Equals(curAlloc.Market));
+
+      // Skip if not tradable.
+      if (null != newAbsAlloc && newAbsAlloc.MarketStatus is not MarketStatus.Trading)
+      {
+        continue;
+      }
 
       // Determine relative allocation.
       decimal relAlloc = totalAbsAlloc == 0 || newAbsAlloc == null ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
@@ -92,6 +105,12 @@ public static partial class Trader
     // Loop through remaining absolute asset allocations and determine yet missing quote diffs.
     foreach (var newAbsAlloc in newAbsAllocsList)
     {
+      // Skip if not tradable.
+      if (newAbsAlloc.MarketStatus is not MarketStatus.Trading)
+      {
+        continue;
+      }
+
       // Determine relative allocation.
       decimal relAlloc = totalAbsAlloc == 0 ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
 
@@ -99,7 +118,7 @@ public static partial class Trader
       decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
       yield return new AllocDiffReqDto(
-        new MarketReqDto(curBalance.QuoteSymbol, newAbsAlloc.BaseSymbol),
+        newAbsAlloc.Market,
         0,
         0,
         -newAmountQuote);
@@ -341,8 +360,6 @@ public static partial class Trader
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null)
   {
-    curBalance ??= await @this.GetBalance();
-
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 

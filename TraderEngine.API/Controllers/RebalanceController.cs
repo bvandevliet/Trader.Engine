@@ -7,7 +7,6 @@ using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
-using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Controllers;
 
@@ -34,72 +33,74 @@ public class RebalanceController : ControllerBase
     _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
   }
 
+  private static Task<AbsAllocReqDto[]> FetchMarketStatus(IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs)
+  {
+    // Get market data for all assets and update market status.
+    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
+    {
+      if (absAlloc.MarketStatus == MarketStatus.Unknown)
+      {
+        var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
+
+        var marketData = await exchange.GetMarket(marketDto);
+
+        absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unavailable;
+      }
+
+      return absAlloc;
+    });
+
+    // Wait for all tasks to complete.
+    return Task.WhenAll(allocsMarketDataTasks);
+  }
+
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
     _logger.LogDebug("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
+    var absAllocs = simulationReqDto.NewAbsAllocs ??
+      await _marketCapService().BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config);
+
+    if (null == absAllocs)
+    {
+      return NotFound("No recent market cap records found.");
+    }
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = simulationReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
 
-    var absAllocs = simulationReqDto.NewAbsAllocs;
-    Balance balance;
+    // Get market data for all assets and update market status.
+    var absAllocsUpdateTask = FetchMarketStatus(exchange, absAllocs);
 
-    if (null == absAllocs)
-    {
-      var absAllocsTask = _marketCapService()
-        .BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config);
-
-      var curBalanceTask = exchange.GetBalance();
-
-      await Task.WhenAll(absAllocsTask, curBalanceTask);
-
-      absAllocs = absAllocsTask.Result;
-      balance = curBalanceTask.Result;
-
-      if (null == absAllocs)
-        return NotFound("No recent market cap records found.");
-    }
-    else
-    {
-      balance = await exchange.GetBalance();
-    }
+    // Get current balance.
+    var balance = await exchange.GetBalance();
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
     var curBalanceDto = _mapper.Map<BalanceDto>(balance);
 
+    // Create mock exchange.
     var simExchange = new SimExchange(exchange, balance);
 
-    // Get absolute balanced allocations for tradable assets.
-    // TODO: Get and set price for assets that we do not know price of yet (those not in current balance) ??
-    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
-    {
-      var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.BaseSymbol);
-
-      return new { absAlloc, marketData = await exchange.GetMarket(marketDto) };
-    });
-
-    // Wait for all tasks to complete.
-    var allocsMarketData = await Task.WhenAll(allocsMarketDataTasks);
-
-    // Filter for assets that are tradable.
-    var absAllocsTradable = allocsMarketData
-      .Where(x => x.marketData?.Status == MarketStatus.Trading)
-      .Select(x => x.absAlloc).ToList();
+    // Filter for assets that are potentially tradable.
+    var absAllocsTradable = (await absAllocsUpdateTask)
+      .Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable)
+      .ToList();
 
     // Simulate rebalance.
     var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance);
 
+    // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance();
     var newBalanceDto = _mapper.Map<BalanceDto>(balance);
 
     return Ok(new SimulationDto()
     {
       Orders = orders,
-      NewAbsAllocsTradable = absAllocsTradable,
+      NewAbsAllocs = absAllocsTradable,
       CurBalance = curBalanceDto,
       NewBalance = newBalanceDto,
     });
@@ -115,8 +116,16 @@ public class RebalanceController : ControllerBase
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
+    // Get market data for all assets and update market status.
+    var absAllocsUpdated = await FetchMarketStatus(exchange, rebalanceReqDto.NewAbsAllocs);
+
+    // Filter for assets that are potentially tradable.
+    var absAllocsTradable = absAllocsUpdated
+      .Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable)
+      .ToList();
+
     // Execute rebalance.
-    var orders = await exchange.Rebalance(rebalanceReqDto.Config, rebalanceReqDto.NewAbsAllocs);
+    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable);
 
     return Ok(orders);
   }

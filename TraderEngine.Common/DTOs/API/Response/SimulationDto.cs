@@ -12,5 +12,5 @@ public class SimulationDto
 
   public BalanceDto NewBalance { get; set; } = null!;
 
-  public IEnumerable<AbsAllocReqDto> NewAbsAllocsTradable { get; set; } = null!;
+  public IEnumerable<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
 }

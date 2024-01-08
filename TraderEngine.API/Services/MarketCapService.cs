@@ -92,7 +92,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
           MarketCap = marketCap,
           AbsAllocDto = new AbsAllocReqDto()
           {
-            BaseSymbol = marketCap.MarketCapDataDto.Market.BaseSymbol,
+            Market = marketCap.MarketCapDataDto.Market,
             AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
           },
         };
