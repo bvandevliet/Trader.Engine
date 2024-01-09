@@ -120,6 +120,16 @@ internal class WorkerService
               return;
             }
 
+            // Check if any assets are trading, if not, bail for safety.
+            if (!simulated.NewAbsAllocs.Any(absAlloc => absAlloc.MarketStatus == MarketStatus.Trading))
+            {
+              _logger.LogWarning(
+                "Skipping automation for user '{userId}' because no assets would be traded or allocated. " +
+                "This may indicate an error at the API server.", userConfig.Key);
+
+              return;
+            }
+
             // Test if any of the allocation diffs exceed the minimum order size.
             if (!simulated.Orders.Any(order =>
               order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
