@@ -102,6 +102,7 @@ internal class WorkerService
             // Get current balance and simulated rebalance.
             var simulated = await _apiClient.SimulateRebalance(exchangeName, simulationReqDto);
 
+            // If balanced allocations could not be determined, bail for safety.
             if (null == simulated)
             {
               _logger.LogWarning(
@@ -131,9 +132,12 @@ internal class WorkerService
             }
 
             // Test if any of the allocation diffs exceed the minimum order size.
-            if (!simulated.Orders.Any(order =>
+            // Ignoring quote takeout, because it's considered out of the game.
+            decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
+            decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
+            if (relTotal < configReqDto.MinimumDiffQuote || !simulated.Orders.Any(order =>
               order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
-              order.AmountQuoteFilled / simulated.CurBalance.AmountQuoteTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
+              order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
             {
               _logger.LogInformation(
                 "Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
