@@ -52,25 +52,25 @@ var,
     $"<p>Your current balance summary:<br>" +
     $"<table>" +
     $"<tr>" +
-    $"<td>Total deposited</td>" +
+    $"<td>Deposited</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(i)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
     $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
-    $"<td>Total withdrawn</td>" +
+    $"<td>Withdrawn</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(o)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
     $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
-    $"<td>Current value</td>" +
+    $"<td>Balance</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(v)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
     $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
-    $"<td>Cumulative value</td>" +
+    $"<td>Cumulative</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">(V=o+v)</td>" +
     $"<td class=\"monospace\">:</td>" +
     $"<td class=\"monospace\" style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
