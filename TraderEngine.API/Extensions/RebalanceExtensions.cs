@@ -43,11 +43,11 @@ public static partial class Trader
     decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
       config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
-    // Sum of all absolute allocation values.
-    decimal totalAbsAlloc = 0;
-
     // Absolute asset allocations to be used for rebalancing.
-    var newAbsAllocsList =
+    List<AbsAllocReqDto> newAbsAllocsList = new();
+
+    // Sum of all absolute allocation values.
+    decimal totalAbsAlloc =
       newAbsAllocs
 
       // Filter for tradable assets.
@@ -60,18 +60,16 @@ public static partial class Trader
       // Quote allocation is not expected here, but filter it out just in case.
       .Where(absAlloc => !absAlloc.Market.BaseSymbol.Equals(@this.QuoteSymbol))
 
-      // Scale absolute allocation values to include relative quote allocation.
-      .Select(absAlloc =>
+      // Sum of all absolute allocation values.
+      .Sum(absAlloc =>
       {
-        totalAbsAlloc += absAlloc.AbsAlloc;
+        newAbsAllocsList.Add(absAlloc);
 
-        absAlloc.AbsAlloc *= 1 - quoteRelAlloc;
+        return absAlloc.AbsAlloc;
+      });
 
-        return absAlloc;
-      })
-
-      // As list since we're using a summed total.
-      .ToList();
+    // Scale total sum of absolute allocation values to account for relative quote allocation.
+    totalAbsAlloc /= 1 - quoteRelAlloc;
 
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
     //newAbsAllocsList.Add(new AbsAllocReqDto(@this.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
