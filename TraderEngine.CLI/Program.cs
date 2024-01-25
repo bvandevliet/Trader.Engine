@@ -30,13 +30,6 @@ public class Program
         logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
       })
 #endif
-      .ConfigureLogging(logging =>
-      {
-        logging.AddSimpleConsole(options =>
-        {
-          options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
-        });
-      })
       .ConfigureServices((builder, services) =>
       {
         services.AddSingleton(x => new AppArgs(args));
