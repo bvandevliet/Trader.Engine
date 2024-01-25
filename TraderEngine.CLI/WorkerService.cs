@@ -135,7 +135,14 @@ internal class WorkerService
             // Ignoring quote takeout, because it's considered out of the game.
             decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
             decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
-            if (relTotal < configReqDto.MinimumDiffQuote || !simulated.Orders.Any(order =>
+            decimal quoteDiff = simulated.CurBalance.AmountQuote - simulated.NewBalance.AmountQuote;
+            if (
+              // If the total portfolio is too small, we can't rebalance.
+              relTotal < configReqDto.MinimumDiffQuote ||
+              // If quote diff and none of the simulated orders exceed the minimum order size, no need to rebalance.
+              quoteDiff < configReqDto.MinimumDiffQuote &&
+              quoteDiff / relTotal < (decimal)configReqDto.MinimumDiffAllocation / 100 &&
+              false == simulated.Orders.Any(order =>
               order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
               order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
             {
