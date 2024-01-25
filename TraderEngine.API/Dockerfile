@@ -1,10 +1,10 @@
-ARG TAG=6.0-alpine-arm64v8
+ARG TAG=8.0-alpine-arm64v8
 
 FROM mcr.microsoft.com/dotnet/aspnet:${TAG} AS base
 WORKDIR /app
 EXPOSE 80
 
-FROM mcr.microsoft.com/dotnet/sdk:6.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 WORKDIR /src
 COPY . .
 RUN dotnet restore "TraderEngine.API/TraderEngine.API.csproj"

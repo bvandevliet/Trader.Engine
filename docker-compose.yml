@@ -23,7 +23,7 @@ services:
       context: .
       dockerfile: TraderEngine.API/Dockerfile
       args:
-        - TAG=6.0-alpine-arm64v8
+        - TAG=8.0-alpine-arm64v8
     tty: true
     environment:
       - TZ=Europe/Amsterdam
@@ -37,7 +37,7 @@ services:
       context: .
       dockerfile: TraderEngine.CLI/Dockerfile
       args:
-        - TAG=6.0-alpine-arm64v8
+        - TAG=8.0-alpine-arm64v8
     depends_on:
       - traderengine.api
       - traderengine.mariadb
