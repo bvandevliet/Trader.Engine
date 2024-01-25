@@ -18,9 +18,9 @@ public class BalanceDto
   public List<AllocationDto> Allocations { get; set; } = new();
 
   /// <summary>
-  /// Amount of quote currency.
+  /// Amount of quote currency available.
   /// </summary>
-  public decimal AmountQuote { get; set; }
+  public decimal AmountQuoteAvailable { get; set; }
 
   /// <summary>
   /// Total value of balance in quote currency.

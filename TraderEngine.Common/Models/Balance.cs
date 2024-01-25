@@ -29,13 +29,13 @@ public class Balance
   /// </summary>
   public ReadOnlyCollection<Allocation> Allocations { get; }
 
-  private decimal? _amountQuote;
+  private decimal? _amountQuoteAvailable;
   /// <summary>
   /// Amount of quote currency available.
   /// </summary>
   public decimal AmountQuoteAvailable
   {
-    get => _amountQuote ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
+    get => _amountQuoteAvailable ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
   }
 
   private decimal? _amountQuoteTotal;
@@ -149,7 +149,7 @@ public class Balance
 
   private void ResetAmountQuoteAvailable(decimal? oldValue = null, decimal? newValue = null)
   {
-    _amountQuote = null;
+    _amountQuoteAvailable = null;
 
     OnAmountQuoteAvailableReset?.Invoke(this, new());
   }

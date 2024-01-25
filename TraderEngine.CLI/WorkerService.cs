@@ -112,7 +112,7 @@ internal class WorkerService
             }
 
             // Check if any assets are allocated, if not, bail for safety.
-            if (simulated.CurBalance.AmountQuote == simulated.CurBalance.AmountQuoteTotal)
+            if (simulated.CurBalance.AmountQuoteAvailable == simulated.CurBalance.AmountQuoteTotal)
             {
               _logger.LogWarning(
                 "Skipping automation for user '{userId}' because no assets are allocated. " +
@@ -135,18 +135,19 @@ internal class WorkerService
             // Ignoring quote takeout, because it's considered out of the game.
             decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
             decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
-            decimal quoteDiff = simulated.CurBalance.AmountQuote - simulated.NewBalance.AmountQuote;
+            decimal quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
             if (
               // If no orders were simulated, no need to rebalance.
               simulated.Orders.Length == 0 ||
               // If the total portfolio is too small, we can't rebalance.
               relTotal < configReqDto.MinimumDiffQuote ||
               // If quote diff and none of the simulated orders exceed the minimum order size, no need to rebalance.
-              quoteDiff < configReqDto.MinimumDiffQuote &&
-              quoteDiff / relTotal < (decimal)configReqDto.MinimumDiffAllocation / 100 &&
+              false == (
+                Math.Abs(quoteDiff) >= configReqDto.MinimumDiffQuote &&
+                Math.Abs(quoteDiff) / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100) &&
               false == simulated.Orders.Any(order =>
-              order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
-              order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
+                order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
+                order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
             {
               _logger.LogInformation(
                 "Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
