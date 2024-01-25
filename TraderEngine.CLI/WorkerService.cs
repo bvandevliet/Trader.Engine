@@ -137,6 +137,8 @@ internal class WorkerService
             decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
             decimal quoteDiff = simulated.CurBalance.AmountQuote - simulated.NewBalance.AmountQuote;
             if (
+              // If no orders were simulated, no need to rebalance.
+              simulated.Orders.Length == 0 ||
               // If the total portfolio is too small, we can't rebalance.
               relTotal < configReqDto.MinimumDiffQuote ||
               // If quote diff and none of the simulated orders exceed the minimum order size, no need to rebalance.
