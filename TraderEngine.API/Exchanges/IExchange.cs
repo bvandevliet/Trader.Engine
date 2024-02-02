@@ -1,6 +1,8 @@
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Results;
 
 namespace TraderEngine.API.Exchanges;
 
@@ -18,11 +20,11 @@ public interface IExchange
 
   internal string ApiSecret { get; set; }
 
-  Task<Balance> GetBalance();
+  Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance();
 
-  Task<decimal> TotalDeposited();
+  Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited();
 
-  Task<decimal> TotalWithdrawn();
+  Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn();
 
   Task<MarketDataDto?> GetMarket(MarketReqDto market);
 

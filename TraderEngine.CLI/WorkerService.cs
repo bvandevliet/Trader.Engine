@@ -100,7 +100,21 @@ internal class WorkerService
             var simulationReqDto = new SimulationReqDto(apiCred, configReqDto);
 
             // Get current balance and simulated rebalance.
-            var simulated = await _apiClient.SimulateRebalance(exchangeName, simulationReqDto);
+            var simulatedResult = await _apiClient.SimulateRebalance(exchangeName, simulationReqDto);
+
+            // If API credentials are invalid, bail.
+            if (simulatedResult.ErrorCode == ExchangeErrCodeEnum.AuthenticationError)
+            {
+              _logger.LogWarning(
+                "Invalid API credentials for user '{userId}'.", userConfig.Key);
+
+              // Send API authentication failure notification.
+              await _emailNotification.SendAutomationApiAuthFailed(userConfig.Key, now);
+
+              return;
+            }
+
+            var simulated = simulatedResult.Value;
 
             // If balanced allocations could not be determined, bail for safety.
             if (null == simulated)
@@ -197,7 +211,8 @@ internal class WorkerService
             var totalDepositedTask = _apiClient.TotalDeposited(exchangeName, apiCred);
             var totalWithdrawnTask = _apiClient.TotalWithdrawn(exchangeName, apiCred);
             _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
-            await _emailNotification.SendAutomationSucceeded(userConfig.Key, now, totalDepositedTask.Result, totalWithdrawnTask.Result, simulated, ordersExecuted);
+            await _emailNotification.SendAutomationSucceeded(
+              userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated, ordersExecuted);
           }
           catch (Exception exception)
           {

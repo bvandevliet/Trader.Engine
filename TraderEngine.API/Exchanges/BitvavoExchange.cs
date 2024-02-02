@@ -11,6 +11,7 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Results;
 
 namespace TraderEngine.API.Exchanges;
 
@@ -97,7 +98,7 @@ public class BitvavoExchange : IExchange
     return request;
   }
 
-  public async Task<Balance> GetBalance()
+  public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance()
   {
     using var request = CreateRequestMsg(HttpMethod.Get, "balance");
 
@@ -105,10 +106,24 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogCritical("{url} returned {code} {reason} : {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-      throw new Exception("Error while requesting balance.");
+      string? errorCode = error?["errorCode"]?.ToString();
+
+      if (errorCode == "105" || (errorCode?.StartsWith("3") ?? false))
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return Result<Balance, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+      }
+      else
+      {
+        _logger.LogCritical("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        throw new Exception("Error while requesting balance.");
+      }
     }
 
     var result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
@@ -153,10 +168,10 @@ public class BitvavoExchange : IExchange
     // Add quote allocation if not present.
     _ = balance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
 
-    return balance;
+    return Result<Balance, ExchangeErrCodeEnum>.Success(balance);
   }
 
-  public async Task<decimal> TotalDeposited()
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited()
   {
     using var request = CreateRequestMsg(
       HttpMethod.Get, $"depositHistory?symbol={QuoteSymbol}&start=0");
@@ -165,10 +180,24 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogCritical("{url} returned {code} {reason} : {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-      throw new Exception("Error while requesting deposit history.");
+      string? errorCode = error?["errorCode"]?.ToString();
+
+      if (errorCode == "105" || (errorCode?.StartsWith("3") ?? false))
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+      }
+      else
+      {
+        _logger.LogCritical("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        throw new Exception("Error while requesting balance.");
+      }
     }
 
     var result = await response.Content.ReadFromJsonAsync<JsonArray>();
@@ -178,10 +207,11 @@ public class BitvavoExchange : IExchange
       throw new Exception("Failed to deserialize response.");
     }
 
-    return result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString()));
+    return Result<decimal, ExchangeErrCodeEnum>.Success(
+      result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
   }
 
-  public async Task<decimal> TotalWithdrawn()
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn()
   {
     using var request = CreateRequestMsg(
       HttpMethod.Get, $"withdrawalHistory?symbol={QuoteSymbol}&start=0");
@@ -190,10 +220,24 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogCritical("{url} returned {code} {reason} : {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-      throw new Exception("Error while requesting withdrawal history.");
+      string? errorCode = error?["errorCode"]?.ToString();
+
+      if (errorCode == "105" || (errorCode?.StartsWith("3") ?? false))
+      {
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+      }
+      else
+      {
+        _logger.LogCritical("{url} returned {code} {reason} : {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        throw new Exception("Error while requesting balance.");
+      }
     }
 
     var result = await response.Content.ReadFromJsonAsync<JsonArray>();
@@ -203,7 +247,8 @@ public class BitvavoExchange : IExchange
       throw new Exception("Failed to deserialize response.");
     }
 
-    return result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString()));
+    return Result<decimal, ExchangeErrCodeEnum>.Success(
+      result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
   }
 
   public async Task<MarketDataDto?> GetMarket(MarketReqDto market)

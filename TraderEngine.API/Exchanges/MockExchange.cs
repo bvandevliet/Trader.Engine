@@ -2,6 +2,7 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Results;
 
 namespace TraderEngine.API.Exchanges;
 
@@ -51,17 +52,17 @@ public class MockExchange : IExchange
   /// Null, if no initial <see cref="Balance"/> was given.
   /// </summary>
   /// <returns></returns>
-  public Task<Balance> GetBalance()
+  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance()
   {
-    return Task.FromResult(_curBalance);
+    return Task.FromResult(Result<Balance, ExchangeErrCodeEnum>.Success(_curBalance));
   }
 
-  public Task<decimal> TotalDeposited()
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited()
   {
     throw new NotImplementedException();
   }
 
-  public Task<decimal> TotalWithdrawn()
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn()
   {
     throw new NotImplementedException();
   }
@@ -172,13 +173,13 @@ public class SimExchange : MockExchange, IExchange
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
-  public SimExchange(IExchange exchangeService, Balance? curBalance = null)
+  public SimExchange(IExchange exchangeService, Balance curBalance)
     : base(
       exchangeService.QuoteSymbol,
       exchangeService.MinOrderSizeInQuote,
       exchangeService.MakerFee,
       exchangeService.TakerFee,
-      curBalance ?? exchangeService.GetBalance().GetAwaiter().GetResult())
+      curBalance)
   {
     _instance = exchangeService;
   }
