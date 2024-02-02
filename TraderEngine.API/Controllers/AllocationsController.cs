@@ -4,6 +4,7 @@ using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
 
 namespace TraderEngine.API.Controllers;
 
@@ -40,9 +41,13 @@ public class AllocationsController : ControllerBase
     exchange.ApiKey = apiCredReqDto.ApiKey;
     exchange.ApiSecret = apiCredReqDto.ApiSecret;
 
-    var balance = await exchange.GetBalance();
+    var balanceResult = await exchange.GetBalance();
 
-    return Ok(_mapper.Map<BalanceDto>(balance));
+    return balanceResult.ErrorCode switch
+    {
+      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(balanceResult.ErrorMessage),
+      _ => Ok(_mapper.Map<BalanceDto>(balanceResult.Value))
+    };
   }
 
   [HttpPost("balanced")]
@@ -54,6 +59,8 @@ public class AllocationsController : ControllerBase
     var absAllocs = await _marketCapService()
       .BalancedAbsAllocs(_quoteSymbol, configReqDto);
 
-    return absAllocs != null ? Ok(absAllocs) : NotFound("No recent market cap records found.");
+    return absAllocs == null
+      ? NotFound("No recent market cap records found.")
+      : Ok(absAllocs);
   }
 }

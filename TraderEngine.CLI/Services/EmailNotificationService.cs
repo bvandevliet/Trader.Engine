@@ -164,6 +164,33 @@ var,
     await client.DisconnectAsync(true);
   }
 
+  public async Task SendAutomationApiAuthFailed(
+    int userId, DateTime timestamp)
+  {
+    var userInfo = await _configRepo.GetUserInfo(userId);
+
+    string userMsgBody =
+    $"<style>{_cssString}</style>" +
+    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} " +
+    $"but failed because exchange API authentication failed!</p>" +
+    $"<p>Please update your exchange API key or disable automation.</p>";
+
+    using var userMessage = new MimeMessage();
+
+    userMessage.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    userMessage.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    userMessage.Subject = "Trader automation failed";
+    userMessage.Body = new TextPart(TextFormat.Html) { Text = userMsgBody };
+
+    using var client = new SmtpClient();
+
+    client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
+    client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
+    _ = await client.SendAsync(userMessage);
+    await client.DisconnectAsync(true);
+  }
+
   public async Task SendAutomationException(
     int userId, DateTime timestamp, Exception exception)
   {

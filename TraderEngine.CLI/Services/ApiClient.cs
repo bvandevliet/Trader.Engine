@@ -2,6 +2,8 @@ using System.Net;
 using System.Net.Http.Json;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
+using TraderEngine.Common.Results;
 
 namespace TraderEngine.CLI.Services;
 
@@ -18,64 +20,91 @@ public class ApiClient : IApiClient
     _httpClient = httpClient;
   }
 
-  public async Task<decimal> TotalDeposited(string exchangeName, ApiCredReqDto apiCred)
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(string exchangeName, ApiCredReqDto apiCred)
   {
     _logger.LogDebug("Requesting total deposited for '{exchangeName}' ..", exchangeName);
 
     using var totalDepositedResp = await _httpClient
       .PostAsJsonAsync($"api/account/totals/deposited/{exchangeName}", apiCred);
 
-    // TODO: ERROR HANDLING ??
     if (!totalDepositedResp.IsSuccessStatusCode)
     {
+      if (totalDepositedResp.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        _logger.LogWarning("Invalid API credentials.");
+
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+      }
+
       _logger.LogError("{url} returned {code} {reason} : {response}",
         $"api/account/totals/deposited/{exchangeName}", (int)totalDepositedResp.StatusCode,
         totalDepositedResp.ReasonPhrase, await totalDepositedResp.Content.ReadAsStringAsync());
 
+      // TODO: ERROR HANDLING ??
       throw new Exception("Error while requesting total deposited.");
     }
 
-    return (await totalDepositedResp.Content.ReadFromJsonAsync<decimal>())!;
+    decimal totalDeposited = await totalDepositedResp.Content.ReadFromJsonAsync<decimal>();
+
+    return Result<decimal, ExchangeErrCodeEnum>.Success(totalDeposited);
   }
 
-  public async Task<decimal> TotalWithdrawn(string exchangeName, ApiCredReqDto apiCred)
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(string exchangeName, ApiCredReqDto apiCred)
   {
     _logger.LogDebug("Requesting total withdrawn for '{exchangeName}' ..", exchangeName);
 
     using var totalWithdrawnResp = await _httpClient
       .PostAsJsonAsync($"api/account/totals/withdrawn/{exchangeName}", apiCred);
 
-    // TODO: ERROR HANDLING ??
     if (!totalWithdrawnResp.IsSuccessStatusCode)
     {
+      if (totalWithdrawnResp.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        _logger.LogWarning("Invalid API credentials.");
+
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+      }
+
       _logger.LogError("{url} returned {code} {reason} : {response}",
         $"api/account/totals/withdrawn/{exchangeName}", (int)totalWithdrawnResp.StatusCode,
         totalWithdrawnResp.ReasonPhrase, await totalWithdrawnResp.Content.ReadAsStringAsync());
 
+      // TODO: ERROR HANDLING ??
       throw new Exception("Error while requesting total withdrawn.");
     }
 
-    return (await totalWithdrawnResp.Content.ReadFromJsonAsync<decimal>())!;
+    decimal totalWithdrawn = await totalWithdrawnResp.Content.ReadFromJsonAsync<decimal>();
+
+    return Result<decimal, ExchangeErrCodeEnum>.Success(totalWithdrawn);
   }
 
-  public async Task<BalanceDto> CurrentBalance(string exchangeName, ApiCredReqDto apiCred)
+  public async Task<Result<BalanceDto, ExchangeErrCodeEnum>> CurrentBalance(string exchangeName, ApiCredReqDto apiCred)
   {
     _logger.LogDebug("Requesting current balance for '{exchangeName}' ..", exchangeName);
 
     using var curBalanceResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/current/{exchangeName}", apiCred);
 
-    // TODO: ERROR HANDLING ??
     if (!curBalanceResp.IsSuccessStatusCode)
     {
+      if (curBalanceResp.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        _logger.LogWarning("Invalid API credentials.");
+
+        return Result<BalanceDto, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+      }
+
       _logger.LogError("{url} returned {code} {reason} : {response}",
         $"api/allocations/current/{exchangeName}", (int)curBalanceResp.StatusCode,
         curBalanceResp.ReasonPhrase, await curBalanceResp.Content.ReadAsStringAsync());
 
+      // TODO: ERROR HANDLING ??
       throw new Exception("Error while requesting current balance.");
     }
 
-    return (await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>())!;
+    var curBalance = await curBalanceResp.Content.ReadFromJsonAsync<BalanceDto>();
+
+    return Result<BalanceDto, ExchangeErrCodeEnum>.Success(curBalance!);
   }
 
   public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto config)
@@ -104,7 +133,7 @@ public class ApiClient : IApiClient
     return (await absAllocsResp.Content.ReadFromJsonAsync<List<AbsAllocReqDto>>())!;
   }
 
-  public async Task<SimulationDto?> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
+  public async Task<Result<SimulationDto?, ExchangeErrCodeEnum>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
     _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
 
@@ -118,7 +147,13 @@ public class ApiClient : IApiClient
       {
         _logger.LogWarning("No recent market cap records found.");
 
-        return null;
+        return Result<SimulationDto?, ExchangeErrCodeEnum>.Success(null);
+      }
+      else if (simulationResp.StatusCode == HttpStatusCode.Unauthorized)
+      {
+        _logger.LogWarning("Invalid API credentials.");
+
+        return Result<SimulationDto?, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
       }
 
       _logger.LogError("{url} returned {code} {reason} : {response}",
@@ -128,7 +163,9 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting rebalance execution.");
     }
 
-    return (await simulationResp.Content.ReadFromJsonAsync<SimulationDto>())!;
+    var simulationDto = await simulationResp.Content.ReadFromJsonAsync<SimulationDto>();
+
+    return Result<SimulationDto?, ExchangeErrCodeEnum>.Success(simulationDto);
   }
 
   public async Task<OrderDto[]> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)

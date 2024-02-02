@@ -167,7 +167,11 @@ public static partial class Trader
   private static async Task<OrderDto[]> SellOveragesAndVerify(
     this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance? curBalance = null)
   {
-    curBalance ??= await @this.GetBalance();
+    if (null == curBalance)
+    {
+      var curBalanceResult = await @this.GetBalance();
+      curBalance = curBalanceResult.Value!;
+    }
 
     var orders =
       @this.GetAllocationQuoteDiffs(newAbsAllocs, config, curBalance)
@@ -255,7 +259,11 @@ public static partial class Trader
   private static async Task<OrderDto[]> BuyUnderagesAndVerify(
     this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance? curBalance = null)
   {
-    curBalance ??= await @this.GetBalance();
+    if (null == curBalance)
+    {
+      var curBalanceResult = await @this.GetBalance();
+      curBalance = curBalanceResult.Value!;
+    }
 
     var orders =
       @this.GetAllocationQuoteDiffs(newAbsAllocs, config, curBalance)
@@ -289,7 +297,11 @@ public static partial class Trader
   private static async Task<OrderDto[]> BuyUnderagesAndVerify(
     this IExchange @this, IEnumerable<OrderReqDto> orders, Balance? curBalance = null)
   {
-    curBalance ??= await @this.GetBalance();
+    if (null == curBalance)
+    {
+      var curBalanceResult = await @this.GetBalance();
+      curBalance = curBalanceResult.Value!;
+    }
 
     List<OrderReqDto> buyOrders = new();
 

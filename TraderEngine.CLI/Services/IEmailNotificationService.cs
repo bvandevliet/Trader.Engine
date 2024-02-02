@@ -8,5 +8,7 @@ public interface IEmailNotificationService
 
   Task SendAutomationFailed(int userId, DateTime timestamp, OrderDto[] ordersExecuted, object debugData);
 
+  Task SendAutomationApiAuthFailed(int userId, DateTime timestamp);
+
   Task SendAutomationException(int userId, DateTime timestamp, Exception exception);
 }

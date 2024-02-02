@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Enums;
 
 namespace TraderEngine.API.Controllers;
 
@@ -28,9 +29,13 @@ public class AccountController : ControllerBase
     exchange.ApiKey = apiCredentials.ApiKey;
     exchange.ApiSecret = apiCredentials.ApiSecret;
 
-    decimal? balance = await exchange.TotalDeposited();
+    var totalDepositedResult = await exchange.TotalDeposited();
 
-    return null == balance ? NotFound() : Ok(balance);
+    return totalDepositedResult.ErrorCode switch
+    {
+      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(totalDepositedResult.ErrorMessage),
+      _ => Ok(totalDepositedResult.Value)
+    };
   }
 
   [HttpPost("totals/withdrawn/{exchangeName}")]
@@ -43,8 +48,12 @@ public class AccountController : ControllerBase
     exchange.ApiKey = apiCredentials.ApiKey;
     exchange.ApiSecret = apiCredentials.ApiSecret;
 
-    decimal? balance = await exchange.TotalWithdrawn();
+    var totalWithdrawnResult = await exchange.TotalWithdrawn();
 
-    return null == balance ? NotFound() : Ok(balance);
+    return totalWithdrawnResult.ErrorCode switch
+    {
+      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(totalWithdrawnResult.ErrorMessage),
+      _ => Ok(totalWithdrawnResult.Value)
+    };
   }
 }

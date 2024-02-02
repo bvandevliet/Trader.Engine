@@ -76,7 +76,14 @@ public class RebalanceController : ControllerBase
     var absAllocsUpdateTask = FetchMarketStatus(exchange, absAllocs);
 
     // Get current balance.
-    var balance = await exchange.GetBalance();
+    var balanceResult = await exchange.GetBalance();
+
+    if (balanceResult.ErrorCode == ExchangeErrCodeEnum.AuthenticationError)
+    {
+      return Unauthorized(balanceResult.ErrorMessage);
+    }
+
+    var balance = balanceResult.Value!;
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
@@ -125,6 +132,7 @@ public class RebalanceController : ControllerBase
       .ToList();
 
     // Execute rebalance.
+    // TODO: Properly handle exchange auth errors.
     var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable);
 
     return Ok(orders);
@@ -141,6 +149,7 @@ public class RebalanceController : ControllerBase
     exchange.ApiSecret = executeOrdersReqDto.ExchangeApiCred.ApiSecret;
 
     // Execute rebalance orders.
+    // TODO: Properly handle exchange auth errors.
     var orders = await exchange.Rebalance(executeOrdersReqDto.Orders);
 
     return Ok(orders);

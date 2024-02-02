@@ -14,7 +14,7 @@ public class Result<TErrCode> where TErrCode : Enum
 
   public static Result<TErrCode> Success() => new(default!);
 
-  public static Result<TErrCode> Failure(TErrCode errorCode, string errorMessage) => new(errorCode, errorMessage);
+  public static Result<TErrCode> Failure(TErrCode errorCode, string errorMessage = "") => new(errorCode, errorMessage);
 }
 
 public class Result<TSuccess, TErrCode> : Result<TErrCode> where TErrCode : Enum
@@ -28,5 +28,5 @@ public class Result<TSuccess, TErrCode> : Result<TErrCode> where TErrCode : Enum
 
   public static Result<TSuccess, TErrCode> Success(TSuccess value) => new(value, default!);
 
-  public new static Result<TSuccess, TErrCode> Failure(TErrCode errorCode, string errorMessage) => new(default, errorCode, errorMessage);
+  public new static Result<TSuccess, TErrCode> Failure(TErrCode errorCode, string errorMessage = "") => new(default, errorCode, errorMessage);
 }
