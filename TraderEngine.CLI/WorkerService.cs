@@ -50,9 +50,16 @@ internal class WorkerService
       {
         _logger.LogInformation("Updating market cap data ..");
 
-        var latest = await _marketCapExtRepo.ListLatest(_quoteSymbol);
+        try
+        {
+          var latest = await _marketCapExtRepo.ListLatest(_quoteSymbol);
 
-        _ = await _marketCapIntRepo.TryInsertMany(latest);
+          _ = await _marketCapIntRepo.TryInsertMany(latest);
+        }
+        catch (Exception exception)
+        {
+          _logger.LogCritical(exception, "Error while updating market cap data.");
+        }
       }
 
       if (_appArgs.DoAutomations)
@@ -147,6 +154,7 @@ internal class WorkerService
 
             // Test if any of the allocation diffs exceed the minimum order size.
             // Ignoring quote takeout, because it's considered out of the game.
+            // TODO: Put in separate method to enable for unit test !!
             decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
             decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
             decimal quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
