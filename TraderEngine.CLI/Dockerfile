@@ -1,4 +1,4 @@
-ARG TAG=8.0-alpine-arm64v8
+ARG TAG=8.0-alpine
 
 FROM mcr.microsoft.com/dotnet/runtime:${TAG} AS base
 WORKDIR /app

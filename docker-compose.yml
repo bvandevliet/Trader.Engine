@@ -17,13 +17,11 @@ services:
       
   traderengine.api:
     container_name: traderengine.api
-    image: ${DOCKER_REGISTRY-}traderengine.api
+    image: ${DOCKER_REGISTRY-}traderengine.api:${TAG:-latest}
     restart: unless-stopped
     build:
       context: .
       dockerfile: TraderEngine.API/Dockerfile
-      args:
-        - TAG=8.0-alpine-arm64v8
     tty: true
     environment:
       - TZ=Europe/Amsterdam
@@ -31,13 +29,11 @@ services:
 
   traderengine.cli:
     container_name: traderengine.cli
-    image: ${DOCKER_REGISTRY-}traderengine.cli
+    image: ${DOCKER_REGISTRY-}traderengine.cli:${TAG:-latest}
     restart: unless-stopped
     build:
       context: .
       dockerfile: TraderEngine.CLI/Dockerfile
-      args:
-        - TAG=8.0-alpine-arm64v8
     depends_on:
       - traderengine.api
       - traderengine.mariadb
@@ -58,7 +54,7 @@ services:
 
   traderengine.cryptography:
     container_name: traderengine.cryptography
-    image: bvandevliet/cryptography:linux-arm64-v8
+    image: bvandevliet/cryptography:${TAG:-latest}
     restart: unless-stopped
     tty: true
     volumes:
