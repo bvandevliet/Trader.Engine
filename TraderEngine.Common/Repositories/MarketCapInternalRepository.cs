@@ -57,6 +57,25 @@ CREATE TABLE IF NOT EXISTS MarketCapData (
     }
   }
 
+  public async Task<int> CleanupDatabase(int daysRetention = 14)
+  {
+    var sqlConn = await GetConnection();
+
+    try
+    {
+      return await sqlConn.ExecuteAsync(@"
+DELETE FROM MarketCapData
+WHERE Updated < @RetentionDate;", new
+      {
+        RetentionDate = DateTime.UtcNow.AddDays(-daysRetention)
+      });
+    }
+    finally
+    {
+      await sqlConn.CloseAsync();
+    }
+  }
+
   public async Task<int> TryInsert(MarketCapDataDto marketCap)
   {
     if (!IsCloseToTheWholeHour(marketCap.Updated))

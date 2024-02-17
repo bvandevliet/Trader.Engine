@@ -47,6 +47,10 @@ internal class WorkerService
     {
       _ = await _marketCapIntRepo.InitDatabase();
 
+      int rowsCleared = await _marketCapIntRepo.CleanupDatabase();
+
+      _logger.LogInformation("Cleaned up '{rowsCleared}' records from market cap table.", rowsCleared);
+
       if (_appArgs.DoUpdateMarketCap)
       {
         _logger.LogInformation("Updating market cap data ..");
