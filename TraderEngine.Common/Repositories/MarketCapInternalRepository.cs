@@ -59,8 +59,6 @@ CREATE TABLE IF NOT EXISTS MarketCapData (
 
   public async Task<int> TryInsert(MarketCapDataDto marketCap)
   {
-    _logger.LogDebug("Inserting market cap of '{market}' to database ..", marketCap.Market);
-
     if (!IsCloseToTheWholeHour(marketCap.Updated))
     {
       _logger.LogWarning("Market cap of '{market}' is not close to the whole hour.", marketCap.Market);
@@ -87,6 +85,8 @@ ORDER BY Updated DESC LIMIT 1;";
 
       if (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance)
       {
+        _logger.LogDebug("Inserting market cap of '{market}' to database ..", marketCap.Market);
+
         string sqlInsert = @"
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
 VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
@@ -113,7 +113,14 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
   {
     _logger.LogDebug("Inserting {count} market cap records into database ..", marketCaps.Count());
 
-    int rowsAffected = (await Task.WhenAll(marketCaps.Select(TryInsert))).Sum();
+    int rowsAffected = 0;
+
+    // Insert in chunks to avoid overloading the connection pool and cause timeouts.
+    // Chunk size should ideally be equeal to the pool size.
+    foreach (var batch in marketCaps.Chunk(8))
+    {
+      rowsAffected += (await Task.WhenAll(batch.Select(TryInsert))).Sum();
+    }
 
     _logger.LogInformation("Inserted {rows} market cap records into database.", rowsAffected);
 
