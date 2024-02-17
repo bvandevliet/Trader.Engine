@@ -11,4 +11,6 @@ public interface IEmailNotificationService
   Task SendAutomationApiAuthFailed(int userId, DateTime timestamp);
 
   Task SendAutomationException(int userId, DateTime timestamp, Exception exception);
+
+  Task SendWorkerException(DateTime timestamp, Exception exception);
 }

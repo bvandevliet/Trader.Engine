@@ -217,4 +217,29 @@ var,
     _ = await client.SendAsync(message);
     await client.DisconnectAsync(true);
   }
+
+  public async Task SendWorkerException(
+    DateTime timestamp, Exception exception)
+  {
+    string htmlString =
+    $"<style>{_cssString}</style>" +
+    $"<p>Hi Admin,</p>" +
+    $"<p>A Worker exception has occurred at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}:</p>" +
+    $"<p>{exception.Message}:</p>" +
+    $"<pre>{exception.StackTrace}</pre>";
+
+    using var message = new MimeMessage();
+
+    message.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
+    message.To.Add(new MailboxAddress("Trader Admin", _emailSettings.FromAddress));
+    message.Subject = "Trader Worker exception";
+    message.Body = new TextPart(TextFormat.Html) { Text = htmlString };
+
+    using var client = new SmtpClient();
+
+    client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
+    client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
+    _ = await client.SendAsync(message);
+    await client.DisconnectAsync(true);
+  }
 }

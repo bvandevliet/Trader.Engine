@@ -50,16 +50,9 @@ internal class WorkerService
       {
         _logger.LogInformation("Updating market cap data ..");
 
-        try
-        {
-          var latest = await _marketCapExtRepo.ListLatest(_quoteSymbol);
+        var latest = await _marketCapExtRepo.ListLatest(_quoteSymbol);
 
-          _ = await _marketCapIntRepo.TryInsertMany(latest);
-        }
-        catch (Exception exception)
-        {
-          _logger.LogCritical(exception, "Error while updating market cap data.");
-        }
+        _ = await _marketCapIntRepo.TryInsertMany(latest);
       }
 
       if (_appArgs.DoAutomations)
@@ -233,7 +226,7 @@ internal class WorkerService
             }
             catch (Exception exception2)
             {
-              _logger.LogCritical(exception2, "Error while sending exception notification.");
+              _logger.LogCritical(exception2, "Error while sending automation exception notification.");
             }
           }
         }));
@@ -242,6 +235,16 @@ internal class WorkerService
     catch (Exception exception)
     {
       _logger.LogCritical(exception, "Error while running worker service.");
+
+      try
+      {
+        // Send exception notification.
+        await _emailNotification.SendWorkerException(DateTime.UtcNow, exception);
+      }
+      catch (Exception exception2)
+      {
+        _logger.LogCritical(exception2, "Error while sending Worker exception notification.");
+      }
     }
   }
 }
