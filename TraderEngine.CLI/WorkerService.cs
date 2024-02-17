@@ -1,3 +1,4 @@
+using MySqlConnector;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
@@ -236,15 +237,13 @@ internal class WorkerService
     {
       _logger.LogCritical(exception, "Error while running worker service.");
 
-      try
-      {
-        // Send exception notification.
-        await _emailNotification.SendWorkerException(DateTime.UtcNow, exception);
-      }
-      catch (Exception exception2)
-      {
-        _logger.LogCritical(exception2, "Error while sending Worker exception notification.");
-      }
+      // Send exception notification.
+      await _emailNotification.SendWorkerException(DateTime.UtcNow, exception);
+    }
+    finally
+    {
+      // Clear all connection pools.
+      await MySqlConnection.ClearAllPoolsAsync();
     }
   }
 }
