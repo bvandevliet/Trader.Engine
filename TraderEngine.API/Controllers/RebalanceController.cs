@@ -44,7 +44,7 @@ public class RebalanceController : ControllerBase
 
         var marketData = await exchange.GetMarket(marketDto);
 
-        absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unavailable;
+        absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
       }
 
       return absAlloc;
