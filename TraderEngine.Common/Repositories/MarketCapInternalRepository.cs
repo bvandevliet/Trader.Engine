@@ -80,7 +80,7 @@ WHERE Updated < @RetentionDate;", new
   {
     if (!IsCloseToTheWholeHour(marketCap.Updated))
     {
-      _logger.LogWarning("Market cap of '{market}' is not close to the whole hour.", marketCap.Market);
+      _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is not close to the whole hour.", marketCap.Updated, marketCap.Market);
 
       return 0;
     }

@@ -254,7 +254,7 @@ public class BitvavoExchange : IExchange
   public async Task<MarketDataDto?> GetMarket(MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"markets?market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
+      HttpMethod.Get, $"markets?market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -291,7 +291,7 @@ public class BitvavoExchange : IExchange
   public async Task<decimal> GetPrice(MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"ticker/price?market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
+      HttpMethod.Get, $"ticker/price?market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -367,7 +367,7 @@ public class BitvavoExchange : IExchange
   public async Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"order?orderId={orderId}&market={market.BaseSymbol.ToUpper()}-{market.QuoteSymbol.ToUpper()}");
+      HttpMethod.Get, $"order?orderId={orderId}&market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 

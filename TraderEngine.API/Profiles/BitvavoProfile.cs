@@ -21,7 +21,7 @@ public class BitvavoProfile : Profile
     _ = CreateMap<OrderReqDto, BitvavoOrderReqDto>()
       .ForMember(
         dest => dest.Market, opt => opt.MapFrom(
-          src => $"{src.Market.BaseSymbol}-{src.Market.QuoteSymbol}"))
+          src => $"{src.Market}"))
       .ForMember(
         dest => dest.Side, opt => opt.MapFrom(
           src => src.Side))
