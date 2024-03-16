@@ -15,7 +15,7 @@ public class ConfigReqDto
 
   public List<string> TagsToIgnore { get; set; } = new() { "stablecoin" };
 
-  [Range(0, 70)]
+  [Range(0, 100)]
   public int TopRankingCount { get; set; } = 10;
 
   [Range(1, 72)]

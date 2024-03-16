@@ -27,7 +27,7 @@ internal class MarketCapExternalRepository : IMarketCapExternalRepository
   public async Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol)
   {
     var listLatest = await _httpClient.GetFromJsonAsync<CMCListLatestDto>(
-      $"cryptocurrency/listings/latest?sort=market_cap&limit=100&convert={quoteSymbol}");
+      $"cryptocurrency/listings/latest?sort=market_cap&limit=150&convert={quoteSymbol}");
 
     return _mapper.Map<IEnumerable<MarketCapDataDto>>(listLatest?.Data);
   }
