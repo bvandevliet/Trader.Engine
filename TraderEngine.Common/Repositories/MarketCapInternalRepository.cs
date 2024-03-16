@@ -82,7 +82,7 @@ WHERE Updated < @RetentionDate;", new
     {
       _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is not close to the whole hour.", marketCap.Updated, marketCap.Market);
 
-      return 0;
+      //return 0;
     }
 
     var sqlConn = await GetConnection();

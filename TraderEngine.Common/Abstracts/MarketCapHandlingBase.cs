@@ -5,7 +5,7 @@ public abstract class MarketCapHandlingBase
   /// <summary>
   /// Tolerance in minutes a record is allowed to be too early in time to be considered a candidate.
   /// </summary>
-  protected static readonly int earlierTolerance = 3;
+  protected static readonly int earlierTolerance = 6;
 
   /// <summary>
   /// Tolerance in minutes a record is allowed to be too late in time to be considered a candidate.
