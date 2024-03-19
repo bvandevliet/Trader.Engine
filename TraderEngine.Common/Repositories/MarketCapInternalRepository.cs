@@ -80,9 +80,8 @@ WHERE Updated < @RetentionDate;", new
   {
     if (!IsCloseToTheWholeHour(marketCap.Updated))
     {
-      _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is not close to the whole hour.", marketCap.Updated, marketCap.Market);
-
-      //return 0;
+      _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is not close to the whole hour.",
+        marketCap.Updated, marketCap.Market);
     }
 
     var sqlConn = await GetConnection();
@@ -102,22 +101,38 @@ ORDER BY Updated DESC LIMIT 1;";
 
       int rowsAffected = 0;
 
-      if (null == lastRecord || OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance >= 60 - earlierTolerance)
+      if (null != lastRecord && OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance < 60 - earlierTolerance)
       {
-        _logger.LogDebug("Inserting market cap of '{market}' to database ..", marketCap.Market);
+        _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is too close to the previous record.",
+          marketCap.Updated, marketCap.Market);
 
-        string sqlInsert = @"
+        string sqlDelete = @"
+DELETE FROM MarketCapData
+WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol;";
+
+        int rowsDeleted = await sqlConn.ExecuteAsync(sqlDelete, new
+        {
+          marketCap.Market.QuoteSymbol,
+          marketCap.Market.BaseSymbol
+        });
+
+        _logger.LogDebug("Deleted '{rows}' old records of market cap of '{market}' from database.",
+          rowsDeleted, marketCap.Market);
+      }
+
+      _logger.LogDebug("Inserting new market cap record of '{market}' to database ..", marketCap.Market);
+
+      string sqlInsert = @"
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
 VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
-        var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
+      var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
 
-        rowsAffected += await sqlConn.ExecuteAsync(sqlInsert, marketCapData);
+      rowsAffected += await sqlConn.ExecuteAsync(sqlInsert, marketCapData);
 
-        if (0 == rowsAffected)
-        {
-          _logger.LogError("Failed to insert market cap of '{market}' to database.", marketCap.Market);
-        }
+      if (0 == rowsAffected)
+      {
+        _logger.LogError("Failed to insert market cap of '{market}' to database.", marketCap.Market);
       }
 
       return rowsAffected;
