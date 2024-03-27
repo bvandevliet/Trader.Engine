@@ -1,9 +1,7 @@
-ARG TAG=8.0-alpine
-
-FROM mcr.microsoft.com/dotnet/runtime:${TAG} AS base
+FROM mcr.microsoft.com/dotnet/runtime:8.0-alpine-${TARGETPLATFORM} AS base
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine-${BUILDPLATFORM} AS build
 WORKDIR /src
 COPY . .
 RUN dotnet restore "TraderEngine.CLI/TraderEngine.CLI.csproj"
