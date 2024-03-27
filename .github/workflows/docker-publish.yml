@@ -1,0 +1,111 @@
+name: Docker publish
+
+on:
+  schedule:
+    - cron: '30 3 * * 0'
+  push:
+    branches:
+      - 'master'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - 'master'
+
+jobs:
+
+  build-push-api:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.CR_REGISTRY }}traderengine.api
+          tags: |
+            type=schedule,pattern=nightly
+            type=raw,enable={{is_default_branch}},value=nightly
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      -
+        name: Login to Docker CR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CR_REGISTRY }}
+          username: ${{ secrets.CR_USERNAME }}
+          password: ${{ secrets.CR_PASSWORD }}
+      # -
+      #   # Add support for more platforms with QEMU (optional)
+      #   # https://github.com/docker/setup-qemu-action
+      #   name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      -
+        name: Build and push TraderEngine.API
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./TraderEngine.API/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ steps.buildx.outputs.platforms }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name != 'pull_request' }}
+
+  build-push-cli:
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+      -
+        name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: |
+            ${{ secrets.CR_REGISTRY }}traderengine.cli
+          tags: |
+            type=schedule,pattern=nightly
+            type=raw,enable={{is_default_branch}},value=nightly
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+      -
+        name: Login to Docker CR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CR_REGISTRY }}
+          username: ${{ secrets.CR_USERNAME }}
+          password: ${{ secrets.CR_PASSWORD }}
+      # -
+      #   # Add support for more platforms with QEMU (optional)
+      #   # https://github.com/docker/setup-qemu-action
+      #   name: Set up QEMU
+      #   uses: docker/setup-qemu-action@v3
+      -
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          platforms: linux/amd64,linux/arm64
+      -
+        name: Build and push TraderEngine.CLI
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./TraderEngine.CLI/Dockerfile
+          tags: ${{ steps.meta.outputs.tags }}
+          platforms: ${{ steps.buildx.outputs.platforms }}
+          labels: ${{ steps.meta.outputs.labels }}
+          push: ${{ github.event_name != 'pull_request' }}
