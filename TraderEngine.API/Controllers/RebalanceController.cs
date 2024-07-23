@@ -54,6 +54,9 @@ public class RebalanceController : ControllerBase
     return Task.WhenAll(allocsMarketDataTasks);
   }
 
+  private static IEnumerable<AbsAllocReqDto> GetTradableAssets(IEnumerable<AbsAllocReqDto> absAllocs) =>
+    absAllocs.Where(absAlloc => absAlloc.AbsAlloc > 0 || absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable);
+
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
@@ -93,9 +96,8 @@ public class RebalanceController : ControllerBase
     var simExchange = new SimExchange(exchange, balance);
 
     // Filter for assets that are potentially tradable.
-    var absAllocsTradable = (await absAllocsUpdateTask)
-      .Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable)
-      .ToList();
+    var absAllocsUpdated = await absAllocsUpdateTask;
+    var absAllocsTradable = GetTradableAssets(absAllocsUpdated).ToList();
 
     // Simulate rebalance.
     var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance);
@@ -123,13 +125,9 @@ public class RebalanceController : ControllerBase
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
-    // Get market data for all assets and update market status.
-    var absAllocsUpdated = await FetchMarketStatus(exchange, rebalanceReqDto.NewAbsAllocs);
-
     // Filter for assets that are potentially tradable.
-    var absAllocsTradable = absAllocsUpdated
-      .Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable)
-      .ToList();
+    var absAllocsUpdated = await FetchMarketStatus(exchange, rebalanceReqDto.NewAbsAllocs);
+    var absAllocsTradable = GetTradableAssets(absAllocsUpdated).ToList();
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
