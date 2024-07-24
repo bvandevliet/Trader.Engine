@@ -17,8 +17,6 @@ RUN dotnet publish "TraderEngine.CLI.csproj" -c ${MODE} -o /app/publish /p:UseAp
 FROM base AS final
 COPY "TraderEngine.CLI/.assets/container/root/" /
 RUN apk add -U --no-cache tzdata
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 WORKDIR /app
 COPY --from=publish /app/publish .
-USER appuser
 ENTRYPOINT ["/bin/sh", "-c" , "crond -f"]
