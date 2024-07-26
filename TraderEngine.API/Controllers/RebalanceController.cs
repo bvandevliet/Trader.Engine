@@ -55,7 +55,7 @@ public class RebalanceController : ControllerBase
   }
 
   private static IEnumerable<AbsAllocReqDto> GetTradableAssets(IEnumerable<AbsAllocReqDto> absAllocs) =>
-    absAllocs.Where(absAlloc => absAlloc.AbsAlloc > 0 || absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable);
+    absAllocs.Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown and not MarketStatus.Unavailable);
 
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
