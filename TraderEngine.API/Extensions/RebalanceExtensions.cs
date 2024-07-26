@@ -29,6 +29,33 @@ public static partial class Trader
   }
 
   /// <summary>
+  /// Try update all unknown market statuses in <paramref name="absAllocs"/>.
+  /// </summary>
+  /// <param name="exchange"></param>
+  /// <param name="absAllocs"></param>
+  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
+  public static Task<AbsAllocReqDto[]> FetchMarketStatus(this IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs)
+  {
+    // Get market data for all assets and update market status.
+    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
+    {
+      if (absAlloc.MarketStatus == MarketStatus.Unknown)
+      {
+        var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
+
+        var marketData = await exchange.GetMarket(marketDto);
+
+        absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
+      }
+
+      return absAlloc;
+    });
+
+    // Wait for all tasks to complete.
+    return Task.WhenAll(allocsMarketDataTasks);
+  }
+
+  /// <summary>
   /// Get current deviation in quote currency when comparing absolute new allocations in
   /// <paramref name="newAbsAllocs"/> against current allocations in <paramref name="curBalance"/>.
   /// </summary>
@@ -39,10 +66,6 @@ public static partial class Trader
   private static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(
     this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance curBalance)
   {
-    // Relative quote allocation (including takeout).
-    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
-      config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
-
     // Absolute asset allocations to be used for rebalancing.
     List<AbsAllocReqDto> newAbsAllocsList = new();
 
@@ -68,7 +91,13 @@ public static partial class Trader
         return absAlloc.AbsAlloc;
       });
 
+    // Relative quote allocation (including takeout).
+    // TODO: Handle division by zero.
+    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
+      config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
+
     // Scale total sum of absolute allocation values to account for relative quote allocation.
+    // TODO: Handle division by zero.
     totalAbsAlloc /= 1 - quoteRelAlloc;
 
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
@@ -373,12 +402,16 @@ public static partial class Trader
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 
+    // Filter for assets that are potentially tradable.
+    var absAllocsUpdated = await @this.FetchMarketStatus(newAbsAllocs);
+    //var absAllocsTradable = GetTradableAssets(absAllocsUpdated).ToList();
+
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(newAbsAllocs, config, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(absAllocsUpdated, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(newAbsAllocs, config);
+    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsUpdated, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
