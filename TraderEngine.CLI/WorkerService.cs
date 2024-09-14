@@ -161,10 +161,9 @@ internal class WorkerService
               simulated.Orders.Length == 0 ||
               // If the total portfolio is too small, we can't rebalance.
               relTotal < configReqDto.MinimumDiffQuote ||
-              // If quote diff and none of the simulated orders exceed the minimum order size, no need to rebalance.
-              false == (
-                Math.Abs(quoteDiff) >= configReqDto.MinimumDiffQuote &&
-                Math.Abs(quoteDiff) / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100) &&
+              // If quote diff doesn't exceed the minimum order size,
+              Math.Abs(quoteDiff) < configReqDto.MinimumDiffQuote &&
+              // and none of the simulated orders exceed the minimum order size and diff,
               false == simulated.Orders.Any(order =>
                 order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
                 order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
@@ -172,6 +171,7 @@ internal class WorkerService
               _logger.LogInformation(
                 "Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
 
+              // then no need to rebalance.
               return;
             }
 
