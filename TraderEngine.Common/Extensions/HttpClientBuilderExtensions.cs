@@ -17,6 +17,10 @@ public static class HttpClientBuilderExtensions
         PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
       })
       .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
+      .ConfigureHttpClient(httpClient =>
+      {
+        httpClient.Timeout = TimeSpan.FromSeconds(299);
+      })
       .AddTransientHttpErrorPolicy(policy =>
         policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
 
