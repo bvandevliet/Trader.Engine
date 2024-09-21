@@ -58,9 +58,12 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       return null;
     }
 
-    string ignoredTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $"^{tag}$"));
+    string includeTagsPattern = configReqDto.TagsToInclude.Any() ?
+      string.Join('|', configReqDto.TagsToInclude.Select(tag => $"^{tag}$")) : ".*";
+    var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase);
 
-    var ignoredTagsRegex = new Regex(ignoredTagsPattern, RegexOptions.IgnoreCase);
+    string ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $"^{tag}$"));
+    var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase);
 
     return
       marketCapLatest
@@ -81,8 +84,11 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Skip zero-weighted assets.
       .Where(marketCap => marketCap.Weighting > 0)
 
-      // Handle ignored tags, but not if asset has a weighting configured explicitly.
-      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoredTagsRegex.IsMatch(tag)))
+      // Handle included tags, but if asset has a weighting configured explicitly, that takes precedence.
+      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => includeTagsRegex.IsMatch(tag)))
+
+      // Handle ignored tags, but if asset has a weighting configured explicitly, that takes precedence.
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoreTagsRegex.IsMatch(tag)))
 
       // Apply weighting and dampening.
       .Select(marketCap =>

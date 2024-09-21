@@ -11,9 +11,11 @@ public class ConfigReqDto
   public decimal QuoteAllocation { get; set; } = 0;
 
   //[Range(0, 10)]
-  public Dictionary<string, double> AltWeightingFactors { get; set; } = new();
+  public Dictionary<string, double> AltWeightingFactors { get; set; } = [];
 
-  public List<string> TagsToIgnore { get; set; } = new() { "stablecoin" };
+  public List<string> TagsToInclude { get; set; } = [];
+
+  public List<string> TagsToIgnore { get; set; } = ["stablecoin"];
 
   [Range(0, 100)]
   public int TopRankingCount { get; set; } = 10;

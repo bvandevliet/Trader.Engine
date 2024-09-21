@@ -10,9 +10,11 @@ public class WordPressConfigDto
 
   public decimal quote_allocation { get; set; } = 0;
 
-  public Dictionary<string, double> alt_weighting_factors { get; set; } = new();
+  public Dictionary<string, double> alt_weighting_factors { get; set; } = [];
 
-  public List<string> tags_to_ignore { get; set; } = new();
+  public List<string> tags_to_include { get; set; } = [];
+
+  public List<string> tags_to_ignore { get; set; } = [];
 
   public int top_ranking_count { get; set; }
 
