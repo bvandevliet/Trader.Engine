@@ -84,6 +84,7 @@ public class RebalanceController : ControllerBase
 
     return Ok(new SimulationDto()
     {
+      Config = simulationReqDto.Config,
       Orders = orders,
       NewAbsAllocs = absAllocsTradable,
       CurBalance = curBalanceDto,
