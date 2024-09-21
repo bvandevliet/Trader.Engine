@@ -20,11 +20,9 @@ Project("{E53339B2-1760-4266-BCC7-CA923CBCF16C}") = "docker-compose", "docker-co
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.Common", "TraderEngine.Common\TraderEngine.Common.csproj", "{974F2738-41AC-40D4-9520-830004E21453}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.CommonTests", "TraderEngine.CommonTests\TraderEngine.CommonTests.csproj", "{8E6F9944-0A9B-4779-B03F-B1907429C156}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.APITests", "TraderEngine.APITests\TraderEngine.APITests.csproj", "{DD145B36-8658-4765-A68B-D8DAE45CAA39}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TraderEngine.CLITests", "TraderEngine.CLITests\TraderEngine.CLITests.csproj", "{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.CLITests", "TraderEngine.CLITests\TraderEngine.CLITests.csproj", "{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -48,10 +46,6 @@ Global
 		{974F2738-41AC-40D4-9520-830004E21453}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{974F2738-41AC-40D4-9520-830004E21453}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{974F2738-41AC-40D4-9520-830004E21453}.Release|Any CPU.Build.0 = Release|Any CPU
-		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8E6F9944-0A9B-4779-B03F-B1907429C156}.Release|Any CPU.Build.0 = Release|Any CPU
 		{DD145B36-8658-4765-A68B-D8DAE45CAA39}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{DD145B36-8658-4765-A68B-D8DAE45CAA39}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DD145B36-8658-4765-A68B-D8DAE45CAA39}.Release|Any CPU.ActiveCfg = Release|Any CPU
