@@ -94,8 +94,11 @@ public static partial class Trader
       config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Scale total sum of absolute allocation values to account for relative quote allocation.
-    // TODO: Handle division by zero.
-    totalAbsAlloc /= 1 - quoteRelAlloc;
+    decimal div = 1 - quoteRelAlloc;
+    if (div == 0)
+      totalAbsAlloc = 0;
+    else
+      totalAbsAlloc /= div;
 
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
     //newAbsAllocsList.Add(new AbsAllocReqDto(@this.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
