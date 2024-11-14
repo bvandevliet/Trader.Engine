@@ -46,7 +46,7 @@ public class TraderTests
 
     Assert.AreEqual(4, rebalanceOrders.Count);
 
-    Assert.AreEqual(1.3875m, Math.Round(rebalanceOrders.Sum(result => result.FeePaid), 4));
+    Assert.AreEqual(1.3872m, Math.Round(rebalanceOrders.Sum(result => result.FeePaid), 4));
 
     Assert.IsNull(rebalanceOrders[0].Amount);
     Assert.IsNull(rebalanceOrders[1].Amount);

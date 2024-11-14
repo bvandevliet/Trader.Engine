@@ -12,6 +12,7 @@ public class WordPressDbSerializerTests
     QuoteTakeout = 0,
     QuoteAllocation = 0,
     AltWeightingFactors = new() { { "BTC", .9 }, { "DOGE", 0 }, },
+    TagsToInclude = new(),
     TagsToIgnore = new() { "stablecoin", "meme", },
     TopRankingCount = 10,
     Smoothing = 8,
@@ -24,10 +25,11 @@ public class WordPressDbSerializerTests
   };
 
   private static readonly string _serializedConfigDto =
-    "O:12:\"ConfigReqDto\":12:{" +
+    "O:12:\"ConfigReqDto\":13:{" +
     "s:12:\"QuoteTakeout\";d:0;" +
     "s:15:\"QuoteAllocation\";d:0;" +
     "s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}" +
+    "s:13:\"TagsToInclude\";a:0:{}" +
     "s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}" +
     "s:15:\"TopRankingCount\";i:10;" +
     "s:9:\"Smoothing\";i:8;" +
@@ -36,7 +38,7 @@ public class WordPressDbSerializerTests
     "s:21:\"MinimumDiffAllocation\";d:1.5;" +
     "s:17:\"AutomationEnabled\";b:1;" +
     "s:13:\"IntervalHours\";i:6;" +
-    "s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}}";
+    "s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
 
   [TestMethod()]
   public void SerializeBasicTypesTest()
@@ -60,7 +62,7 @@ public class WordPressDbSerializerTests
       .Should().Be("b:0;");
 
     WordPressDbSerializer.Serialize(new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc))
-      .Should().Be("O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"Utc\";}");
+      .Should().Be("O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}");
 
     WordPressDbSerializer.Serialize(new List<int> { 1, 2, 3 })
       .Should().Be("a:3:{i:0;i:1;i:1;i:2;i:2;i:3;}");

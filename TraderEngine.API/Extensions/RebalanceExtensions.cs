@@ -80,9 +80,6 @@ public static partial class Trader
       // Filter for quote currency.
       .Where(absAlloc => absAlloc.Market.QuoteSymbol.Equals(@this.QuoteSymbol))
 
-      // Quote allocation is not expected here, but filter it out just in case.
-      .Where(absAlloc => !absAlloc.Market.BaseSymbol.Equals(@this.QuoteSymbol))
-
       // Sum of all absolute allocation values.
       .Sum(absAlloc =>
       {
