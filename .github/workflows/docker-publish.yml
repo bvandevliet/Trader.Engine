@@ -40,11 +40,6 @@ jobs:
           registry: ${{ secrets.CR_REGISTRY }}
           username: ${{ secrets.CR_USERNAME }}
           password: ${{ secrets.CR_PASSWORD }}
-      # -
-      #   # Add support for more platforms with QEMU (optional)
-      #   # https://github.com/docker/setup-qemu-action
-      #   name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v3
       -
         name: Set up Docker Buildx
         id: buildx
@@ -53,7 +48,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       -
         name: Build and push TraderEngine.API
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./TraderEngine.API/Dockerfile
@@ -88,11 +83,6 @@ jobs:
           registry: ${{ secrets.CR_REGISTRY }}
           username: ${{ secrets.CR_USERNAME }}
           password: ${{ secrets.CR_PASSWORD }}
-      # -
-      #   # Add support for more platforms with QEMU (optional)
-      #   # https://github.com/docker/setup-qemu-action
-      #   name: Set up QEMU
-      #   uses: docker/setup-qemu-action@v3
       -
         name: Set up Docker Buildx
         id: buildx
@@ -101,7 +91,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
       -
         name: Build and push TraderEngine.CLI
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           file: ./TraderEngine.CLI/Dockerfile
