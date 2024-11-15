@@ -4,11 +4,8 @@ on:
   schedule:
     - cron: '45 0 * * *'
   push:
-    tags:
-      - 'v*'
     branches:
-      - 'main'
-      - 'master'
+      - '**'
 
 jobs:
 
@@ -35,34 +32,6 @@ jobs:
         id: gitversion
         uses: gittools/actions/gitversion/execute@v3.0
       -
-        name: Print GitVersion
-        run: |
-          echo "major:                           ${{ steps.gitversion.outputs.major }}"
-          echo "minor:                           ${{ steps.gitversion.outputs.minor }}"
-          echo "patch:                           ${{ steps.gitversion.outputs.patch }}"
-          echo "preReleaseTag:                   ${{ steps.gitversion.outputs.preReleaseTag }}"
-          echo "preReleaseTagWithDash:           ${{ steps.gitversion.outputs.preReleaseTagWithDash }}"
-          echo "preReleaseLabel:                 ${{ steps.gitversion.outputs.preReleaseLabel }}"
-          echo "preReleaseNumber:                ${{ steps.gitversion.outputs.preReleaseNumber }}"
-          echo "weightedPreReleaseNumber:        ${{ steps.gitversion.outputs.weightedPreReleaseNumber }}"
-          echo "buildMetaData:                   ${{ steps.gitversion.outputs.buildMetaData }}"
-          echo "fullBuildMetaData:               ${{ steps.gitversion.outputs.fullBuildMetaData }}"
-          echo "majorMinorPatch:                 ${{ steps.gitversion.outputs.majorMinorPatch }}"
-          echo "semVer:                          ${{ steps.gitversion.outputs.semVer }}"
-          echo "assemblySemVer:                  ${{ steps.gitversion.outputs.assemblySemVer }}"
-          echo "assemblySemFileVer:              ${{ steps.gitversion.outputs.assemblySemFileVer }}"
-          echo "fullSemVer:                      ${{ steps.gitversion.outputs.fullSemVer }}"
-          echo "informationalVersion:            ${{ steps.gitversion.outputs.informationalVersion }}"
-          echo "branchName:                      ${{ steps.gitversion.outputs.branchName }}"
-          echo "escapedBranchName:               ${{ steps.gitversion.outputs.escapedBranchName }}"
-          echo "sha:                             ${{ steps.gitversion.outputs.sha }}"
-          echo "shortSha:                        ${{ steps.gitversion.outputs.shortSha }}"
-          echo "versionSourceSha:                ${{ steps.gitversion.outputs.versionSourceSha }}"
-          echo "commitsSinceVersionSource:       ${{ steps.gitversion.outputs.commitsSinceVersionSource }}"
-          echo "commitsSinceVersionSourcePadded: ${{ steps.gitversion.outputs.commitsSinceVersionSourcePadded }}"
-          echo "uncommittedChanges:              ${{ steps.gitversion.outputs.uncommittedChanges }}"
-          echo "commitDate:                      ${{ steps.gitversion.outputs.commitDate }}"
-      -
         name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -72,10 +41,8 @@ jobs:
           tags: |
             type=schedule,pattern=nightly
             type=raw,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }},value=nightly
-            type=ref,event=branch,enable=${{ github.ref != 'refs/heads/main' && github.ref != 'refs/heads/master' }}
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }},value=latest
+            type=raw,value=${{ steps.gitversion.outputs.semVer }}
       -
         name: Setup dotnet
         uses: actions/setup-dotnet@v4
