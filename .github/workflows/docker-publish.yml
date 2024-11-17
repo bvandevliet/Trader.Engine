@@ -6,6 +6,9 @@ on:
   push:
     branches:
       - '**'
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
 
@@ -35,14 +38,17 @@ jobs:
         name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
+        env:
+          IS_PUSH: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
         with:
           images: |
             ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}
           tags: |
             type=schedule,pattern=nightly
-            type=raw,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }},value=nightly
-            type=raw,enable=${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }},value=latest
-            type=raw,value=${{ steps.gitversion.outputs.semVer }}
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=nightly
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=latest
+            type=raw,enable=${{ env.IS_PUSH }},value=${{ steps.gitversion.outputs.semVer }}
       -
         name: Setup dotnet
         uses: actions/setup-dotnet@v4
