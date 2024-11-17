@@ -136,8 +136,8 @@ jobs:
             echo "Skipping tag creation as conditions are not met."
             exit 0
           fi
-          git tag ${{ steps.gitversion.outputs.majorMinorPatch }}
-          git push origin ${{ steps.gitversion.outputs.majorMinorPatch }}
+          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
+          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
       -
         name: Login to Docker CR
         if: ${{ env.IS_PUSH }}
