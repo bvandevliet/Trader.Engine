@@ -1,24 +1,13 @@
-FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
-WORKDIR /app
+FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine
 EXPOSE 80
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
-WORKDIR /src
-COPY . .
-RUN dotnet restore "TraderEngine.API/TraderEngine.API.csproj"
-
-WORKDIR /src/TraderEngine.API
-ARG MODE=Release
-RUN dotnet build "TraderEngine.API.csproj" -c ${MODE} -o /app/build
-
-FROM build AS publish
-ARG MODE=Release
-RUN dotnet publish "TraderEngine.API.csproj" -c ${MODE} -o /app/publish /p:UseAppHost=false
-
-FROM base AS final
 RUN apk add -U --no-cache tzdata
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY bin/Release/net8.0/publish .
+
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 USER appuser
+
+ENV ASPNETCORE_ENVIRONMENT=Production
 ENTRYPOINT ["dotnet", "TraderEngine.API.dll"]

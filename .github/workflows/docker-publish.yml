@@ -5,34 +5,142 @@ on:
     - cron: '45 0 * * *'
   push:
     branches:
-      - 'master'
+      - '**'
 
 jobs:
 
-  build-push:
+  analysis:
+    name: Run code analysis and tests
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        project: [API, CLI]
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      security-events: write
     steps:
       -
         name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@main
+      -
+        name: Setup dotnet
+        uses: actions/setup-dotnet@main
+        with:
+          dotnet-version: '8'
+      -
+        name: Initialize CodeQL
+        uses: github/codeql-action/init@main
+        with:
+          languages: csharp
+          build-mode: none
+      -
+        name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@main
+        with:
+          category: "/language:csharp"
+      -
+        name: Restore NuGet packages
+        run: dotnet restore
+      -
+        name: Generate Trivy vulnerability report
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy.sarif'
+          cache: false
+          exit-code: 0
+      -
+        name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy.sarif'
+      -
+        name: Exit on high/critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          skip-setup-trivy: true
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: table
+          cache: false
+          exit-code: 1
+      -
+        name: Run tests
+        run: dotnet test -c Debug --no-restore --verbosity normal
+
+  build-push:
+    name: Build and push Docker images
+    needs: [analysis]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    strategy:
+      matrix:
+        project:
+          - TraderEngine.API
+          - TraderEngine.CLI
+    env:
+      IS_PUSH: ${{ github.event_name == 'push' }}
+      IS_MAIN: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@main
+        with:
+          fetch-depth: 0
+      -
+        name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@main
+        with:
+          versionSpec: '6.x'
+      -
+        name: Execute GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@main
       -
         name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: |
-            ${{ secrets.CR_REGISTRY }}/traderengine.${{ matrix.project }}
+            ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}
           tags: |
             type=schedule,pattern=nightly
-            type=raw,enable={{is_default_branch}},value=nightly
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=nightly
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=latest
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.majorMinorPatch }}
+            type=raw,enable=${{ env.IS_PUSH && !env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseLabel }}
+            type=raw,enable=${{ env.IS_PUSH && !env.IS_MAIN }},value=${{ steps.gitversion.outputs.semVer }}
+      -
+        name: Setup dotnet
+        uses: actions/setup-dotnet@main
+        with:
+          dotnet-version: '8'
+      -
+        name: Build ${{ matrix.project }}
+        run: |
+          dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" \
+          -c Release /p:UseAppHost=false \
+          /p:Version=${{ steps.gitversion.outputs.semVer }} \
+          /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
+          /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
+      -
+        name: Create Git tag
+        if: ${{ env.IS_PUSH && env.IS_MAIN }}
+        continue-on-error: ${{ !env.IS_MAIN }}
+        run: |
+          if [ "${{ env.IS_PUSH }}" != "true" ] || [ "${{ env.IS_MAIN }}" != "true" ]; then
+            echo "Skipping tag creation as conditions are not met."
+            exit 0
+          fi
+          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
+          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
       -
         name: Login to Docker CR
-        if: github.event_name != 'pull_request'
+        if: ${{ env.IS_PUSH }}
         uses: docker/login-action@v3
         with:
           registry: ${{ secrets.CR_REGISTRY }}
@@ -45,12 +153,11 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
       -
-        name: Build and push TraderEngine.${{ matrix.project }}
+        name: Build and push ${{ matrix.project }}
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: ./TraderEngine.${{ matrix.project }}/Dockerfile
+          context: ./${{ matrix.project }}
           tags: ${{ steps.meta.outputs.tags }}
           platforms: ${{ steps.buildx.outputs.platforms }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ github.event_name != 'pull_request' }}
+          push: ${{ env.IS_PUSH }}
