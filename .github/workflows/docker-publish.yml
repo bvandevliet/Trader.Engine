@@ -121,8 +121,13 @@ jobs:
         with:
           dotnet-version: '8'
       -
-        name: Publish release build
-        run: dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" -c Release /p:UseAppHost=false /p:Version=${{ steps.gitversion.outputs.assemblySemVer }}
+        name: Build ${{ matrix.project }}
+        run: |
+          dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" \
+          -c Release /p:UseAppHost=false \
+          /p:Version=${{ steps.gitversion.outputs.semVer }} \
+          /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
+          /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
       -
         name: Login to Docker CR
         if: github.event_name != 'pull_request'
