@@ -9,71 +9,71 @@ on:
 
 jobs:
 
-  # analysis:
-  #   name: Run code analysis and tests
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     packages: read
-  #     actions: read
-  #     security-events: write
-  #   steps:
-  #     -
-  #       name: Checkout
-  #       uses: actions/checkout@main
-  #     -
-  #       name: Setup dotnet
-  #       uses: actions/setup-dotnet@main
-  #       with:
-  #         dotnet-version: '8'
-  #     -
-  #       name: Initialize CodeQL
-  #       uses: github/codeql-action/init@main
-  #       with:
-  #         languages: csharp
-  #         build-mode: none
-  #     -
-  #       name: Perform CodeQL analysis
-  #       uses: github/codeql-action/analyze@main
-  #       with:
-  #         category: "/language:csharp"
-  #     -
-  #       name: Restore NuGet packages
-  #       run: dotnet restore
-  #     -
-  #       name: Generate Trivy vulnerability report
-  #       uses: aquasecurity/trivy-action@master
-  #       with:
-  #         scan-type: 'fs'
-  #         severity: 'HIGH,CRITICAL'
-  #         ignore-unfixed: true
-  #         format: 'sarif'
-  #         output: 'trivy.sarif'
-  #         cache: false
-  #         exit-code: 0
-  #     -
-  #       name: Upload Trivy scan results
-  #       uses: github/codeql-action/upload-sarif@v3
-  #       with:
-  #         sarif_file: 'trivy.sarif'
-  #     -
-  #       name: Exit on high/critical vulnerabilities
-  #       uses: aquasecurity/trivy-action@master
-  #       with:
-  #         skip-setup-trivy: true
-  #         scan-type: 'fs'
-  #         severity: 'HIGH,CRITICAL'
-  #         ignore-unfixed: true
-  #         format: table
-  #         cache: false
-  #         exit-code: 1
-  #     -
-  #       name: Run tests
-  #       run: dotnet test -c Debug --no-restore --verbosity normal
+  analysis:
+    name: Run code analysis and tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      security-events: write
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@main
+      -
+        name: Setup dotnet
+        uses: actions/setup-dotnet@main
+        with:
+          dotnet-version: '8'
+      -
+        name: Initialize CodeQL
+        uses: github/codeql-action/init@main
+        with:
+          languages: csharp
+          build-mode: none
+      -
+        name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@main
+        with:
+          category: "/language:csharp"
+      -
+        name: Restore NuGet packages
+        run: dotnet restore
+      -
+        name: Generate Trivy vulnerability report
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy.sarif'
+          cache: false
+          exit-code: 0
+      -
+        name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy.sarif'
+      -
+        name: Exit on high/critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          skip-setup-trivy: true
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: table
+          cache: false
+          exit-code: 1
+      -
+        name: Run tests
+        run: dotnet test -c Debug --no-restore --verbosity normal
 
   build-push:
     name: Build and push Docker images
-    # needs: [analysis]
+    needs: [analysis]
     runs-on: ubuntu-latest
     permissions:
       contents: write
