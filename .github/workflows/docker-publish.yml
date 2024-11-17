@@ -52,8 +52,7 @@ jobs:
           scan-type: 'fs'
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
-          format: 'template'
-          template: '@/contrib/sarif.tpl'
+          format: 'sarif'
           output: 'trivy.sarif'
           cache: false
           exit-code: 0
