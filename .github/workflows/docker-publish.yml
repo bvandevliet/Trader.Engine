@@ -109,6 +109,8 @@ jobs:
             type=schedule,pattern=nightly
             type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=nightly
             type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=latest
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseLabel }}
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseTag }}
             type=raw,enable=${{ env.IS_PUSH }},value=${{ steps.gitversion.outputs.semVer }}
       -
         name: Setup dotnet
