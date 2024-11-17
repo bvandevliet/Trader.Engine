@@ -111,9 +111,9 @@ jobs:
             type=schedule,pattern=nightly
             type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=nightly
             type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=latest
-            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseLabel }}
-            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseTag }}
-            type=raw,enable=${{ env.IS_PUSH }},value=${{ steps.gitversion.outputs.semVer }}
+            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.majorMinorPatch }}
+            type=raw,enable=${{ env.IS_PUSH && !env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseLabel }}
+            type=raw,enable=${{ env.IS_PUSH && !env.IS_MAIN }},value=${{ steps.gitversion.outputs.semVer }}
       -
         name: Setup dotnet
         uses: actions/setup-dotnet@main
@@ -136,8 +136,8 @@ jobs:
             echo "Skipping tag creation as conditions are not met."
             exit 0
           fi
-          git tag ${{ steps.gitversion.outputs.semVer }}
-          git push origin ${{ steps.gitversion.outputs.semVer }}
+          git tag ${{ steps.gitversion.outputs.majorMinorPatch }}
+          git push origin ${{ steps.gitversion.outputs.majorMinorPatch }}
       -
         name: Login to Docker CR
         if: ${{ env.IS_PUSH }}
