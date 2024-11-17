@@ -83,6 +83,9 @@ jobs:
         project:
           - TraderEngine.API
           - TraderEngine.CLI
+    env:
+      IS_PUSH: ${{ github.event_name == 'push' }}
+      IS_MAIN: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
     steps:
       -
         name: Checkout
@@ -102,9 +105,6 @@ jobs:
         name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
-        env:
-          IS_PUSH: ${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
-          IS_MAIN: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
         with:
           images: |
             ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}
@@ -126,6 +126,10 @@ jobs:
           /p:Version=${{ steps.gitversion.outputs.semVer }} \
           /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
           /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
+      -
+        name: Create Git tag
+        if: ${{ env.IS_PUSH && env.IS_MAIN }}
+        run: git tag ${{ steps.gitversion.outputs.semVer }} && git push origin ${{ steps.gitversion.outputs.semVer }}"
       -
         name: Login to Docker CR
         if: github.event_name != 'pull_request'
