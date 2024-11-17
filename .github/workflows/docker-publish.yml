@@ -27,6 +27,14 @@ jobs:
         name: Checkout
         uses: actions/checkout@main
       -
+        name: Setup dotnet
+        uses: actions/setup-dotnet@main
+        with:
+          dotnet-version: '8'
+      -
+        name: Restore NuGet packages
+        run: dotnet restore
+      -
         name: Initialize CodeQL
         uses: github/codeql-action/init@main
         with:
@@ -65,14 +73,6 @@ jobs:
           format: table
           cache: false
           exit-code: 1
-      -
-        name: Setup dotnet
-        uses: actions/setup-dotnet@main
-        with:
-          dotnet-version: '8'
-      -
-        name: Restore NuGet packages
-        run: dotnet restore
       -
         name: Run tests
         run: dotnet test -c Debug --no-restore --verbosity normal
