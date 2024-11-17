@@ -20,8 +20,6 @@ jobs:
       packages: read
       actions: read
       security-events: write
-    env:
-      LANGUAGE: csharp
     steps:
       -
         name: Checkout
@@ -32,19 +30,19 @@ jobs:
         with:
           dotnet-version: '8'
       -
-        name: Restore NuGet packages
-        run: dotnet restore
-      -
         name: Initialize CodeQL
         uses: github/codeql-action/init@main
         with:
-          languages: ${{ env.LANGUAGE }}
+          languages: csharp
           build-mode: none
       -
         name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@main
         with:
-          category: "/language:${{ env.LANGUAGE }}"
+          category: "/language:csharp"
+      -
+        name: Restore NuGet packages
+        run: dotnet restore
       -
         name: Generate Trivy vulnerability report
         uses: aquasecurity/trivy-action@master
