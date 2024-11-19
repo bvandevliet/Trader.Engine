@@ -43,29 +43,33 @@ jobs:
       -
         name: Generate Trivy vulnerability report
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           scan-type: 'fs'
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
           format: 'sarif'
-          output: 'trivy.sarif'
-          cache: false
+          output: 'trivy-fs.sarif'
           exit-code: 0
       -
         name: Upload Trivy scan results
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'trivy.sarif'
+          sarif_file: 'trivy-fs.sarif'
       -
         name: Exit on high/critical vulnerabilities
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           skip-setup-trivy: true
           scan-type: 'fs'
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
           format: table
-          cache: false
           exit-code: 1
       -
         name: Run tests
@@ -154,6 +158,46 @@ jobs:
           platforms: linux/amd64,linux/arm64
       -
         name: Build and push ${{ matrix.project }}
+        uses: docker/build-push-action@v6
+        with:
+          context: ./${{ matrix.project }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          load: true
+      -
+        name: Generate Trivy vulnerability report
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+        with:
+          image-ref: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}:${{ steps.meta.outputs.tags[0] }}
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-image.sarif'
+          exit-code: 0
+      -
+        name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-image.sarif'
+      -
+        name: Exit on high/critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+        with:
+          skip-setup-trivy: true
+          image-ref: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}:${{ steps.meta.outputs.tags[0] }}
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: table
+          exit-code: 1
+      -
+        name: Build and push ${{ matrix.project }}
+        if: ${{ env.IS_MAIN }}
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.project }}
