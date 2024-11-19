@@ -43,6 +43,9 @@ jobs:
       -
         name: Generate Trivy vulnerability report
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           scan-type: 'fs'
           severity: 'HIGH,CRITICAL'
@@ -58,6 +61,9 @@ jobs:
       -
         name: Exit on high/critical vulnerabilities
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           skip-setup-trivy: true
           scan-type: 'fs'
@@ -161,6 +167,9 @@ jobs:
       -
         name: Generate Trivy vulnerability report
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           image-ref: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}:${{ steps.meta.outputs.tags[0] }}
           severity: 'HIGH,CRITICAL'
@@ -176,6 +185,9 @@ jobs:
       -
         name: Exit on high/critical vulnerabilities
         uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           skip-setup-trivy: true
           image-ref: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}:${{ steps.meta.outputs.tags[0] }}
