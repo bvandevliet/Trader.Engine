@@ -81,6 +81,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      security-events: write
     strategy:
       matrix:
         project:
@@ -132,17 +133,6 @@ jobs:
           /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
           /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
       -
-        name: Create Git tag
-        if: ${{ env.IS_PUSH && env.IS_MAIN }}
-        continue-on-error: ${{ !env.IS_MAIN }}
-        run: |
-          if [ "${{ env.IS_PUSH }}" != "true" ] || [ "${{ env.IS_MAIN }}" != "true" ]; then
-            echo "Skipping tag creation as conditions are not met."
-            exit 0
-          fi
-          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
-          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
-      -
         name: Login to Docker CR
         if: ${{ env.IS_MAIN }}
         uses: docker/login-action@v3
@@ -157,7 +147,7 @@ jobs:
         with:
           platforms: linux/amd64,linux/arm64
       -
-        name: Build and push ${{ matrix.project }}
+        name: Build image for ${{ matrix.project }}
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.project }}
@@ -165,13 +155,17 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           load: true
       -
+        name: Get image and tag for Trivy scan
+        id: trivy-image
+        run: echo "ref=$(echo ${{ steps.meta.outputs.tags }} | cut -d ',' -f 1)" >> $GITHUB_OUTPUT
+      -
         name: Generate Trivy vulnerability report
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_SKIP_DB_UPDATE: true
           TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
-          image-ref: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}:${{ steps.meta.outputs.tags[0] }}
+          image-ref: ${{ steps.trivy-image.outputs.ref }}
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
           format: 'sarif'
@@ -190,13 +184,24 @@ jobs:
           TRIVY_SKIP_JAVA_DB_UPDATE: true
         with:
           skip-setup-trivy: true
-          image-ref: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}:${{ steps.meta.outputs.tags[0] }}
+          image-ref: ${{ steps.trivy-image.outputs.ref }}
           severity: 'HIGH,CRITICAL'
           ignore-unfixed: true
           format: table
           exit-code: 1
       -
-        name: Build and push ${{ matrix.project }}
+        name: Create Git tag
+        if: ${{ env.IS_PUSH && env.IS_MAIN }}
+        continue-on-error: ${{ !env.IS_MAIN }}
+        run: |
+          if [ "${{ env.IS_PUSH }}" != "true" ] || [ "${{ env.IS_MAIN }}" != "true" ]; then
+            echo "Skipping tag creation as conditions are not met."
+            exit 0
+          fi
+          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
+          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
+      -
+        name: Push ${{ matrix.project }} to container registry
         if: ${{ env.IS_MAIN }}
         uses: docker/build-push-action@v6
         with:
