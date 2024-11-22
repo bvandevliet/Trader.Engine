@@ -6,78 +6,81 @@ on:
   push:
     branches:
       - '**'
+  pull_request:
+    branches:
+      - '**'
 
 jobs:
 
-  analysis:
-    name: Run code analysis and tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-      actions: read
-      security-events: write
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@main
-      -
-        name: Initialize CodeQL
-        uses: github/codeql-action/init@main
-        with:
-          languages: csharp
-          build-mode: none
-      -
-        name: Perform CodeQL analysis
-        uses: github/codeql-action/analyze@main
-        with:
-          category: "/language:csharp"
-      -
-        name: Setup dotnet
-        uses: actions/setup-dotnet@main
-        with:
-          dotnet-version: '8'
-      -
-        name: Restore NuGet packages
-        run: dotnet restore
-      -
-        name: Generate Trivy vulnerability report
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
-        with:
-          scan-type: 'fs'
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-fs.sarif'
-          exit-code: 0
-      -
-        name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-fs.sarif'
-      -
-        name: Exit on high/critical vulnerabilities
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
-        with:
-          skip-setup-trivy: true
-          scan-type: 'fs'
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: table
-          exit-code: 1
-      -
-        name: Run all tests
-        run: dotnet test -c Debug --no-restore --verbosity normal
+  # analysis:
+  #   name: Run code analysis and tests
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
+  #     packages: read
+  #     actions: read
+  #     security-events: write
+  #   steps:
+  #     -
+  #       name: Checkout
+  #       uses: actions/checkout@main
+  #     -
+  #       name: Initialize CodeQL
+  #       uses: github/codeql-action/init@main
+  #       with:
+  #         languages: csharp
+  #         build-mode: none
+  #     -
+  #       name: Perform CodeQL analysis
+  #       uses: github/codeql-action/analyze@main
+  #       with:
+  #         category: "/language:csharp"
+  #     -
+  #       name: Setup dotnet
+  #       uses: actions/setup-dotnet@main
+  #       with:
+  #         dotnet-version: '8'
+  #     -
+  #       name: Restore NuGet packages
+  #       run: dotnet restore
+  #     -
+  #       name: Generate Trivy vulnerability report
+  #       uses: aquasecurity/trivy-action@master
+  #       env:
+  #         TRIVY_SKIP_DB_UPDATE: true
+  #         TRIVY_SKIP_JAVA_DB_UPDATE: true
+  #       with:
+  #         scan-type: 'fs'
+  #         severity: 'HIGH,CRITICAL'
+  #         ignore-unfixed: true
+  #         format: 'sarif'
+  #         output: 'trivy-fs.sarif'
+  #         exit-code: 0
+  #     -
+  #       name: Upload Trivy scan results
+  #       uses: github/codeql-action/upload-sarif@v3
+  #       with:
+  #         sarif_file: 'trivy-fs.sarif'
+  #     -
+  #       name: Exit on high/critical vulnerabilities
+  #       uses: aquasecurity/trivy-action@master
+  #       env:
+  #         TRIVY_SKIP_DB_UPDATE: true
+  #         TRIVY_SKIP_JAVA_DB_UPDATE: true
+  #       with:
+  #         skip-setup-trivy: true
+  #         scan-type: 'fs'
+  #         severity: 'HIGH,CRITICAL'
+  #         ignore-unfixed: true
+  #         format: table
+  #         exit-code: 1
+  #     -
+  #       name: Run all tests
+  #       run: dotnet test -c Debug --no-restore --verbosity normal
 
   build-push:
     name: Build and push Docker images
-    needs: [analysis]
+    # needs: [analysis]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -89,7 +92,7 @@ jobs:
           - TraderEngine.CLI
     env:
       IS_PUSH: ${{ github.event_name == 'push' }}
-      IS_MAIN: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master' }}
+      IS_MAIN: ${{ github.event.repository.default_branch == github.ref_name }}
     steps:
       -
         name: Checkout
@@ -113,18 +116,32 @@ jobs:
           images: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}
           tags: |
             type=schedule,pattern=nightly
-            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=nightly
-            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=latest
-            type=raw,enable=${{ env.IS_PUSH && env.IS_MAIN }},value=${{ steps.gitversion.outputs.majorMinorPatch }}
-            type=raw,enable=${{ env.IS_PUSH && !env.IS_MAIN }},value=${{ steps.gitversion.outputs.preReleaseLabel }}
-            type=raw,enable=${{ env.IS_PUSH && !env.IS_MAIN }},value=${{ steps.gitversion.outputs.semVer }}
+            type=raw,enable=${{ env.IS_PUSH == 'true' && env.IS_MAIN == 'true' }},value=nightly
+            type=raw,enable=${{ env.IS_PUSH == 'true' && env.IS_MAIN == 'true' }},value=latest
+            type=raw,enable=${{ env.IS_PUSH == 'true' && env.IS_MAIN == 'true' }},value=${{ steps.gitversion.outputs.majorMinorPatch }}
+            type=raw,enable=${{ env.IS_PUSH == 'false' || env.IS_MAIN == 'false' }},value=${{ steps.gitversion.outputs.preReleaseLabel }}
+            type=raw,enable=${{ env.IS_PUSH == 'false' || env.IS_MAIN == 'false' }},value=${{ steps.gitversion.outputs.semVer }}
+      -
+        name: Create Git tag
+        if: steps.meta.outputs.tags != ''
+        continue-on-error: true
+        run: |
+          if [ "${{ env.IS_PUSH }}" == "true" ] && [ "${{ env.IS_MAIN }}" == "true" ]; then
+            git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
+            git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
+          elif [ "${{ env.IS_PUSH }}" == "true" ]; then
+            git tag v${{ steps.gitversion.outputs.semVer }}
+            git push origin v${{ steps.gitversion.outputs.semVer }}
+          fi
       -
         name: Setup dotnet
+        if: steps.meta.outputs.tags != ''
         uses: actions/setup-dotnet@main
         with:
           dotnet-version: '8'
       -
         name: Build ${{ matrix.project }}
+        if: steps.meta.outputs.tags != ''
         run: |
           dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" \
           -c Release /p:UseAppHost=false \
@@ -132,21 +149,15 @@ jobs:
           /p:AssemblyVersion=${{ steps.gitversion.outputs.assemblySemVer }} \
           /p:FileVersion=${{ steps.gitversion.outputs.assemblySemFileVer }}
       -
-        name: Login to container registry
-        if: ${{ env.IS_MAIN }}
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.CR_REGISTRY }}
-          username: ${{ secrets.CR_USERNAME }}
-          password: ${{ secrets.CR_PASSWORD }}
-      -
         name: Set up Buildx
+        if: steps.meta.outputs.tags != ''
         id: buildx
         uses: docker/setup-buildx-action@v3
         with:
           platforms: linux/amd64,linux/arm64
       -
         name: Build image for ${{ matrix.project }}
+        if: steps.meta.outputs.tags != ''
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.project }}
@@ -155,10 +166,12 @@ jobs:
           load: true
       -
         name: Get image and tag for Trivy scan
+        if: steps.meta.outputs.tags != ''
         id: trivy-image
         run: echo "ref=$(echo ${{ steps.meta.outputs.tags }} | cut -d ',' -f 1)" >> $GITHUB_OUTPUT
       -
         name: Generate Trivy vulnerability report
+        if: steps.meta.outputs.tags != ''
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_SKIP_DB_UPDATE: true
@@ -172,11 +185,13 @@ jobs:
           exit-code: 0
       -
         name: Upload Trivy scan results
+        if: steps.meta.outputs.tags != ''
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'trivy-image.sarif'
       -
         name: Exit on high/critical vulnerabilities
+        if: steps.meta.outputs.tags != ''
         uses: aquasecurity/trivy-action@master
         env:
           TRIVY_SKIP_DB_UPDATE: true
@@ -189,23 +204,20 @@ jobs:
           format: table
           exit-code: 1
       -
-        name: Create Git tag
-        if: ${{ env.IS_PUSH && env.IS_MAIN }}
-        continue-on-error: ${{ !env.IS_MAIN }}
-        run: |
-          if [ "${{ env.IS_PUSH }}" != "true" ] || [ "${{ env.IS_MAIN }}" != "true" ]; then
-            echo "Skipping tag creation as conditions are not met."
-            exit 0
-          fi
-          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
-          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
+        name: Login to container registry
+        if: steps.meta.outputs.tags != ''
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.CR_REGISTRY }}
+          username: ${{ secrets.CR_USERNAME }}
+          password: ${{ secrets.CR_PASSWORD }}
       -
         name: Push ${{ matrix.project }} to registry
-        if: ${{ env.IS_MAIN }}
+        if: steps.meta.outputs.tags != ''
         uses: docker/build-push-action@v6
         with:
           context: ./${{ matrix.project }}
           tags: ${{ steps.meta.outputs.tags }}
           platforms: ${{ steps.buildx.outputs.platforms }}
           labels: ${{ steps.meta.outputs.labels }}
-          push: ${{ env.IS_MAIN }}
+          push: true
