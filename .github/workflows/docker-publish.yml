@@ -12,75 +12,75 @@ on:
 
 jobs:
 
-  # analysis:
-  #   name: Run code analysis and tests
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #     packages: read
-  #     actions: read
-  #     security-events: write
-  #   steps:
-  #     -
-  #       name: Checkout
-  #       uses: actions/checkout@main
-  #     -
-  #       name: Initialize CodeQL
-  #       uses: github/codeql-action/init@main
-  #       with:
-  #         languages: csharp
-  #         build-mode: none
-  #     -
-  #       name: Perform CodeQL analysis
-  #       uses: github/codeql-action/analyze@main
-  #       with:
-  #         category: "/language:csharp"
-  #     -
-  #       name: Setup dotnet
-  #       uses: actions/setup-dotnet@main
-  #       with:
-  #         dotnet-version: '8'
-  #     -
-  #       name: Restore NuGet packages
-  #       run: dotnet restore
-  #     -
-  #       name: Generate Trivy vulnerability report
-  #       uses: aquasecurity/trivy-action@master
-  #       env:
-  #         TRIVY_SKIP_DB_UPDATE: true
-  #         TRIVY_SKIP_JAVA_DB_UPDATE: true
-  #       with:
-  #         scan-type: 'fs'
-  #         severity: 'HIGH,CRITICAL'
-  #         ignore-unfixed: true
-  #         format: 'sarif'
-  #         output: 'trivy-fs.sarif'
-  #         exit-code: 0
-  #     -
-  #       name: Upload Trivy scan results
-  #       uses: github/codeql-action/upload-sarif@v3
-  #       with:
-  #         sarif_file: 'trivy-fs.sarif'
-  #     -
-  #       name: Exit on high/critical vulnerabilities
-  #       uses: aquasecurity/trivy-action@master
-  #       env:
-  #         TRIVY_SKIP_DB_UPDATE: true
-  #         TRIVY_SKIP_JAVA_DB_UPDATE: true
-  #       with:
-  #         skip-setup-trivy: true
-  #         scan-type: 'fs'
-  #         severity: 'HIGH,CRITICAL'
-  #         ignore-unfixed: true
-  #         format: table
-  #         exit-code: 1
-  #     -
-  #       name: Run all tests
-  #       run: dotnet test -c Debug --no-restore --verbosity normal
+  analysis:
+    name: Run code analysis and tests
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+      actions: read
+      security-events: write
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@main
+      -
+        name: Initialize CodeQL
+        uses: github/codeql-action/init@main
+        with:
+          languages: csharp
+          build-mode: none
+      -
+        name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@main
+        with:
+          category: "/language:csharp"
+      -
+        name: Setup dotnet
+        uses: actions/setup-dotnet@main
+        with:
+          dotnet-version: '8'
+      -
+        name: Restore NuGet packages
+        run: dotnet restore
+      -
+        name: Generate Trivy vulnerability report
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+        with:
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: 'sarif'
+          output: 'trivy-fs.sarif'
+          exit-code: 0
+      -
+        name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'trivy-fs.sarif'
+      -
+        name: Exit on high/critical vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        env:
+          TRIVY_SKIP_DB_UPDATE: true
+          TRIVY_SKIP_JAVA_DB_UPDATE: true
+        with:
+          skip-setup-trivy: true
+          scan-type: 'fs'
+          severity: 'HIGH,CRITICAL'
+          ignore-unfixed: true
+          format: table
+          exit-code: 1
+      -
+        name: Run all tests
+        run: dotnet test -c Debug --no-restore --verbosity normal
 
   build-push:
     name: Build and push Docker images
-    # needs: [analysis]
+    needs: [analysis]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -123,13 +123,13 @@ jobs:
             type=raw,enable=${{ env.IS_PUSH == 'false' || env.IS_MAIN == 'false' }},value=${{ steps.gitversion.outputs.semVer }}
       -
         name: Create Git tag
-        if: steps.meta.outputs.tags != ''
+        if: env.IS_PUSH == 'true'
         continue-on-error: true
         run: |
-          if [ "${{ env.IS_PUSH }}" == "true" ] && [ "${{ env.IS_MAIN }}" == "true" ]; then
+          if [ "${{ env.IS_MAIN }}" == "true" ]; then
             git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
             git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
-          elif [ "${{ env.IS_PUSH }}" == "true" ]; then
+          else
             git tag v${{ steps.gitversion.outputs.semVer }}
             git push origin v${{ steps.gitversion.outputs.semVer }}
           fi
