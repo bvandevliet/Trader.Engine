@@ -11,4 +11,6 @@ public class EmailSettings
   public string SmtpPassword { get; set; } = "your-smtp-password";
 
   public string FromAddress { get; set; } = "your-from-address@email.com";
+
+  public string WebsiteUrl { get; set; } = "http://localhost:5000";
 }

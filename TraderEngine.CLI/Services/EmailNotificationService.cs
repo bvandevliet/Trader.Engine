@@ -46,6 +46,7 @@ var,
     decimal cumulativeValue = simulated.NewBalance.AmountQuoteTotal + totalWithdrawn;
 
     string htmlString =
+    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
@@ -92,7 +93,7 @@ var,
     $"<p>The below {ordersExecuted.Length} orders were executed" +
     $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
     $"<table>" +
-      string.Concat(ordersExecuted.Select(order =>
+    string.Concat(ordersExecuted.Select(order =>
       $"<tr>" +
       $"<td>{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}</td>" +
       $"<td class=\"monospace\" style=\"text-align:right;\">{order.AmountFilled}</td>" +
@@ -102,7 +103,8 @@ var,
       $"<td class=\"monospace\">{order.Market.QuoteSymbol}</td>" +
       $"</tr>")) +
     $"</table>" +
-    $"<p>This email was automatically generated. Happy trading!</p>";
+    $"<p>This email was automatically generated. Happy trading!<br>" +
+    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     using var message = new MimeMessage();
 
@@ -125,21 +127,25 @@ var,
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string userMsgBody =
+    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
     $"We will try again within an hour.</p>" +
     $"<p>The below {ordersAttempted.Length} orders were attempted:</p>" +
     $"<pre>{string.Join("</pre><pre>", (object[])ordersAttempted)}</pre>" +
-    $"<p>This email was automatically generated. Happy trading!</p>";
+    $"<p>This email was automatically generated. Happy trading!" +
+    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     string adminMsgBody =
+    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
     $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
     $"<p>Debug data:</p>" +
     $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), new JsonSerializerOptions() { WriteIndented = true })}</pre>" +
-    $"<p>This email was automatically generated. Happy trading!</p>";
+    $"<p>This email was automatically generated. Happy trading!<br>" +
+    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     using var userMessage = new MimeMessage();
 
@@ -170,11 +176,13 @@ var,
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string userMsgBody =
+    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} " +
     $"but failed because exchange API authentication failed!</p>" +
-    $"<p>Please update your exchange API key or disable automation.</p>";
+    $"<p>Please update your exchange API key or disable automation.<br>" +
+    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     using var userMessage = new MimeMessage();
 
@@ -197,6 +205,7 @@ var,
     var userInfo = await _configRepo.GetUserInfo(userId);
 
     string htmlString =
+    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
     $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
@@ -222,6 +231,7 @@ var,
     DateTime timestamp, Exception exception)
   {
     string htmlString =
+    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
     $"<p>A Worker exception has occurred at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}:</p>" +
