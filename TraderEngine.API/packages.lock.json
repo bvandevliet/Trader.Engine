@@ -235,7 +235,6 @@
           "Skender.Stock.Indicators": "[2.5.1, )"
         }
       }
-    },
-    "net8.0/linux-x64": {}
+    }
   }
 }

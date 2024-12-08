@@ -11,6 +11,8 @@ public class MockExchange : IExchange
 {
   protected Balance _curBalance;
 
+  public virtual ILogger<IExchange>? Logger { get; } = null;
+
   public string QuoteSymbol { get; }
 
   public decimal MinOrderSizeInQuote { get; }
@@ -169,6 +171,8 @@ public class MockExchange : IExchange
 public class SimExchange : MockExchange, IExchange
 {
   protected readonly IExchange _instance;
+
+  public override ILogger<IExchange>? Logger => _instance.Logger;
 
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
