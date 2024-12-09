@@ -14,17 +14,10 @@ public static class EnumerableExtensions
     foreach (var item in enumerable) { action(item); }
   }
 
-  /// <summary>
   /// <inheritdoc cref="List{T}.Find(Predicate{T})"/>
-  /// If found, removes the item from the list.
-  /// </summary>
-  /// <typeparam name="T"><inheritdoc cref="List{T}.Find(Predicate{T})"/></typeparam>
-  /// <param name="list"><inheritdoc cref="List{T}.Find(Predicate{T})"/></param>
-  /// <param name="predicate"><inheritdoc cref="List{T}.Find(Predicate{T})"/></param>
-  /// <returns><inheritdoc cref="List{T}.Find(Predicate{T})"/></returns>
-  public static T? FindAndRemove<T>(this List<T> list, Predicate<T> predicate)
+  public static T? FindAndRemove<T>(this List<T> list, Predicate<T> match)
   {
-    int index = list.FindIndex(predicate);
+    int index = list.FindIndex(match);
 
     if (index >= 0)
     {

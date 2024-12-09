@@ -37,5 +37,8 @@ public class ConfigReqDto
   [Range(1, 672)] // = 28 days (4 weeks)
   public int IntervalHours { get; set; } = 6;
 
+  [Range(1, double.MaxValue)]
+  public double CurrentAllocWeightingMult { get; set; } = 1.05;
+
   public DateTime? LastRebalance { get; set; } = null;
 }

@@ -1,3 +1,4 @@
+using AnyClone;
 using System.Text.RegularExpressions;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
@@ -44,9 +45,11 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       });
   }
 
-  public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto)
+  public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
   {
     _logger.LogDebug("Calculating balanced absolute allocations for '{QuoteSymbol}' ..", quoteSymbol);
+
+    currentAssets = currentAssets?.Clone();
 
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
@@ -72,12 +75,13 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Select(marketCapDataDto =>
       {
         bool hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out double weighting);
+        bool isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
 
         return new
         {
           MarketCapDataDto = marketCapDataDto,
           HasWeighting = hasWeighting,
-          Weighting = hasWeighting ? weighting : 1,
+          Weighting = (hasWeighting ? weighting : 1) * (isAllocated ? configReqDto.CurrentAllocWeightingMult : 1),
         };
       })
 

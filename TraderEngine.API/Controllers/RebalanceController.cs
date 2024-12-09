@@ -38,21 +38,10 @@ public class RebalanceController : ControllerBase
   {
     _logger.LogDebug("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
-    var absAllocs = simulationReqDto.NewAbsAllocs ??
-      await _marketCapService().BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config);
-
-    if (null == absAllocs)
-    {
-      return NotFound("No recent market cap records found.");
-    }
-
     var exchange = _exchangeFactory.GetService(exchangeName);
 
     exchange.ApiKey = simulationReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
-
-    // Get market data for all assets and update market status.
-    var absAllocsUpdateTask = exchange.FetchMarketStatus(absAllocs);
 
     // Get current balance.
     var balanceResult = await exchange.GetBalance();
@@ -63,6 +52,17 @@ public class RebalanceController : ControllerBase
     }
 
     var balance = balanceResult.Value!;
+
+    var absAllocs = simulationReqDto.NewAbsAllocs ??
+      await _marketCapService().BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config, balance.Allocations.Select(alloc => alloc.Market).ToList());
+
+    if (null == absAllocs)
+    {
+      return NotFound("No recent market cap records found.");
+    }
+
+    // Get market data for all assets and update market status.
+    var absAllocsUpdateTask = exchange.FetchMarketStatus(absAllocs);
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
