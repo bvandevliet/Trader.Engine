@@ -2,6 +2,12 @@
   "version": 1,
   "dependencies": {
     "net8.0": {
+      "AnyClone": {
+        "type": "Direct",
+        "requested": "[1.1.6, )",
+        "resolved": "1.1.6",
+        "contentHash": "iksQmOt2vCnFupLXxEY/o9PJabQj9N1wzWIMR07QqoY/QWctbKS8KLRHXCvQINH+EJtez5de+Z8+UeyndNhKsw=="
+      },
       "Swashbuckle.AspNetCore": {
         "type": "Direct",
         "requested": "[7.0.0, )",
@@ -235,7 +241,6 @@
           "Skender.Stock.Indicators": "[2.5.1, )"
         }
       }
-    },
-    "net8.0/linux-x64": {}
+    }
   }
 }

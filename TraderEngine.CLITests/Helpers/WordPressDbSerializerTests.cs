@@ -25,7 +25,7 @@ public class WordPressDbSerializerTests
   };
 
   private static readonly string _serializedConfigDto =
-    "O:12:\"ConfigReqDto\":13:{" +
+    "O:12:\"ConfigReqDto\":14:{" +
     "s:12:\"QuoteTakeout\";d:0;" +
     "s:15:\"QuoteAllocation\";d:0;" +
     "s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}" +
@@ -38,6 +38,7 @@ public class WordPressDbSerializerTests
     "s:21:\"MinimumDiffAllocation\";d:1.5;" +
     "s:17:\"AutomationEnabled\";b:1;" +
     "s:13:\"IntervalHours\";i:6;" +
+    "s:25:\"CurrentAllocWeightingMult\";d:1.05;" +
     "s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
 
   [TestMethod()]

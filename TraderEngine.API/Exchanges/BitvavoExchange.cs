@@ -21,6 +21,8 @@ public class BitvavoExchange : IExchange
   private readonly IMapper _mapper;
   private readonly HttpClient _httpClient;
 
+  public ILogger<IExchange> Logger => _logger;
+
   public string QuoteSymbol { get; } = "EUR";
 
   public decimal MinOrderSizeInQuote { get; } = 5;

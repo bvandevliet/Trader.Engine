@@ -41,6 +41,6 @@ public class MarketReqDto : IEquatable<MarketReqDto>
 
   public override bool Equals(object? obj) => Equals(obj as MarketReqDto);
 
-  public static bool operator ==(MarketReqDto a, MarketReqDto b) => a.Equals(b);
-  public static bool operator !=(MarketReqDto a, MarketReqDto b) => !a.Equals(b);
+  public static bool operator ==(MarketReqDto? a, MarketReqDto? b) => a?.Equals(b) is true;
+  public static bool operator !=(MarketReqDto? a, MarketReqDto? b) => a?.Equals(b) is not true;
 }

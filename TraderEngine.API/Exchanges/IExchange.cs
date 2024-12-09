@@ -8,6 +8,8 @@ namespace TraderEngine.API.Exchanges;
 
 public interface IExchange
 {
+  ILogger<IExchange>? Logger { get; }
+
   string QuoteSymbol { get; }
 
   decimal MinOrderSizeInQuote { get; }
