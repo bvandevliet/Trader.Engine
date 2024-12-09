@@ -38,7 +38,12 @@ public class ConfigReqDto
   public int IntervalHours { get; set; } = 6;
 
   [Range(1, double.MaxValue)]
-  public double CurrentAllocWeightingMult { get; set; } = 1.05;
+  public double CurrentAllocWeightingMult
+  {
+    get => _currentAllocWeightingMult;
+    set => _currentAllocWeightingMult = Math.Max(1, value);
+  }
+  private double _currentAllocWeightingMult = 1.05;
 
   public DateTime? LastRebalance { get; set; } = null;
 }

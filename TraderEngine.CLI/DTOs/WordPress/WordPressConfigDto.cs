@@ -30,5 +30,7 @@ public class WordPressConfigDto
 
   public int interval_hours { get; set; }
 
+  public double current_alloc_weighting_mult { get; set; }
+
   public DateTime? last_rebalance { get; set; } = null;
 }
