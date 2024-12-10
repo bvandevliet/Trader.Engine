@@ -1,32 +1,23 @@
 namespace TraderEngine.Common.Results;
 
-public class Result<TErrCode> where TErrCode : Enum
+public class Result<TSuccess>(TSuccess? value, string[]? messages)
 {
-  public TErrCode ErrorCode { get; }
+  public TSuccess? Value { get; } = value;
 
-  public string ErrorMessage { get; }
+  public string[] Messages { get; } = messages ?? [];
 
-  public Result(TErrCode errorCode, string? errorMessage = null)
-  {
-    ErrorCode = errorCode;
-    ErrorMessage = errorMessage ?? string.Empty;
-  }
+  public string Summary => string.Join("; ", Messages);
 
-  public static Result<TErrCode> Success() => new(default!);
+  public static Result<TSuccess> Success(TSuccess value, string[]? messages = null) => new(value, messages);
 
-  public static Result<TErrCode> Failure(TErrCode errorCode, string errorMessage = "") => new(errorCode, errorMessage);
+  public static Result<TSuccess> Failure(string[]? messages = null) => new(default, messages);
 }
 
-public class Result<TSuccess, TErrCode> : Result<TErrCode> where TErrCode : Enum
+public class Result<TSuccess, TErrCode>(TSuccess? value, TErrCode errorCode, string[]? messages) : Result<TSuccess>(value, messages) where TErrCode : Enum
 {
-  public TSuccess? Value { get; }
+  public TErrCode ErrorCode { get; } = errorCode;
 
-  public Result(TSuccess? value, TErrCode errorCode, string? errorMessage = null) : base(errorCode, errorMessage)
-  {
-    Value = value;
-  }
+  public new static Result<TSuccess, TErrCode> Success(TSuccess value, string[]? messages = null) => new(value, default!, messages);
 
-  public static Result<TSuccess, TErrCode> Success(TSuccess value) => new(value, default!);
-
-  public new static Result<TSuccess, TErrCode> Failure(TErrCode errorCode, string errorMessage = "") => new(default, errorCode, errorMessage);
+  public static Result<TSuccess, TErrCode> Failure(TErrCode errorCode, string[]? messages = null) => new(default, errorCode, messages);
 }

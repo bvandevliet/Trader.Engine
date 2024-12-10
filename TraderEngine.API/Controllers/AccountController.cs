@@ -33,7 +33,7 @@ public class AccountController : ControllerBase
 
     return totalDepositedResult.ErrorCode switch
     {
-      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(totalDepositedResult.ErrorMessage),
+      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(totalDepositedResult.Summary),
       _ => Ok(totalDepositedResult.Value)
     };
   }
@@ -52,7 +52,7 @@ public class AccountController : ControllerBase
 
     return totalWithdrawnResult.ErrorCode switch
     {
-      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(totalWithdrawnResult.ErrorMessage),
+      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(totalWithdrawnResult.Summary),
       _ => Ok(totalWithdrawnResult.Value)
     };
   }

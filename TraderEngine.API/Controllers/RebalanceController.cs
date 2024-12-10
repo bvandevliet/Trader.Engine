@@ -48,7 +48,7 @@ public class RebalanceController : ControllerBase
 
     if (balanceResult.ErrorCode == ExchangeErrCodeEnum.AuthenticationError)
     {
-      return Unauthorized(balanceResult.ErrorMessage);
+      return Unauthorized(balanceResult.Summary);
     }
 
     var balance = balanceResult.Value!;
