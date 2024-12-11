@@ -33,7 +33,7 @@ public class ApiClient : IApiClient
       {
         _logger.LogWarning("Invalid API credentials.");
 
-        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
       _logger.LogError("{url} returned {code} {reason} : {response}",
@@ -62,7 +62,7 @@ public class ApiClient : IApiClient
       {
         _logger.LogWarning("Invalid API credentials.");
 
-        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
       _logger.LogError("{url} returned {code} {reason} : {response}",
@@ -91,7 +91,7 @@ public class ApiClient : IApiClient
       {
         _logger.LogWarning("Invalid API credentials.");
 
-        return Result<BalanceDto, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<BalanceDto, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
       _logger.LogError("{url} returned {code} {reason} : {response}",
@@ -153,7 +153,7 @@ public class ApiClient : IApiClient
       {
         _logger.LogWarning("Invalid API credentials.");
 
-        return Result<SimulationDto?, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<SimulationDto?, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
       _logger.LogError("{url} returned {code} {reason} : {response}",

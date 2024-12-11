@@ -32,7 +32,7 @@ public interface IExchange
 
   Task<decimal> GetPrice(MarketReqDto market);
 
-  Task<OrderDto> NewOrder(OrderReqDto order);
+  Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order);
 
   Task<OrderDto?> GetOrder(string orderId, MarketReqDto market);
 
@@ -42,5 +42,5 @@ public interface IExchange
 
   Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<OrderDto>?> SellAllPositions(string? baseSymbol = null);
+  Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null);
 }

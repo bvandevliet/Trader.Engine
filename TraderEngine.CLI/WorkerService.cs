@@ -119,6 +119,17 @@ internal class WorkerService
               return;
             }
 
+            if (simulatedResult.ErrorCode != ExchangeErrCodeEnum.Ok)
+            {
+              _logger.LogError(
+                "Error while simulating rebalance for user '{userId}'.", userConfig.Key);
+
+              // Send simulation failure notification.
+              await _emailNotification.SendAutomationFailed(userConfig.Key, now, simulatedResult.Value?.Orders, simulatedResult.Summary);
+
+              return;
+            }
+
             var simulated = simulatedResult.Value;
 
             // If balanced allocations could not be determined, bail for safety.

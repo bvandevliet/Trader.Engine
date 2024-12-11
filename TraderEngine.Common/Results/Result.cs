@@ -10,7 +10,7 @@ public class Result<TSuccess>(TSuccess? value, string[]? messages)
 
   public static Result<TSuccess> Success(TSuccess value, string[]? messages = null) => new(value, messages);
 
-  public static Result<TSuccess> Failure(string[]? messages = null) => new(default, messages);
+  public static Result<TSuccess> Failure(TSuccess? value, string[]? messages = null) => new(value, messages);
 }
 
 public class Result<TSuccess, TErrCode>(TSuccess? value, TErrCode errorCode, string[]? messages) : Result<TSuccess>(value, messages) where TErrCode : Enum
@@ -19,5 +19,5 @@ public class Result<TSuccess, TErrCode>(TSuccess? value, TErrCode errorCode, str
 
   public new static Result<TSuccess, TErrCode> Success(TSuccess value, string[]? messages = null) => new(value, default!, messages);
 
-  public static Result<TSuccess, TErrCode> Failure(TErrCode errorCode, string[]? messages = null) => new(default, errorCode, messages);
+  public static Result<TSuccess, TErrCode> Failure(TSuccess? value, TErrCode errorCode, string[]? messages = null) => new(value, errorCode, messages);
 }
