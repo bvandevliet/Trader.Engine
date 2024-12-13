@@ -273,7 +273,7 @@ public static partial class Trader
       .Select(alloc => @this.NewOrder(alloc)
 
         // Continue to verify sell order ended, within same task to optimize performance.
-        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result, true)).Unwrap()));
+        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result.Value!, true)).Unwrap()));
   }
 
   /// <summary>
@@ -382,7 +382,7 @@ public static partial class Trader
       .Select(buyOrder => @this.NewOrder(buyOrder)
 
         // Continue to verify buy order ended, within same task to optimize performance.
-        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result, false)).Unwrap()));
+        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result.Value!, false)).Unwrap()));
   }
 
   /// <summary>

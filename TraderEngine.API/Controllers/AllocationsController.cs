@@ -45,8 +45,9 @@ public class AllocationsController : ControllerBase
 
     return balanceResult.ErrorCode switch
     {
-      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(balanceResult.ErrorMessage),
-      _ => Ok(_mapper.Map<BalanceDto>(balanceResult.Value))
+      ExchangeErrCodeEnum.AuthenticationError => Unauthorized(balanceResult.Summary),
+      ExchangeErrCodeEnum.Ok => Ok(_mapper.Map<BalanceDto>(balanceResult.Value)),
+      _ => BadRequest(balanceResult.Summary)
     };
   }
 

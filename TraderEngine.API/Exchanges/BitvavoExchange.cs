@@ -112,12 +112,12 @@ public class BitvavoExchange : IExchange
 
       string? errorCode = error?["errorCode"]?.ToString();
 
-      if (errorCode == "105" || (errorCode?.StartsWith("3") ?? false))
+      if (errorCode == "105" || errorCode?.StartsWith('3') is true)
       {
         _logger.LogError("{url} returned {code} {reason} : {response}",
           request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-        return Result<Balance, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
       else
       {
@@ -131,9 +131,7 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     var balance = new Balance(QuoteSymbol);
 
@@ -186,12 +184,12 @@ public class BitvavoExchange : IExchange
 
       string? errorCode = error?["errorCode"]?.ToString();
 
-      if (errorCode == "105" || (errorCode?.StartsWith("3") ?? false))
+      if (errorCode == "105" || errorCode?.StartsWith('3') is true)
       {
         _logger.LogError("{url} returned {code} {reason} : {response}",
           request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
       else
       {
@@ -205,9 +203,7 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<JsonArray>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     return Result<decimal, ExchangeErrCodeEnum>.Success(
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
@@ -226,12 +222,12 @@ public class BitvavoExchange : IExchange
 
       string? errorCode = error?["errorCode"]?.ToString();
 
-      if (errorCode == "105" || (errorCode?.StartsWith("3") ?? false))
+      if (errorCode == "105" || errorCode?.StartsWith('3') is true)
       {
         _logger.LogError("{url} returned {code} {reason} : {response}",
           request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-        return Result<decimal, ExchangeErrCodeEnum>.Failure(ExchangeErrCodeEnum.AuthenticationError);
+        return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
       else
       {
@@ -245,9 +241,7 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<JsonArray>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     return Result<decimal, ExchangeErrCodeEnum>.Success(
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
@@ -283,9 +277,7 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<BitvavoMarketDataDto>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     return _mapper.Map<MarketDataDto>(result);
   }
@@ -308,14 +300,12 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<BitvavoTickerPriceDto>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     return decimal.Parse(result.Price);
   }
 
-  public async Task<OrderDto> NewOrder(OrderReqDto order)
+  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order)
   {
     var newOrderDto = _mapper.Map<BitvavoOrderReqDto>(order);
 
@@ -343,26 +333,32 @@ public class BitvavoExchange : IExchange
 
       if (!response.IsSuccessStatusCode)
       {
-        _logger.LogError("{url} returned {code} {reason} : {response}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-        return failedOrder;
+        string? errorCode = error?["errorCode"]?.ToString();
+
+        _logger.LogError("{url} returned {code} {reason} : {response}",
+            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return errorCode == "105" || errorCode?.StartsWith('3') is true
+          ? Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.AuthenticationError)
+          : Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.Other);
       }
 
       var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
 
       if (null == result)
-      {
         throw new Exception("Failed to deserialize response.");
-      }
 
-      return _mapper.Map<OrderDto>(result);
+      var executedOrder = _mapper.Map<OrderDto>(result);
+
+      return Result<OrderDto, ExchangeErrCodeEnum>.Success(executedOrder);
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to place order.");
+      _logger.LogCritical(ex, "Failed to place order.");
 
-      return failedOrder;
+      return Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.Exception);
     }
   }
 
@@ -384,9 +380,7 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     return _mapper.Map<OrderDto>(result);
   }
@@ -418,14 +412,12 @@ public class BitvavoExchange : IExchange
     var result = await response.Content.ReadFromJsonAsync<List<BitvavoOrderDto>>();
 
     if (null == result)
-    {
       throw new Exception("Failed to deserialize response.");
-    }
 
     return _mapper.Map<IEnumerable<OrderDto>>(result);
   }
 
-  public Task<IEnumerable<OrderDto>?> SellAllPositions(string? asset = null)
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null)
   {
     throw new NotImplementedException();
   }

@@ -122,7 +122,7 @@ var,
   }
 
   public async Task SendAutomationFailed(
-    int userId, DateTime timestamp, OrderDto[] ordersAttempted, object debugData)
+    int userId, DateTime timestamp, OrderDto[]? ordersAttempted, object debugData)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
@@ -132,8 +132,8 @@ var,
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
     $"We will try again within an hour.</p>" +
-    $"<p>The below {ordersAttempted.Length} orders were attempted:</p>" +
-    $"<pre>{string.Join("</pre><pre>", (object[])ordersAttempted)}</pre>" +
+    $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
+    $"<pre>{string.Join("</pre><pre>", (object[]?)ordersAttempted ?? [])}</pre>" +
     $"<p>This email was automatically generated. Happy trading!" +
     $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
