@@ -85,6 +85,7 @@ jobs:
 
   gitversion:
     name: Execute GitVersion and create tag
+    needs: [analysis]
     runs-on: ubuntu-latest
     permissions:
       contents: write
