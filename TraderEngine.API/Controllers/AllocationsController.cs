@@ -34,7 +34,7 @@ public class AllocationsController : ControllerBase
   [HttpPost("current/{exchangeName}")]
   public async Task<ActionResult<BalanceDto>> CurrentBalance(string exchangeName, ApiCredReqDto apiCredReqDto)
   {
-    _logger.LogDebug("Handling CurrentBalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogTrace("Handling CurrentBalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
@@ -54,7 +54,7 @@ public class AllocationsController : ControllerBase
   [HttpPost("balanced")]
   public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(ConfigReqDto configReqDto)
   {
-    _logger.LogDebug(
+    _logger.LogTrace(
       "Handling BalancedAbsAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var absAllocs = await _marketCapService()

@@ -36,7 +36,7 @@ public class RebalanceController : ControllerBase
   [HttpPost("simulate/{exchangeName}")]
   public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
-    _logger.LogDebug("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogTrace("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
@@ -96,7 +96,7 @@ public class RebalanceController : ControllerBase
   [HttpPost("{exchangeName}")]
   public async Task<ActionResult<OrderDto[]>> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
-    _logger.LogDebug("Handling Rebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogTrace("Handling Rebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
@@ -117,7 +117,7 @@ public class RebalanceController : ControllerBase
   [HttpPost("execute/{exchangeName}")]
   public async Task<ActionResult<OrderDto[]>> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
   {
-    _logger.LogDebug("Handling ExecuteOrders request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+    _logger.LogTrace("Handling ExecuteOrders request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
