@@ -39,8 +39,6 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
 
   public async Task<ApiCredReqDto> GetApiCred(int userId, string exchangeName)
   {
-    _logger.LogDebug("Getting API credentials for user '{UserId}' and exchange '{ExchangeName}' ..", userId, exchangeName);
-
     var sqlConn = await GetConnection();
 
     string userApiCred;

@@ -40,7 +40,7 @@ public class WordPressConfigRepository : IConfigRepository
 
   public async Task<WordPressUserDto> GetUserInfo(int userId)
   {
-    _logger.LogDebug("Getting user info for user '{UserId}' ..", userId);
+    _logger.LogTrace("Getting user info for user '{UserId}' ..", userId);
 
     var sqlConn = await GetConnection();
 
@@ -66,7 +66,7 @@ WHERE ID = @UserId LIMIT 1;";
 
   public async Task<ConfigReqDto> GetConfig(int userId)
   {
-    _logger.LogDebug("Getting config for user '{UserId}' ..", userId);
+    _logger.LogTrace("Getting config for user '{UserId}' ..", userId);
 
     var sqlConn = await GetConnection();
 
@@ -94,7 +94,7 @@ LIMIT 1;";
 
   public async Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs()
   {
-    _logger.LogDebug("Getting configs for all users ..");
+    _logger.LogTrace("Getting configs for all users ..");
 
     var sqlConn = await GetConnection();
 
@@ -119,7 +119,7 @@ WHERE meta_key = 'trader_configuration';";
 
   public async Task<int> SaveConfig(int userId, ConfigReqDto configReqDto)
   {
-    _logger.LogDebug("Saving config for user '{UserId}' ..", userId);
+    _logger.LogTrace("Saving config for user '{UserId}' ..", userId);
 
     var wpConfig = _mapper.Map<WordPressConfigDto>(configReqDto);
 

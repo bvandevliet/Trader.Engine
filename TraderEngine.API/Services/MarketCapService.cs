@@ -23,8 +23,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
   public async Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing)
   {
-    _logger.LogDebug("Listing latest market cap data for '{QuoteSymbol}' ..", quoteSymbol);
-
     var listHistoricalMany = await _marketCapInternalRepo.ListHistoricalMany(quoteSymbol, smoothing + 1);
 
     // Generates a list containing only the last EMA value for each asset.
@@ -47,8 +45,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
   public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
   {
-    _logger.LogDebug("Calculating balanced absolute allocations for '{QuoteSymbol}' ..", quoteSymbol);
-
     currentAssets = currentAssets?.Clone();
 
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();

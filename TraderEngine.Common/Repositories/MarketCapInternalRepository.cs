@@ -116,11 +116,11 @@ WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol;";
           marketCap.Market.BaseSymbol
         });
 
-        _logger.LogDebug("Deleted '{rows}' old records of market cap of '{market}' from database.",
+        _logger.LogTrace("Deleted '{rows}' old records of market cap of '{market}' from database.",
           rowsDeleted, marketCap.Market);
       }
 
-      _logger.LogDebug("Inserting new market cap record of '{market}' to database ..", marketCap.Market);
+      _logger.LogTrace("Inserting new market cap record of '{market}' to database ..", marketCap.Market);
 
       string sqlInsert = @"
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
@@ -145,8 +145,6 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
   public async Task<int> TryInsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
-    _logger.LogDebug("Inserting {count} market cap records into database ..", marketCaps.Count());
-
     int rowsAffected = 0;
 
     // Insert in chunks to avoid overloading the connection pool and cause timeouts.
@@ -163,7 +161,7 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
   public async Task<IEnumerable<MarketCapDataDto>> ListHistorical(MarketReqDto market, int hours = 24)
   {
-    _logger.LogDebug("Listing historical market cap for '{market}' ..", market);
+    _logger.LogTrace("Listing historical market cap for '{market}' ..", market);
 
     var sqlConn = await GetConnection();
 

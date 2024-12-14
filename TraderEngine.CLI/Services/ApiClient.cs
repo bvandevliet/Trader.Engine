@@ -22,8 +22,6 @@ public class ApiClient : IApiClient
 
   public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(string exchangeName, ApiCredReqDto apiCred)
   {
-    _logger.LogDebug("Requesting total deposited for '{exchangeName}' ..", exchangeName);
-
     using var totalDepositedResp = await _httpClient
       .PostAsJsonAsync($"api/account/totals/deposited/{exchangeName}", apiCred);
 
@@ -51,8 +49,6 @@ public class ApiClient : IApiClient
 
   public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(string exchangeName, ApiCredReqDto apiCred)
   {
-    _logger.LogDebug("Requesting total withdrawn for '{exchangeName}' ..", exchangeName);
-
     using var totalWithdrawnResp = await _httpClient
       .PostAsJsonAsync($"api/account/totals/withdrawn/{exchangeName}", apiCred);
 
@@ -80,8 +76,6 @@ public class ApiClient : IApiClient
 
   public async Task<Result<BalanceDto, ExchangeErrCodeEnum>> CurrentBalance(string exchangeName, ApiCredReqDto apiCred)
   {
-    _logger.LogDebug("Requesting current balance for '{exchangeName}' ..", exchangeName);
-
     using var curBalanceResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/current/{exchangeName}", apiCred);
 
@@ -109,8 +103,6 @@ public class ApiClient : IApiClient
 
   public async Task<List<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto config)
   {
-    _logger.LogDebug("Requesting balanced absolute allocations for '{quoteSymbol}' ..", quoteSymbol);
-
     using var absAllocsResp = await _httpClient
       .PostAsJsonAsync($"api/allocations/balanced/{quoteSymbol}", config);
 
@@ -135,8 +127,6 @@ public class ApiClient : IApiClient
 
   public async Task<Result<SimulationDto?, ExchangeErrCodeEnum>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
-    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
-
     using var simulationResp = await _httpClient
       .PostAsJsonAsync($"api/rebalance/simulate/{exchangeName}", simulationReqDto);
 
@@ -170,8 +160,6 @@ public class ApiClient : IApiClient
 
   public async Task<OrderDto[]> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
-    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
-
     using var rebalanceResp = await _httpClient
       .PostAsJsonAsync($"api/rebalance/{exchangeName}", rebalanceReqDto);
 
@@ -190,8 +178,6 @@ public class ApiClient : IApiClient
 
   public async Task<OrderDto[]> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
   {
-    _logger.LogDebug("Requesting rebalance execution for '{exchangeName}' ..", exchangeName);
-
     using var rebalanceResp = await _httpClient
       .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", executeOrdersReqDto);
 
