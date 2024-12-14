@@ -72,12 +72,14 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       {
         bool hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out double weighting);
         bool isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
+        double finalWeighting = hasWeighting ? weighting : 1;
 
         return new
         {
           MarketCapDataDto = marketCapDataDto,
           HasWeighting = hasWeighting,
-          Weighting = (hasWeighting ? weighting : 1) * (isAllocated ? configReqDto.CurrentAllocWeightingMult : 1),
+          Weighting = finalWeighting,
+          OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.CurrentAllocWeightingMult : 1),
         };
       })
 
@@ -101,11 +103,12 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
             Market = marketCap.MarketCapDataDto.Market,
             AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
           },
+          OrderByAbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
         };
       })
 
       // Sort by weighted Market Cap EMA value.
-      .OrderByDescending(alloc => alloc.AbsAllocDto.AbsAlloc)
+      .OrderByDescending(alloc => alloc.OrderByAbsAlloc)
 
       // Take the top count, and any assets with a weighting.
       .Where(alloc =>
