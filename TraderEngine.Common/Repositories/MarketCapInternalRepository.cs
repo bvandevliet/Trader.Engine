@@ -59,16 +59,22 @@ CREATE TABLE IF NOT EXISTS MarketCapData (
 
   public async Task<int> CleanupDatabase(int daysRetention = 14)
   {
+    _logger.LogDebug("Cleaning up market cap database ..");
+
     var sqlConn = await GetConnection();
 
     try
     {
-      return await sqlConn.ExecuteAsync(@"
+      int rowsAffected = await sqlConn.ExecuteAsync(@"
 DELETE FROM MarketCapData
 WHERE Updated < @RetentionDate;", new
       {
         RetentionDate = DateTime.UtcNow.AddDays(-daysRetention)
       });
+
+      _logger.LogInformation("Cleaned up {rows} stale records from market cap database table.", rowsAffected);
+
+      return rowsAffected;
     }
     finally
     {
@@ -78,6 +84,8 @@ WHERE Updated < @RetentionDate;", new
 
   public async Task<int> TryInsert(MarketCapDataDto marketCap)
   {
+    _logger.LogTrace("Inserting market cap record of '{market}' to database ..", marketCap.Market);
+
     if (!IsCloseToTheWholeHour(marketCap.Updated))
     {
       _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is not close to the whole hour.",
@@ -134,6 +142,10 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
       {
         _logger.LogError("Failed to insert market cap of '{market}' to database.", marketCap.Market);
       }
+      else
+      {
+        _logger.LogTrace("Inserted market cap of '{market}' to database.", marketCap.Market);
+      }
 
       return rowsAffected;
     }
@@ -145,6 +157,8 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
   public async Task<int> TryInsertMany(IEnumerable<MarketCapDataDto> marketCaps)
   {
+    _logger.LogDebug("Inserting market cap records into database ..");
+
     int rowsAffected = 0;
 
     // Insert in chunks to avoid overloading the connection pool and cause timeouts.
