@@ -216,8 +216,12 @@ internal class WorkerService
 
             _logger.LogInformation("Automation completed for user '{userId}'.", userConfig.Key);
 
-            // Update last rebalance timestamp.
-            configReqDto.LastRebalance = now;
+            // It could occur that only sell orders were executed if all buy orders were below the minimum required order amount.
+            // In that case, don't update last rebalance timestamp to prevent being less exposed to the market for too long.
+            if (ordersExecuted.Any(order => order.Side == OrderSide.Buy && order.Status == OrderStatus.Filled))
+            {
+              configReqDto.LastRebalance = now;
+            }
 
             // Save last rebalance timestamp.
             _ = await _configRepo.SaveConfig(userConfig.Key, configReqDto);
