@@ -43,7 +43,8 @@ var,
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    decimal cumulativeValue = simulated.NewBalance.AmountQuoteTotal + totalWithdrawn;
+    decimal newAmountQuoteTotal = simulated.NewBalance.AmountQuoteTotal;
+    decimal cumulativeValue = newAmountQuoteTotal + totalWithdrawn;
 
     string htmlString =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
@@ -51,56 +52,62 @@ var,
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
     $"<p>Your current balance summary:<br>" +
-    $"<table>" +
+    $"<table class=\"monospace\">" +
     $"<tr>" +
     $"<td>Deposited</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">(i)</td>" +
-    $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
-    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
+    $"<td style=\"text-align:right;\">(i)</td>" +
+    $"<td>:</td>" +
+    $"<td style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
+    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Withdrawn</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">(o)</td>" +
-    $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
-    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
+    $"<td style=\"text-align:right;\">(o)</td>" +
+    $"<td>:</td>" +
+    $"<td style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
+    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Balance</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">(v)</td>" +
-    $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
-    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
+    $"<td style=\"text-align:right;\">(v)</td>" +
+    $"<td>:</td>" +
+    $"<td style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
+    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td>Cumulative</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">(V=o+v)</td>" +
-    $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
-    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
+    $"<td style=\"text-align:right;\">(V=o+v)</td>" +
+    $"<td>:</td>" +
+    $"<td style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
+    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr style=\"border-top-width:1px;\">" +
     $"<td>Total gain</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">(V-i)</td>" +
-    $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
-    $"<td class=\"monospace\">{simulated.NewBalance.QuoteSymbol}</td>" +
+    $"<td style=\"text-align:right;\">(V-i)</td>" +
+    $"<td>:</td>" +
+    $"<td style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
+    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
     $"</tr><tr>" +
     $"<td></td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">(V/i-1)</td>" +
-    $"<td class=\"monospace\">:</td>" +
-    $"<td class=\"monospace\" style=\"text-align:right;\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
-    $"<td class=\"monospace\">%</td>" +
+    $"<td style=\"text-align:right;\">(V/i-1)</td>" +
+    $"<td>:</td>" +
+    $"<td style=\"text-align:right;\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
+    $"<td>%</td>" +
     $"</tr>" +
     $"</table></p>" +
     $"<p>The below {ordersExecuted.Length} orders were executed" +
     $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
-    $"<table>" +
+    $"<table class=\"monospace\">" +
     string.Concat(ordersExecuted.Select(order =>
       $"<tr>" +
       $"<td>{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}</td>" +
-      $"<td class=\"monospace\" style=\"text-align:right;\">{order.AmountFilled}</td>" +
-      $"<td class=\"monospace\">{order.Market.BaseSymbol}</td>" +
-      $"<td>for</td>" +
-      $"<td class=\"monospace\" style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)}</td>" +
-      $"<td class=\"monospace\">{order.Market.QuoteSymbol}</td>" +
+      $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
+      $"<td>of {order.Market.BaseSymbol}</td>" +
+      $"</tr>")) +
+    $"</table>" +
+    $"<p>Below is your new portfolio balance overview.</p>" +
+    $"<table class=\"monospace\">" +
+    string.Concat(simulated.NewBalance.Allocations.Select(alloc =>
+      $"<tr>" +
+      $"<td>{alloc.Market.BaseSymbol}</td>" +
+      $"<td style=\"text-align:right;\">{alloc.AmountQuote.Round(2)} {alloc.Market.QuoteSymbol}</td>" +
+      $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : alloc.AmountQuote / newAmountQuoteTotal).Round(2)} %</td>" +
       $"</tr>")) +
     $"</table>" +
     $"<p>This email was automatically generated. Happy trading!<br>" +
