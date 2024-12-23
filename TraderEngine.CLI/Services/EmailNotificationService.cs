@@ -36,6 +36,14 @@ var,
   font-family: monospace;
   white-space: pre;
   background-color: unset;
+}
+th,
+td {
+  padding: 0;
+}
+th:not(:first-child),
+td:not(:first-child) {
+  padding-left: 1ch;
 }";
 
   public async Task SendAutomationSucceeded(
@@ -94,9 +102,15 @@ var,
     $"<p>The below {ordersExecuted.Length} orders were executed" +
     $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
     $"<table class=\"monospace\">" +
-    string.Concat(ordersExecuted.Select(order =>
+    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Sell).OrderByDescending(order => order.AmountFilled).Select(order =>
       $"<tr>" +
-      $"<td>{(order.Side == OrderSide.Buy ? "Bought" : "Sold")}</td>" +
+      $"<td>Sold</td>" +
+      $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
+      $"<td>of {order.Market.BaseSymbol}</td>" +
+      $"</tr>")) +
+    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Buy).OrderByDescending(order => order.AmountFilled).Select(order =>
+      $"<tr>" +
+      $"<td>Bought</td>" +
       $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
       $"<td>of {order.Market.BaseSymbol}</td>" +
       $"</tr>")) +
@@ -107,7 +121,7 @@ var,
       $"<tr>" +
       $"<td>{alloc.Market.BaseSymbol}</td>" +
       $"<td style=\"text-align:right;\">{alloc.AmountQuote.Round(2)} {alloc.Market.QuoteSymbol}</td>" +
-      $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : alloc.AmountQuote / newAmountQuoteTotal).Round(2)} %</td>" +
+      $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : (alloc.AmountQuote / newAmountQuoteTotal) * 100).Round(2)} %</td>" +
       $"</tr>")) +
     $"</table>" +
     $"<p>This email was automatically generated. Happy trading!<br>" +
