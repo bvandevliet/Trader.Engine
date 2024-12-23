@@ -102,13 +102,13 @@ td:not(:first-child) {
     $"<p>The below {ordersExecuted.Length} orders were executed" +
     $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
     $"<table class=\"monospace\">" +
-    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Sell).OrderByDescending(order => order.AmountFilled).Select(order =>
+    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Sell).OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
       $"<tr>" +
       $"<td>Sold</td>" +
       $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
       $"<td>of {order.Market.BaseSymbol}</td>" +
       $"</tr>")) +
-    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Buy).OrderByDescending(order => order.AmountFilled).Select(order =>
+    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Buy).OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
       $"<tr>" +
       $"<td>Bought</td>" +
       $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
