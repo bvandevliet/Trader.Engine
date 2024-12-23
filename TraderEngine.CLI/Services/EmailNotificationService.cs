@@ -41,8 +41,8 @@ th,
 td {
   padding: 0;
 }
-th:not(:first-child),
-td:not(:first-child) {
+th+th,
+td+td {
   padding-left: 1ch;
 }";
 
