@@ -10,238 +10,37 @@ on:
     branches:
       - '**'
 
+permissions:
+  contents: write
+  packages: read
+  actions: read
+  security-events: write
+
 jobs:
 
   analysis:
-    name: Run code analysis and tests
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: read
-      actions: read
-      security-events: write
-    env:
-      IS_PUSH: ${{ github.event_name == 'push' }}
-      IS_MAIN: ${{ github.event.repository.default_branch == github.ref_name }}
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@main
-      -
-        name: Initialize CodeQL
-        if: env.IS_PUSH == 'true'
-        uses: github/codeql-action/init@main
-        with:
-          languages: csharp
-          build-mode: none
-      -
-        name: Perform CodeQL analysis
-        if: env.IS_PUSH == 'true'
-        uses: github/codeql-action/analyze@main
-        with:
-          category: "/language:csharp"
-      -
-        name: Setup dotnet
-        uses: actions/setup-dotnet@main
-        with:
-          dotnet-version: '8'
-      -
-        name: Restore NuGet packages
-        run: dotnet restore
-      -
-        name: Generate Trivy vulnerability report
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
-        with:
-          scan-type: 'fs'
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-fs.sarif'
-          exit-code: 0
-      -
-        name: Upload Trivy scan results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-fs.sarif'
-      -
-        name: Exit on high/critical vulnerabilities
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
-        with:
-          skip-setup-trivy: true
-          scan-type: 'fs'
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: table
-          exit-code: 1
-      -
-        name: Run all tests
-        run: dotnet test -c Debug --no-restore --verbosity normal
+    uses: bvandevliet/Actions.Shared/.github/workflows/dotnet-analysis.yml@master
 
   gitversion:
-    name: Execute GitVersion and create tag
     needs: [analysis]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    env:
-      IS_PUSH: ${{ github.event_name == 'push' }}
-      IS_MAIN: ${{ github.event.repository.default_branch == github.ref_name }}
-    outputs:
-      majorMinorPatch: ${{ steps.gitversion.outputs.majorMinorPatch }}
-      preReleaseLabel: ${{ steps.gitversion.outputs.preReleaseLabel }}
-      semVer: ${{ steps.gitversion.outputs.semVer }}
-      assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
-      assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
-    steps:
-      -
-        name: Unshallow checkout
-        uses: actions/checkout@main
-        with:
-          fetch-depth: 0
-      -
-        name: Setup GitVersion
-        uses: gittools/actions/gitversion/setup@main
-        with:
-          versionSpec: '6.0.x'
-      -
-        name: Execute GitVersion
-        id: gitversion
-        uses: gittools/actions/gitversion/execute@main
-      -
-        name: Create Git tag
-        if: env.IS_PUSH == 'true'
-        continue-on-error: true
-        run: |
-          if [ "${{ env.IS_MAIN }}" == "true" ]; then
-            git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
-            git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
-          else
-            git tag v${{ steps.gitversion.outputs.semVer }}
-            git push origin v${{ steps.gitversion.outputs.semVer }}
-          fi
+    uses: bvandevliet/Actions.Shared/.github/workflows/git-version.yml@master
 
   build-push:
-    name: Build and push
     needs: [analysis,gitversion]
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
+    uses: bvandevliet/Actions.Shared/.github/workflows/docker-build-push.yml@master
     strategy:
       matrix:
         project:
           - TraderEngine.API
           - TraderEngine.CLI
-    env:
-      IS_PUSH: ${{ github.event_name == 'push' }}
-      IS_MAIN: ${{ github.event.repository.default_branch == github.ref_name }}
-    steps:
-      -
-        name: Checkout
-        uses: actions/checkout@main
-      -
-        name: Docker metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ secrets.CR_REGISTRY }}/${{ matrix.project }}
-          tags: |
-            type=schedule,pattern=nightly
-            type=raw,enable=${{ env.IS_PUSH == 'true' && env.IS_MAIN == 'true' }},value=nightly
-            type=raw,enable=${{ env.IS_PUSH == 'true' && env.IS_MAIN == 'true' }},value=latest
-            type=raw,enable=${{ env.IS_PUSH == 'true' && env.IS_MAIN == 'true' }},value=${{ needs.gitversion.outputs.majorMinorPatch }}
-            type=raw,enable=${{ env.IS_PUSH == 'false' || env.IS_MAIN == 'false' }},value=${{ needs.gitversion.outputs.preReleaseLabel }}
-            type=raw,enable=${{ env.IS_PUSH == 'false' || env.IS_MAIN == 'false' }},value=${{ needs.gitversion.outputs.semVer }}
-      -
-        name: Setup dotnet
-        if: steps.meta.outputs.tags != ''
-        uses: actions/setup-dotnet@main
-        with:
-          dotnet-version: '8'
-      -
-        name: Build ${{ matrix.project }}
-        if: steps.meta.outputs.tags != ''
-        run: |
-          dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" \
-          -c Release /p:UseAppHost=false \
-          /p:Version=${{ needs.gitversion.outputs.semVer }} \
-          /p:AssemblyVersion=${{ needs.gitversion.outputs.assemblySemVer }} \
-          /p:FileVersion=${{ needs.gitversion.outputs.assemblySemFileVer }}
-      -
-        name: Set up Buildx
-        if: steps.meta.outputs.tags != ''
-        id: buildx
-        uses: docker/setup-buildx-action@v3
-        with:
-          platforms: linux/amd64,linux/arm64
-      -
-        name: Build image for ${{ matrix.project }}
-        if: steps.meta.outputs.tags != ''
-        uses: docker/build-push-action@v6
-        with:
-          context: ./${{ matrix.project }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          load: true
-      -
-        name: Get image and tag for Trivy scan
-        if: steps.meta.outputs.tags != ''
-        id: trivy-image
-        run: echo "ref=$(echo ${{ steps.meta.outputs.tags }} | cut -d ',' -f 1)" >> $GITHUB_OUTPUT
-      -
-        name: Generate Trivy vulnerability report
-        if: steps.meta.outputs.tags != ''
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
-        with:
-          image-ref: ${{ steps.trivy-image.outputs.ref }}
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: 'sarif'
-          output: 'trivy-image.sarif'
-          exit-code: 0
-      -
-        name: Upload Trivy scan results
-        if: steps.meta.outputs.tags != ''
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'trivy-image.sarif'
-      -
-        name: Exit on high/critical vulnerabilities
-        if: steps.meta.outputs.tags != ''
-        uses: aquasecurity/trivy-action@master
-        env:
-          TRIVY_SKIP_DB_UPDATE: true
-          TRIVY_SKIP_JAVA_DB_UPDATE: true
-        with:
-          skip-setup-trivy: true
-          image-ref: ${{ steps.trivy-image.outputs.ref }}
-          severity: 'HIGH,CRITICAL'
-          ignore-unfixed: true
-          format: table
-          exit-code: 1
-      -
-        name: Login to container registry
-        if: steps.meta.outputs.tags != ''
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.CR_REGISTRY }}
-          username: ${{ secrets.CR_USERNAME }}
-          password: ${{ secrets.CR_PASSWORD }}
-      -
-        name: Push ${{ matrix.project }} to registry
-        if: steps.meta.outputs.tags != ''
-        uses: docker/build-push-action@v6
-        with:
-          context: ./${{ matrix.project }}
-          tags: ${{ steps.meta.outputs.tags }}
-          platforms: ${{ steps.buildx.outputs.platforms }}
-          labels: ${{ steps.meta.outputs.labels }}
-          push: true
+    with:
+      PROJECT: ${{ matrix.project }}
+      majorMinorPatch: ${{ needs.gitversion.outputs.majorMinorPatch }}
+      preReleaseLabel: ${{ needs.gitversion.outputs.majorMinorPatch }}
+      semVer: ${{ needs.gitversion.outputs.majorMinorPatch }}
+      assemblySemVer: ${{ needs.gitversion.outputs.majorMinorPatch }}
+      assemblySemFileVer: ${{ needs.gitversion.outputs.majorMinorPatch }}
+      CR_REGISTRY: ${{ vars.CR_REGISTRY }}
+    secrets:
+      CR_USERNAME: ${{ secrets.CR_USERNAME }}
+      CR_PASSWORD: ${{ secrets.CR_PASSWORD }}
