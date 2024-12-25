@@ -214,17 +214,23 @@ internal class WorkerService
               return;
             }
 
-            // It could occur that only sell orders were executed if all buy orders were below the minimum required order amount.
-            // In that case, don't update last rebalance timestamp to prevent being less exposed to the market for too long.
-            if (ordersExecuted.Any(order => order.Side == OrderSide.Buy && order.Status == OrderStatus.Filled))
-            {
-              configReqDto.LastRebalance = now;
-            }
-            else
+            // If not the same amount of orders were executed and filled as simulated, don't update last rebalance timestamp.
+            if (ordersExecuted.Length != simulated.Orders.Length)
             {
               _logger.LogWarning(
-                "Only sell orders were executed for user '{userId}', not updating last rebalance timestamp.", userConfig.Key);
+                "Not all simulated orders were executed for user '{userId}', not updating last rebalance timestamp.", userConfig.Key);
             }
+
+            // It could occur that no buy orders were executed if they all were below the minimum required order amount.
+            // In that case, don't update last rebalance timestamp to prevent being less exposed to the market for too long.
+            else if (!ordersExecuted.Any(order => order.Side == OrderSide.Buy && order.Status == OrderStatus.Filled))
+            {
+              _logger.LogWarning(
+                "No buy orders were executed for user '{userId}', not updating last rebalance timestamp.", userConfig.Key);
+            }
+
+            else
+              configReqDto.LastRebalance = now;
 
             _logger.LogInformation("Automation completed for user '{userId}'.", userConfig.Key);
 
