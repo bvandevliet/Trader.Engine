@@ -143,7 +143,7 @@ td+td {
   }
 
   public async Task SendAutomationFailed(
-    int userId, DateTime timestamp, OrderDto[]? ordersAttempted, object debugData)
+    int userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
@@ -153,6 +153,7 @@ td+td {
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
     $"We will try again within an hour.</p>" +
+    $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
     $"<pre>{string.Join("</pre><pre>", (object[]?)ordersAttempted ?? [])}</pre>" +
     $"<p>This email was automatically generated. Happy trading!" +
@@ -163,6 +164,7 @@ td+td {
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
     $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
+    $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>Debug data:</p>" +
     $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), new JsonSerializerOptions() { WriteIndented = true })}</pre>" +
     $"<p>This email was automatically generated. Happy trading!<br>" +

@@ -123,7 +123,9 @@ internal class WorkerService
                 "Error while simulating rebalance for user '{userId}'.", userConfig.Key);
 
               // Send simulation failure notification.
-              await _emailNotification.SendAutomationFailed(userConfig.Key, now, simulatedResult.Value?.Orders, simulatedResult.Summary);
+              await _emailNotification.SendAutomationFailed(
+                userConfig.Key, now, "Error while simulating rebalance",
+                simulatedResult.Value?.Orders, simulatedResult.Summary);
 
               return;
             }
@@ -199,36 +201,48 @@ internal class WorkerService
               return;
             }
 
-            // If any of the orders have not ended, return.
+            // If any of the orders have not been filled, return.
             if (ordersExecuted.Any(order => order.Status != OrderStatus.Filled))
             {
               _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
               // Send failure notification.
-              await _emailNotification.SendAutomationFailed(userConfig.Key, now, ordersExecuted, new
-              {
-                simulated,
-                ordersExecuted,
-              });
+              await _emailNotification.SendAutomationFailed(
+                userConfig.Key, now, "Not all orders were filled",
+                ordersExecuted, new
+                {
+                  simulated,
+                  ordersExecuted,
+                });
 
               return;
             }
 
-            // If not the same amount of orders were executed and filled as simulated, don't update last rebalance timestamp.
+            // If not the same amount of orders were executed and filled as simulated, return.
             if (ordersExecuted.Length != simulated.Orders.Length)
             {
-              _logger.LogWarning(
-                "Not all simulated orders were executed for user '{userId}', not updating last rebalance timestamp.", userConfig.Key);
+              _logger.LogError(
+                "Not all simulated orders were executed for user '{userId}'.", userConfig.Key);
+
+              // Send failure notification.
+              await _emailNotification.SendAutomationFailed(
+                userConfig.Key, now, "Not all simulated orders were executed",
+                ordersExecuted, new
+                {
+                  simulated,
+                  ordersExecuted,
+                });
+
+              return;
             }
 
             // It could occur that no buy orders were executed if they all were below the minimum required order amount.
             // In that case, don't update last rebalance timestamp to prevent being less exposed to the market for too long.
-            else if (!ordersExecuted.Any(order => order.Side == OrderSide.Buy && order.Status == OrderStatus.Filled))
+            if (!ordersExecuted.Any(order => order.Side == OrderSide.Buy && order.Status == OrderStatus.Filled))
             {
               _logger.LogWarning(
                 "No buy orders were executed for user '{userId}', not updating last rebalance timestamp.", userConfig.Key);
             }
-
             else
               configReqDto.LastRebalance = now;
 
