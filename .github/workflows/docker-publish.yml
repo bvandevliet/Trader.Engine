@@ -36,10 +36,10 @@ jobs:
     with:
       PROJECT: ${{ matrix.project }}
       majorMinorPatch: ${{ needs.gitversion.outputs.majorMinorPatch }}
-      preReleaseLabel: ${{ needs.gitversion.outputs.majorMinorPatch }}
-      semVer: ${{ needs.gitversion.outputs.majorMinorPatch }}
-      assemblySemVer: ${{ needs.gitversion.outputs.majorMinorPatch }}
-      assemblySemFileVer: ${{ needs.gitversion.outputs.majorMinorPatch }}
+      preReleaseLabel: ${{ needs.gitversion.outputs.preReleaseLabel }}
+      semVer: ${{ needs.gitversion.outputs.semVer }}
+      assemblySemVer: ${{ needs.gitversion.outputs.assemblySemVer }}
+      assemblySemFileVer: ${{ needs.gitversion.outputs.assemblySemFileVer }}
       CR_REGISTRY: ${{ vars.CR_REGISTRY }}
     secrets:
       CR_USERNAME: ${{ secrets.CR_USERNAME }}
