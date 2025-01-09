@@ -38,7 +38,7 @@ jobs:
           - TraderEngine.CLI
     with:
       CR_REGISTRY: ${{ vars.CR_REGISTRY }}
-      PROJECT: ${{ matrix.project }}
+      CSPROJ_NAME: ${{ matrix.project }}
       IMAGE_NAME: ${{ github.repository_owner }}/${{ matrix.project }}
       majorMinorPatch: ${{ needs.gitversion.outputs.majorMinorPatch }}
       preReleaseLabel: ${{ needs.gitversion.outputs.preReleaseLabel }}
