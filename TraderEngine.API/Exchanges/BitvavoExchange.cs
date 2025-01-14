@@ -24,16 +24,17 @@ public class BitvavoExchange : IExchange
   public ILogger<IExchange> Logger => _logger;
 
   public string QuoteSymbol { get; } = "EUR";
-
   public decimal MinOrderSizeInQuote { get; } = 5;
-
   public decimal MakerFee { get; } = .0015m;
-
   public decimal TakerFee { get; } = .0025m;
-
   public string ApiKey { get; set; } = string.Empty;
-
   public string ApiSecret { get; set; } = string.Empty;
+
+  private readonly JsonSerializerOptions _jsonOptions = new()
+  {
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+  };
 
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
@@ -75,13 +76,7 @@ public class BitvavoExchange : IExchange
 
     if (null != body)
     {
-      var jsonOptions = new JsonSerializerOptions
-      {
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-      };
-
-      payload = JsonSerializer.Serialize(body, body.GetType(), jsonOptions);
+      payload = JsonSerializer.Serialize(body, body.GetType(), _jsonOptions);
 
       request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
     }

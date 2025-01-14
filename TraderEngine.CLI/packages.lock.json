@@ -4,11 +4,11 @@
     "net8.0": {
       "MailKit": {
         "type": "Direct",
-        "requested": "[4.8.0, )",
-        "resolved": "4.8.0",
-        "contentHash": "zZ1UoM4FUnSFUJ9fTl5CEEaejR0DNP6+FDt1OfXnjg4igZntcir1tg/8Ufd6WY5vrpmvToAjluYqjVM24A+5lA==",
+        "requested": "[4.9.0, )",
+        "resolved": "4.9.0",
+        "contentHash": "wRUVzYXRWbjdUixwtSp7ivVHPhWw17h+BvwIVaouBike68B56Xk9b5+QRT39EK/QN8XF7MtOgt9caHvUaCvhIQ==",
         "dependencies": {
-          "MimeKit": "4.8.0",
+          "MimeKit": "4.9.0",
           "System.Formats.Asn1": "8.0.1"
         }
       },
@@ -52,8 +52,8 @@
       },
       "BouncyCastle.Cryptography": {
         "type": "Transitive",
-        "resolved": "2.4.0",
-        "contentHash": "SwXsAV3sMvAU/Nn31pbjhWurYSjJ+/giI/0n6tCrYoupEK34iIHCuk3STAd9fx8yudM85KkLSVdn951vTng/vQ=="
+        "resolved": "2.5.0",
+        "contentHash": "rc7vRCq/KD3GtIwSgRtjanGaBwTb9nLenFDZnEcauWlssuuEoxcbMfWA3QWWho6QDMSOSkWjs657McdHzEtEcw=="
       },
       "Dapper": {
         "type": "Transitive",
@@ -339,12 +339,12 @@
       },
       "MimeKit": {
         "type": "Transitive",
-        "resolved": "4.8.0",
-        "contentHash": "U24wp4LKED+sBRzyrWICE+3bSwptsTrPOcCIXbW5zfeThCNzQx5NCo8Wus+Rmi+EUkQrCwlI/3sVfejeq9tuxQ==",
+        "resolved": "4.9.0",
+        "contentHash": "DZXXMZzmAABDxFhOSMb6SE8KKxcRd/sk1E6aJTUE5ys2FWOQhznYV2Gl3klaaSfqKn27hQ32haqquH1J8Z6kJw==",
         "dependencies": {
-          "BouncyCastle.Cryptography": "2.4.0",
+          "BouncyCastle.Cryptography": "2.5.0",
           "System.Formats.Asn1": "8.0.1",
-          "System.Security.Cryptography.Pkcs": "8.0.0"
+          "System.Security.Cryptography.Pkcs": "8.0.1"
         }
       },
       "MySqlConnector": {
@@ -376,8 +376,8 @@
       },
       "Skender.Stock.Indicators": {
         "type": "Transitive",
-        "resolved": "2.5.1",
-        "contentHash": "ubdZuL0A9TIapgf8WeLP4S5ds4AOXccDjCZWUaKVqSCTyZ3VCc22KpZnv2udpNkCGcp22B+CdV+w2Id/6jkcbA=="
+        "resolved": "2.6.1",
+        "contentHash": "aa8OK7e21F2n90Pvimuc4wY2vsjSF3kMZI6P+oq8ulgaRmSGMKOx15Qf5LmAoQQWhioTtkU58IXlfM2hlsiXGg=="
       },
       "System.Diagnostics.DiagnosticSource": {
         "type": "Transitive",
@@ -401,11 +401,8 @@
       },
       "System.Security.Cryptography.Pkcs": {
         "type": "Transitive",
-        "resolved": "8.0.0",
-        "contentHash": "ULmp3xoOwNYjOYp4JZ2NK/6NdTgiN1GQXzVVN1njQ7LOZ0d0B9vyMnhyqbIi9Qw4JXj1JgCsitkTShboHRx7Eg==",
-        "dependencies": {
-          "System.Formats.Asn1": "8.0.0"
-        }
+        "resolved": "8.0.1",
+        "contentHash": "CoCRHFym33aUSf/NtWSVSZa99dkd0Hm7OCZUxORBjRB16LNhIEOf8THPqzIYlvKM0nNDAPTRBa1FxEECrgaxxA=="
       },
       "System.Text.Encodings.Web": {
         "type": "Transitive",
@@ -432,7 +429,7 @@
           "Microsoft.Extensions.Options": "[9.0.0, )",
           "MySqlConnector": "[2.4.0, )",
           "Polly.Contrib.WaitAndRetry": "[1.1.1, )",
-          "Skender.Stock.Indicators": "[2.5.1, )"
+          "Skender.Stock.Indicators": "[2.6.1, )"
         }
       }
     }
