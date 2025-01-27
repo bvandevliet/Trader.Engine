@@ -1,4 +1,5 @@
 using AutoMapper;
+using System.Text.Json;
 using TraderEngine.API.DTOs.Bitvavo.Request;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.API.Request;
@@ -24,10 +25,10 @@ public class BitvavoProfile : Profile
           src => $"{src.Market}"))
       .ForMember(
         dest => dest.Side, opt => opt.MapFrom(
-          src => src.Side))
+          src => JsonNamingPolicy.CamelCase.ConvertName(src.Side.ToString())))
       .ForMember(
         dest => dest.OrderType, opt => opt.MapFrom(
-          src => src.Type));
+          src => JsonNamingPolicy.CamelCase.ConvertName(src.Type.ToString())));
 
     _ = CreateMap<BitvavoOrderDto, OrderDto>()
       .ForMember(
