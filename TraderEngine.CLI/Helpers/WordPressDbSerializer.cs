@@ -234,7 +234,12 @@ public static class WordPressDbSerializer
 
         endIndex += keyEnd;
 
-        var propertyInfo = type.GetProperty(keyName)!;
+        var propertyInfo = type.GetProperty(keyName);
+
+        if (propertyInfo == null)
+        {
+          continue;
+        }
 
         object? val = Deserialize(value[endIndex..], propertyInfo.PropertyType, out int valEnd);
 
