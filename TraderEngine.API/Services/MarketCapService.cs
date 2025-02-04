@@ -114,7 +114,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Where(alloc =>
       {
         configReqDto.TopRankingCount--;
-        return configReqDto.TopRankingCount >= 0 || alloc.MarketCap.HasWeighting;
+        return configReqDto.TopRankingCount >= 0 || (!configReqDto.DefensiveMode && alloc.MarketCap.HasWeighting);
       })
 
       // Return absolute allocations.
