@@ -1,5 +1,6 @@
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using TraderEngine.CLI.DTOs.WordPress;
 using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.CLI.Helpers.Tests;
@@ -7,41 +8,42 @@ namespace TraderEngine.CLI.Helpers.Tests;
 [TestClass()]
 public class WordPressDbSerializerTests
 {
-  private static readonly ConfigReqDto _configDto = new()
+  private static readonly WordPressConfigDto _configDto = new()
   {
-    QuoteTakeout = 0,
-    QuoteAllocation = 0,
-    AltWeightingFactors = new() { { "BTC", .9 }, { "DOGE", 0 }, },
-    DefensiveMode = false,
-    TagsToInclude = new(),
-    TagsToIgnore = new() { "stablecoin", "meme", },
-    TopRankingCount = 10,
-    Smoothing = 8,
-    NthRoot = 2,
-    MinimumDiffQuote = 15,
-    MinimumDiffAllocation = 1.5,
-    AutomationEnabled = true,
-    IntervalHours = 6,
-    LastRebalance = new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
+    quote_takeout = 0,
+    quote_allocation = 0,
+    alt_weighting_factors = new() { { "BTC", .6 }, { "DOGE", 0 }, },
+    defensive_mode = false,
+    tags_to_include = new(),
+    tags_to_ignore = new() { "stablecoin", "meme", },
+    top_ranking_count = 10,
+    smoothing = 8,
+    nth_root = 2,
+    minimum_diff_quote = 15,
+    minimum_diff_allocation = 1.5,
+    automation_enabled = true,
+    interval_hours = 6,
+    current_alloc_weighting_mult = 1.05,
+    last_rebalance = new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
   };
 
   private static readonly string _serializedConfigDto =
-    "O:12:\"ConfigReqDto\":15:{" +
-    "s:12:\"QuoteTakeout\";d:0;" +
-    "s:15:\"QuoteAllocation\";d:0;" +
-    "s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}" +
-    "s:13:\"DefensiveMode\";b:0;" +
-    "s:13:\"TagsToInclude\";a:0:{}" +
-    "s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}" +
-    "s:15:\"TopRankingCount\";i:10;" +
-    "s:9:\"Smoothing\";i:8;" +
-    "s:7:\"NthRoot\";d:2;" +
-    "s:16:\"MinimumDiffQuote\";i:15;" +
-    "s:21:\"MinimumDiffAllocation\";d:1.5;" +
-    "s:17:\"AutomationEnabled\";b:1;" +
-    "s:13:\"IntervalHours\";i:6;" +
-    "s:25:\"CurrentAllocWeightingMult\";d:1.05;" +
-    "s:13:\"LastRebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
+    "O:20:\"Trader\\Configuration\":15:{" +
+    "s:13:\"quote_takeout\";d:0;" +
+    "s:16:\"quote_allocation\";d:0;" +
+    "s:21:\"alt_weighting_factors\";a:2:{s:3:\"BTC\";d:0.6;s:4:\"DOGE\";d:0;}" +
+    "s:14:\"defensive_mode\";b:0;" +
+    "s:15:\"tags_to_include\";a:0:{}" +
+    "s:14:\"tags_to_ignore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}" +
+    "s:17:\"top_ranking_count\";i:10;" +
+    "s:9:\"smoothing\";i:8;" +
+    "s:8:\"nth_root\";d:2;" +
+    "s:18:\"minimum_diff_quote\";i:15;" +
+    "s:23:\"minimum_diff_allocation\";d:1.5;" +
+    "s:18:\"automation_enabled\";b:1;" +
+    "s:14:\"interval_hours\";i:6;" +
+    "s:28:\"current_alloc_weighting_mult\";d:1.05;" +
+    "s:14:\"last_rebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
 
   [TestMethod()]
   public void SerializeBasicTypesTest()
@@ -149,7 +151,7 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void DeserializeCustomTypesTest()
   {
-    var result = WordPressDbSerializer.Deserialize<ConfigReqDto>(_serializedConfigDto);
+    var result = WordPressDbSerializer.Deserialize<WordPressConfigDto>(_serializedConfigDto);
 
     result.Should().BeEquivalentTo(_configDto);
   }
