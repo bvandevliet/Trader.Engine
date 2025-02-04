@@ -12,6 +12,7 @@ public class WordPressDbSerializerTests
     QuoteTakeout = 0,
     QuoteAllocation = 0,
     AltWeightingFactors = new() { { "BTC", .9 }, { "DOGE", 0 }, },
+    DefensiveMode = false,
     TagsToInclude = new(),
     TagsToIgnore = new() { "stablecoin", "meme", },
     TopRankingCount = 10,
@@ -25,10 +26,11 @@ public class WordPressDbSerializerTests
   };
 
   private static readonly string _serializedConfigDto =
-    "O:12:\"ConfigReqDto\":14:{" +
+    "O:12:\"ConfigReqDto\":15:{" +
     "s:12:\"QuoteTakeout\";d:0;" +
     "s:15:\"QuoteAllocation\";d:0;" +
     "s:19:\"AltWeightingFactors\";a:2:{s:3:\"BTC\";d:0.9;s:4:\"DOGE\";d:0;}" +
+    "s:13:\"DefensiveMode\";b:0;" +
     "s:13:\"TagsToInclude\";a:0:{}" +
     "s:12:\"TagsToIgnore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}" +
     "s:15:\"TopRankingCount\";i:10;" +
