@@ -13,6 +13,8 @@ public class ConfigReqDto
   //[Range(0, 10)]
   public Dictionary<string, double> AltWeightingFactors { get; set; } = [];
 
+  public bool DefensiveMode { get; set; } = false;
+
   public List<string> TagsToInclude { get; set; } = [];
 
   public List<string> TagsToIgnore { get; set; } = ["stablecoin"];
