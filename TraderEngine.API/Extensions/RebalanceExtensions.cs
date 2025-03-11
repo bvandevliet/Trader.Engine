@@ -224,7 +224,11 @@ public static partial class Trader
         // Prevent dust.
         if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < @this.MinOrderSizeInQuote)
         {
-          order.Amount = allocDiff.Amount;
+          // Honor decimals precision for the amount of this asset.
+          var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
+          int decimals = assetData?.Decimals ?? 8;
+
+          order.Amount = Math.Ceiling(allocDiff.Amount * (decimal)Math.Pow(10, decimals)) / (decimal)Math.Pow(10, decimals);
         }
         else
         {

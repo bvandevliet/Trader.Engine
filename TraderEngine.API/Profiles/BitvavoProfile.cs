@@ -19,6 +19,11 @@ public class BitvavoProfile : Profile
         dest => dest.MinOrderSizeInBase, opt => opt.MapFrom(
           src => src.MinOrderInBaseAsset));
 
+    _ = CreateMap<BitvavoAssetDataDto, AssetDataDto>()
+      .ForMember(
+        dest => dest.BaseSymbol, opt => opt.MapFrom(
+          src => src.Symbol));
+
     _ = CreateMap<OrderReqDto, BitvavoOrderReqDto>()
       .ForMember(
         dest => dest.Market, opt => opt.MapFrom(
