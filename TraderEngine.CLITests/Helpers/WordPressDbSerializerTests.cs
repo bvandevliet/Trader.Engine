@@ -1,3 +1,4 @@
+using AutoMapper;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.CLI.DTOs.WordPress;
@@ -8,7 +9,26 @@ namespace TraderEngine.CLI.Helpers.Tests;
 [TestClass()]
 public class WordPressDbSerializerTests
 {
-  private static readonly WordPressConfigDto _configDto = new()
+  private static readonly ConfigReqDto _configDto = new()
+  {
+    QuoteTakeout = 0,
+    QuoteAllocation = 0,
+    AltWeightingFactors = new() { { "BTC", .6 }, { "DOGE", 0 }, },
+    DefensiveMode = false,
+    TagsToInclude = new(),
+    TagsToIgnore = new() { "stablecoin", "meme", },
+    TopRankingCount = 10,
+    Smoothing = 8,
+    NthRoot = 2,
+    MinimumDiffQuote = 15,
+    MinimumDiffAllocation = 1.5,
+    AutomationEnabled = true,
+    IntervalHours = 6,
+    CurrentAllocWeightingMult = 1.05,
+    LastRebalance = new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
+  };
+
+  private static readonly WordPressConfigDto _wpConfigDto = new()
   {
     quote_takeout = 0,
     quote_allocation = 0,
@@ -27,7 +47,7 @@ public class WordPressDbSerializerTests
     last_rebalance = new DateTime(2022, 10, 24, 0, 0, 0, 0, DateTimeKind.Utc),
   };
 
-  private static readonly string _serializedConfigDto =
+  private static readonly string _serializedWpConfigDto =
     "O:20:\"Trader\\Configuration\":15:{" +
     "s:13:\"quote_takeout\";d:0;" +
     "s:16:\"quote_allocation\";d:0;" +
@@ -44,6 +64,13 @@ public class WordPressDbSerializerTests
     "s:14:\"interval_hours\";i:6;" +
     "s:28:\"current_alloc_weighting_mult\";d:1.05;" +
     "s:14:\"last_rebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
+
+  private readonly IMapper _mapper;
+
+  public WordPressDbSerializerTests()
+  {
+    _mapper = MapperHelper.CreateMapper();
+  }
 
   [TestMethod()]
   public void SerializeBasicTypesTest()
@@ -143,16 +170,28 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void SerializeCustomTypesTest()
   {
-    string result = WordPressDbSerializer.Serialize(_configDto);
+    var wpDto = _mapper.Map<WordPressConfigDto>(_configDto);
 
-    result.Should().Be(_serializedConfigDto);
+    wpDto.Should().BeEquivalentTo(_wpConfigDto);
+
+    string result = WordPressDbSerializer.Serialize(wpDto);
+
+    result.Should().Be(_serializedWpConfigDto);
   }
 
   [TestMethod()]
   public void DeserializeCustomTypesTest()
   {
-    var result = WordPressDbSerializer.Deserialize<WordPressConfigDto>(_serializedConfigDto);
+    var wpDto1 = WordPressDbSerializer.Deserialize<WordPressConfigDto>(_serializedWpConfigDto);
 
-    result.Should().BeEquivalentTo(_configDto);
+    wpDto1.Should().BeEquivalentTo(_wpConfigDto);
+
+    var configDto = _mapper.Map<ConfigReqDto>(wpDto1);
+
+    configDto.Should().BeEquivalentTo(_configDto);
+
+    var wpDto2 = _mapper.Map<WordPressConfigDto>(configDto);
+
+    wpDto2.Should().BeEquivalentTo(_wpConfigDto);
   }
 }

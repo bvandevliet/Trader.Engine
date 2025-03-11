@@ -281,6 +281,31 @@ public class BitvavoExchange : IExchange
     return _mapper.Map<MarketDataDto>(result);
   }
 
+  public async Task<AssetDataDto?> GetAsset(string baseSymbol)
+  {
+    using var request = CreateRequestMsg(
+      HttpMethod.Get, $"assets?symbol={baseSymbol}");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+
+      _logger.LogError("Failed to get asset from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+
+      return null;
+    }
+
+    var result = await response.Content.ReadFromJsonAsync<BitvavoAssetDataDto>();
+
+    if (null == result)
+      throw new Exception("Failed to deserialize response.");
+
+    return _mapper.Map<AssetDataDto>(result);
+  }
+
   public async Task<decimal> GetPrice(MarketReqDto market)
   {
     using var request = CreateRequestMsg(

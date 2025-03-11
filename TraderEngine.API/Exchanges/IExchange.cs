@@ -30,6 +30,8 @@ public interface IExchange
 
   Task<MarketDataDto?> GetMarket(MarketReqDto market);
 
+  Task<AssetDataDto?> GetAsset(string baseSymbol);
+
   Task<decimal> GetPrice(MarketReqDto market);
 
   Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order);

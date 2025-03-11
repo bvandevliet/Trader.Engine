@@ -79,6 +79,16 @@ public class MockExchange : IExchange
     })!;
   }
 
+  public Task<AssetDataDto?> GetAsset(string baseSymbol)
+  {
+    return Task.FromResult(new AssetDataDto()
+    {
+      BaseSymbol = baseSymbol,
+      Name = baseSymbol,
+      Decimals = 8,
+    })!;
+  }
+
   public Task<decimal> GetPrice(MarketReqDto market)
   {
     throw new NotImplementedException();
@@ -210,6 +220,8 @@ public class SimExchange : MockExchange, IExchange
   }
 
   public new Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
+
+  public new Task<AssetDataDto?> GetAsset(string baseSymbol) => _instance.GetAsset(baseSymbol);
 
   public new Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
 }

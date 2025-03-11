@@ -89,8 +89,7 @@ public static partial class Trader
       });
 
     // Relative quote allocation (including takeout).
-    // TODO: Handle division by zero.
-    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
+    decimal quoteRelAlloc = curBalance.AmountQuoteTotal == 0 ? 0 : Math.Max(0, Math.Min(1,
       config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Scale total sum of absolute allocation values to account for relative quote allocation.
@@ -224,7 +223,11 @@ public static partial class Trader
         // Prevent dust.
         if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < @this.MinOrderSizeInQuote)
         {
-          order.Amount = allocDiff.Amount;
+          // Honor decimals precision for the amount of this asset.
+          var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
+          int decimals = assetData?.Decimals ?? 8;
+
+          order.Amount = Math.Ceiling(allocDiff.Amount * (decimal)Math.Pow(10, decimals)) / (decimal)Math.Pow(10, decimals);
         }
         else
         {
