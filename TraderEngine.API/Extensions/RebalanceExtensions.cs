@@ -89,8 +89,7 @@ public static partial class Trader
       });
 
     // Relative quote allocation (including takeout).
-    // TODO: Handle division by zero.
-    decimal quoteRelAlloc = Math.Max(0, Math.Min(1,
+    decimal quoteRelAlloc = curBalance.AmountQuoteTotal == 0 ? 0 : Math.Max(0, Math.Min(1,
       config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Scale total sum of absolute allocation values to account for relative quote allocation.
