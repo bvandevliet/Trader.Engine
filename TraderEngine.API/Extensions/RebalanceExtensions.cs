@@ -227,7 +227,7 @@ public static partial class Trader
           var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
           int decimals = assetData?.Decimals ?? 8;
 
-          order.Amount = Math.Ceiling(allocDiff.Amount * (decimal)Math.Pow(10, decimals)) / (decimal)Math.Pow(10, decimals);
+          order.Amount = Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, decimals)) / (decimal)Math.Pow(10, decimals);
         }
         else
         {
