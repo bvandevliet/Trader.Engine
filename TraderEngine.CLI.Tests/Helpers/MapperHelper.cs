@@ -1,7 +1,7 @@
 using AutoMapper;
 using System.Reflection;
 
-namespace TraderEngine.CLI.Helpers.Tests;
+namespace TraderEngine.CLI.Tests.Helpers;
 
 internal class MapperHelper
 {
@@ -9,7 +9,7 @@ internal class MapperHelper
   {
     IEnumerable<Assembly> assembliesToScan = AppDomain.CurrentDomain.GetAssemblies();
 
-    assembliesToScan = new HashSet<Assembly>(assembliesToScan.Where((Assembly a) => !a.IsDynamic && a != typeof(Mapper).Assembly));
+    assembliesToScan = new HashSet<Assembly>(assembliesToScan.Where((a) => !a.IsDynamic && a != typeof(Mapper).Assembly));
 
     var config = new MapperConfiguration(cfg => cfg.AddMaps(assembliesToScan));
 

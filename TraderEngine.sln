@@ -19,9 +19,9 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.Common", "TraderEngine.Common\TraderEngine.Common.csproj", "{974F2738-41AC-40D4-9520-830004E21453}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.APITests", "TraderEngine.APITests\TraderEngine.APITests.csproj", "{DD145B36-8658-4765-A68B-D8DAE45CAA39}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.API.Tests", "TraderEngine.API.Tests\TraderEngine.API.Tests.csproj", "{DD145B36-8658-4765-A68B-D8DAE45CAA39}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.CLITests", "TraderEngine.CLITests\TraderEngine.CLITests.csproj", "{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "TraderEngine.CLI.Tests", "TraderEngine.CLI.Tests\TraderEngine.CLI.Tests.csproj", "{FEE4F87C-36FE-46E4-84ED-E8540DB52E2B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -2,9 +2,10 @@ using AutoMapper;
 using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.CLI.DTOs.WordPress;
+using TraderEngine.CLI.Helpers;
 using TraderEngine.Common.DTOs.API.Request;
 
-namespace TraderEngine.CLI.Helpers.Tests;
+namespace TraderEngine.CLI.Tests.Helpers;
 
 [TestClass()]
 public class WordPressDbSerializerTests
