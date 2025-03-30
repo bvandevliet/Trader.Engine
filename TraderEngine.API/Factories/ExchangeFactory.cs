@@ -19,7 +19,7 @@ public class ExchangeFactory : INamedTypeFactory<IExchange>
     _exchangeTypes = exchangeTypes.ToDictionary(GetExchangeName, x => x, StringComparer.OrdinalIgnoreCase);
   }
 
-  public IExchange GetService(string name)
+  public IExchange? GetService(string name)
   {
     if (_exchangeTypes.TryGetValue(name, out var exchangeType)
       && _serviceProvider.GetService(exchangeType) is IExchange exchange)
@@ -27,7 +27,7 @@ public class ExchangeFactory : INamedTypeFactory<IExchange>
       return exchange;
     }
 
-    throw new ArgumentException($"Exchange '{name}' not found.");
+    return null;
   }
 
   private static string GetExchangeName(Type exchangeType) =>

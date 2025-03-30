@@ -40,6 +40,9 @@ public class RebalanceController : ControllerBase
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
+    if (exchange == null)
+      return NotFound($"Exchange '{exchangeName}' not found.");
+
     exchange.ApiKey = simulationReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
 
@@ -50,7 +53,7 @@ public class RebalanceController : ControllerBase
       return Unauthorized(balanceResult.Summary);
 
     if (balanceResult.ErrorCode != ExchangeErrCodeEnum.Ok)
-      return BadRequest(balanceResult.Summary);
+      return StatusCode(500, balanceResult.Summary);
 
     var balance = balanceResult.Value!;
 
@@ -100,6 +103,9 @@ public class RebalanceController : ControllerBase
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
+    if (exchange == null)
+      return NotFound($"Exchange '{exchangeName}' not found.");
+
     exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
@@ -120,6 +126,9 @@ public class RebalanceController : ControllerBase
     _logger.LogTrace("Handling ExecuteOrders request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
+
+    if (exchange == null)
+      return NotFound($"Exchange '{exchangeName}' not found.");
 
     exchange.ApiKey = executeOrdersReqDto.ExchangeApiCred.ApiKey;
     exchange.ApiSecret = executeOrdersReqDto.ExchangeApiCred.ApiSecret;
