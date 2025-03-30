@@ -30,7 +30,7 @@ public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInte
   {
     var conn = _sqlConnectionFactory.GetService("MySql");
 
-    await conn.OpenAsync();
+    await conn!.OpenAsync();
 
     return conn;
   }

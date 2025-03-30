@@ -32,7 +32,7 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
   {
     var conn = _sqlConnectionFactory.GetService("CMS");
 
-    await conn.OpenAsync();
+    await conn!.OpenAsync();
 
     return conn;
   }

@@ -26,6 +26,9 @@ public class AccountController : ControllerBase
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
+    if (exchange == null)
+      return NotFound($"Exchange '{exchangeName}' not found.");
+
     exchange.ApiKey = apiCredentials.ApiKey;
     exchange.ApiSecret = apiCredentials.ApiSecret;
 
@@ -45,6 +48,9 @@ public class AccountController : ControllerBase
     _logger.LogTrace("Handling TotalWithdrawn request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
     var exchange = _exchangeFactory.GetService(exchangeName);
+
+    if (exchange == null)
+      return NotFound($"Exchange '{exchangeName}' not found.");
 
     exchange.ApiKey = apiCredentials.ApiKey;
     exchange.ApiSecret = apiCredentials.ApiSecret;

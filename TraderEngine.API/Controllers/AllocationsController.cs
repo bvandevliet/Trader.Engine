@@ -38,6 +38,9 @@ public class AllocationsController : ControllerBase
 
     var exchange = _exchangeFactory.GetService(exchangeName);
 
+    if (exchange == null)
+      return NotFound($"Exchange '{exchangeName}' not found.");
+
     exchange.ApiKey = apiCredReqDto.ApiKey;
     exchange.ApiSecret = apiCredReqDto.ApiSecret;
 
@@ -47,7 +50,7 @@ public class AllocationsController : ControllerBase
     {
       ExchangeErrCodeEnum.AuthenticationError => Unauthorized(balanceResult.Summary),
       ExchangeErrCodeEnum.Ok => Ok(_mapper.Map<BalanceDto>(balanceResult.Value)),
-      _ => BadRequest(balanceResult.Summary)
+      _ => StatusCode(500, balanceResult.Summary)
     };
   }
 
