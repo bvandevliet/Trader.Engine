@@ -115,8 +115,8 @@ public class BitvavoExchange : IExchange
 
         if (errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          _logger.LogError("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+          _logger.LogError("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}",
+            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
           return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
@@ -125,8 +125,8 @@ public class BitvavoExchange : IExchange
       {
       }
 
-      _logger.LogCritical("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogCritical("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
@@ -191,8 +191,8 @@ public class BitvavoExchange : IExchange
 
         if (errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          _logger.LogError("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+          _logger.LogError("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}",
+            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
           return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
@@ -201,8 +201,8 @@ public class BitvavoExchange : IExchange
       {
       }
 
-      _logger.LogCritical("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogCritical("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
@@ -233,8 +233,8 @@ public class BitvavoExchange : IExchange
 
         if (errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          _logger.LogError("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+          _logger.LogError("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}",
+            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
           return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
@@ -243,8 +243,8 @@ public class BitvavoExchange : IExchange
       {
       }
 
-      _logger.LogCritical("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogCritical("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
@@ -283,8 +283,8 @@ public class BitvavoExchange : IExchange
       {
       }
 
-      _logger.LogError("Failed to get market from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogError("Failed to get market from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -306,8 +306,8 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("Failed to get asset from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogError("Failed to get asset from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -329,8 +329,8 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogCritical("Failed to get price from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogCritical("Failed to get price from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       throw new Exception("Error while requesting price.");
     }
@@ -420,8 +420,8 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("Failed to get order from Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogError("Failed to get order from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -452,8 +452,8 @@ public class BitvavoExchange : IExchange
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("Failed to cancel all open orders on Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+      _logger.LogError("Failed to cancel all open orders on Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return null;
     }
