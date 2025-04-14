@@ -58,10 +58,10 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     }
 
     string includeTagsPattern = configReqDto.TagsToInclude.Any() ?
-      string.Join('|', configReqDto.TagsToInclude.Select(tag => $"^{tag}$")) : ".*";
+      string.Join('|', configReqDto.TagsToInclude.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$")) : ".*";
     var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase);
 
-    string ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $"^{tag}$"));
+    string ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
     var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase);
 
     return
