@@ -193,7 +193,7 @@ public static partial class Trader
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
@@ -218,6 +218,7 @@ public static partial class Trader
           Market = allocDiff.Market,
           Side = OrderSide.Sell,
           Type = OrderType.Market,
+          Source = source,
         };
 
         // Prevent dust.
@@ -289,7 +290,7 @@ public static partial class Trader
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
@@ -313,6 +314,7 @@ public static partial class Trader
         Side = OrderSide.Buy,
         Type = OrderType.Market,
         AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
+        Source = source,
       });
 
     return await @this.BuyUnderagesAndVerify(orders, curBalance);
@@ -400,7 +402,8 @@ public static partial class Trader
     this IExchange @this,
     ConfigReqDto config,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
-    Balance? curBalance = null)
+    Balance? curBalance = null,
+    string source = "Trader.Automation")
   {
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
@@ -411,10 +414,10 @@ public static partial class Trader
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocsUpdated, config, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(absAllocsUpdated, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsUpdated, config);
+    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsUpdated, source, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

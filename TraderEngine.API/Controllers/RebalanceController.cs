@@ -80,7 +80,7 @@ public class RebalanceController : ControllerBase
     var absAllocsTradable = absAllocsUpdated.Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown).ToList();
 
     // Simulate rebalance.
-    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance);
+    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance, simulationReqDto.Source);
 
     // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance();
@@ -115,7 +115,7 @@ public class RebalanceController : ControllerBase
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
-    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable);
+    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable, null, rebalanceReqDto.Source);
 
     return Ok(orders);
   }
