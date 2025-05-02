@@ -19,6 +19,12 @@ public class BitvavoOrderReqDto
   public string Side { get; set; } = null!;
 
   /// <summary>
+  /// Your identifier for the trader or the bot within your account that made the request.
+  /// </summary>
+  [Required]
+  public int OperatorId { get; set; }
+
+  /// <summary>
   /// Enum: "market" "limit" "stopLoss" "stopLossLimit" "takeProfit" "takeProfitLimit".
   /// For limit orders, amount and price are required.
   /// For market orders either amount or amountQuote is required.

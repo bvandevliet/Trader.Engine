@@ -4,6 +4,8 @@ namespace TraderEngine.Common.DTOs.API.Request;
 
 public class SimulationReqDto
 {
+  public string Source { get; set; } = "API";
+
   [Required]
   public ApiCredReqDto ExchangeApiCred { get; set; } = null!;
 

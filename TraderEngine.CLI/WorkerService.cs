@@ -100,7 +100,7 @@ internal class WorkerService
             var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
             // Construct balance request DTO.
-            var simulationReqDto = new SimulationReqDto(apiCred, configReqDto);
+            var simulationReqDto = new SimulationReqDto(apiCred, configReqDto) { Source = "Automation" };
 
             // Get current balance and simulated rebalance.
             var simulatedResult = await _apiClient.SimulateRebalance(exchangeName, simulationReqDto);

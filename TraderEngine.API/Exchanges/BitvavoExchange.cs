@@ -349,6 +349,7 @@ public class BitvavoExchange : IExchange
 
     newOrderDto.DisableMarketProtection = true;
     newOrderDto.ResponseRequired = false;
+    newOrderDto.OperatorId = $"trader.{order.Source.ToLower()}".GetHashCode();
 
     var failedOrder = new OrderDto()
     {

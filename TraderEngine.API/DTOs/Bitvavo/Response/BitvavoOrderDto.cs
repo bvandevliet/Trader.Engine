@@ -1,5 +1,3 @@
-using TraderEngine.Common.DTOs.API.Request;
-
 namespace TraderEngine.API.DTOs.Bitvavo.Response;
 
 public class BitvavoOrderDto
@@ -60,14 +58,14 @@ public class BitvavoOrderDto
   public string FilledAmountQuote { get; set; } = null!;
 
   /// <summary>
-  /// Only for orders with <see cref="OrderReqDto.Amount"/> supplied.
-  /// Amount in base currency remaining (lower than <see cref="OrderReqDto.Amount"/> after fills).
+  /// Only for orders with <see cref="Amount"/> supplied.
+  /// Amount in base currency remaining (lower than <see cref="Amount"/> after fills).
   /// </summary>
   public string? AmountRemaining { get; set; }
 
   /// <summary>
-  /// Only for market orders with <see cref="OrderReqDto.AmountQuote"/> supplied.
-  /// Amount in quote currency remaining (lower than <see cref="OrderReqDto.AmountQuote"/> after fills).
+  /// Only for market orders with <see cref="AmountQuote"/> supplied.
+  /// Amount in quote currency remaining (lower than <see cref="AmountQuote"/> after fills).
   /// </summary>
   public string? AmountQuoteRemaining { get; set; }
 
