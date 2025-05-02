@@ -22,7 +22,7 @@ public class BitvavoOrderReqDto
   /// Your identifier for the trader or the bot within your account that made the request.
   /// </summary>
   [Required]
-  public string OperatorId { get; set; } = "trader";
+  public int OperatorId { get; set; }
 
   /// <summary>
   /// Enum: "market" "limit" "stopLoss" "stopLossLimit" "takeProfit" "takeProfitLimit".
