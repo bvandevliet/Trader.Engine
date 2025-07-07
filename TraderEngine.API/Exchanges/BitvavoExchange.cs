@@ -113,11 +113,8 @@ public class BitvavoExchange : IExchange
 
         string? errorCode = error?["errorCode"]?.ToString();
 
-        if (errorCode == "105" || errorCode?.StartsWith('3') is true)
+        if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          _logger.LogError("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
-
           return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
@@ -198,11 +195,8 @@ public class BitvavoExchange : IExchange
 
         string? errorCode = error?["errorCode"]?.ToString();
 
-        if (errorCode == "105" || errorCode?.StartsWith('3') is true)
+        if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          _logger.LogError("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
-
           return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
@@ -249,11 +243,8 @@ public class BitvavoExchange : IExchange
 
         string? errorCode = error?["errorCode"]?.ToString();
 
-        if (errorCode == "105" || errorCode?.StartsWith('3') is true)
+        if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          _logger.LogError("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
-
           return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
@@ -432,12 +423,10 @@ public class BitvavoExchange : IExchange
 
           string? errorCode = error?["errorCode"]?.ToString();
 
-          _logger.LogError("Failed to create new order on Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-              request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
-
-          return errorCode == "105" || errorCode?.StartsWith('3') is true
-            ? Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.AuthenticationError)
-            : Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.Other);
+          if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
+          {
+            return Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.AuthenticationError);
+          }
         }
         catch (Exception)
         {
