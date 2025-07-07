@@ -49,8 +49,8 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
-    // Expected to have at least 100 records. Bail out for safety.
-    if (marketCapLatest.Count < 100)
+    // Expected to have at least 100 records, and one of them BTC. Bail out for safety.
+    if (marketCapLatest.Count < 100 || !marketCapLatest.Any(latest => latest.Market.BaseSymbol == "BTC"))
     {
       _logger.LogWarning("No recent market cap records found.");
 

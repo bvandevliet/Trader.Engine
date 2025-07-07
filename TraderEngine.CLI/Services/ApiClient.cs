@@ -150,7 +150,7 @@ public class ApiClient : IApiClient
         $"api/rebalance/simulate/{exchangeName}", (int)simulationResp.StatusCode,
         simulationResp.ReasonPhrase, await simulationResp.Content.ReadAsStringAsync());
 
-      throw new Exception("Error while requesting rebalance execution.");
+      throw new Exception("Error while requesting rebalance simulation.");
     }
 
     var simulationDto = await simulationResp.Content.ReadFromJsonAsync<SimulationDto>();
@@ -188,7 +188,7 @@ public class ApiClient : IApiClient
         $"api/rebalance/execute/{exchangeName}", (int)rebalanceResp.StatusCode,
         rebalanceResp.ReasonPhrase, await rebalanceResp.Content.ReadAsStringAsync());
 
-      throw new Exception("Error while requesting rebalance execution.");
+      throw new Exception("Error while requesting order execution.");
     }
 
     return (await rebalanceResp.Content.ReadFromJsonAsync<OrderDto[]>())!;

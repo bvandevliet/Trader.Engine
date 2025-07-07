@@ -7,17 +7,20 @@ namespace TraderEngine.Common.DTOs.API.Request;
 /// </summary>
 public class MarketReqDto : IEquatable<MarketReqDto>
 {
+  private string _quoteSymbol = null!;
+  private string _baseSymbol = null!;
+
   /// <summary>
   /// The quote currency to value <see cref="BaseSymbol"/> against.
   /// </summary>
   [Required]
-  public string QuoteSymbol { get; set; } = null!;
+  public string QuoteSymbol { get => _quoteSymbol.ToUpper(); set => _quoteSymbol = value.ToUpper(); }
 
   /// <summary>
   /// The base currency valued by <see cref="QuoteSymbol"/>.
   /// </summary>
   [Required]
-  public string BaseSymbol { get; set; } = null!;
+  public string BaseSymbol { get => _baseSymbol.ToUpper(); set => _baseSymbol = value.ToUpper(); }
 
   public MarketReqDto()
   {
@@ -27,11 +30,11 @@ public class MarketReqDto : IEquatable<MarketReqDto>
   /// <param name="baseSymbol"><inheritdoc cref="BaseSymbol"/></param>
   public MarketReqDto(string quoteSymbol, string baseSymbol)
   {
-    QuoteSymbol = quoteSymbol.ToUpper();
-    BaseSymbol = baseSymbol.ToUpper();
+    QuoteSymbol = quoteSymbol;
+    BaseSymbol = baseSymbol;
   }
 
-  public override string ToString() => $"{BaseSymbol.ToUpper()}-{QuoteSymbol.ToUpper()}";
+  public override string ToString() => $"{BaseSymbol}-{QuoteSymbol}";
 
   public override int GetHashCode() => ToString().GetHashCode();
 
