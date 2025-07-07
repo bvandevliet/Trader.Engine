@@ -124,7 +124,7 @@ internal class WorkerService
 
               // Send simulation failure notification.
               await _emailNotification.SendAutomationFailed(
-                userConfig.Key, now, "Error while simulating rebalance",
+                userConfig.Key, now, "Error while simulating rebalance.",
                 simulatedResult.Value?.Orders, simulatedResult.Summary);
 
               return;
@@ -186,6 +186,43 @@ internal class WorkerService
               return;
             }
 
+            // Build a set of markets that are being sold as a whole.
+            var fullSellMarkets = simulated.Orders
+                .Where(order => order.Side == OrderSide.Sell && order.Amount.HasValue)
+                .Join(
+                    simulated.CurBalance.Allocations,
+                    order => order.Market,
+                    alloc => alloc.Market,
+                    (order, alloc) => new { Order = order, Allocation = alloc }
+                )
+                .Where(x => x.Order.Amount == x.Allocation.Amount)
+                .Select(x => x.Allocation.Market)
+                .ToHashSet();
+
+            // Bail if about to fully sell a non-contiguous allocation, starting from the smallest.
+            bool potentialGapFound = false;
+            foreach (var alloc in simulated.CurBalance.Allocations.OrderBy(a => a.AmountQuote))
+            {
+              if (!fullSellMarkets.Contains(alloc.Market))
+              {
+                potentialGapFound = true;
+              }
+
+              else if (potentialGapFound)
+              {
+                _logger.LogWarning(
+                  "Skipping automation for user '{userId}' because attempted to fully sell a non-contiguous allocation. " +
+                  "This is just a precaution, if intended, it should be done manually.", userConfig.Key);
+
+                // Send simulation failure notification.
+                await _emailNotification.SendAutomationFailed(
+                  userConfig.Key, now, "Attempted to fully sell a non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
+                  simulatedResult.Value?.Orders, simulatedResult.Summary, false);
+
+                return;
+              }
+            }
+
             // Construct rebalance request DTO.
             var rebalanceReqDto = new ExecuteOrdersReqDto(apiCred, simulated.Orders);
 
@@ -208,7 +245,7 @@ internal class WorkerService
 
               // Send failure notification.
               await _emailNotification.SendAutomationFailed(
-                userConfig.Key, now, "Not all orders were filled",
+                userConfig.Key, now, "Not all orders were filled.",
                 ordersExecuted, new
                 {
                   simulated,
@@ -226,7 +263,7 @@ internal class WorkerService
 
               // Send failure notification.
               await _emailNotification.SendAutomationFailed(
-                userConfig.Key, now, "Not all simulated orders were executed",
+                userConfig.Key, now, "Not all simulated orders were executed.",
                 ordersExecuted, new
                 {
                   simulated,

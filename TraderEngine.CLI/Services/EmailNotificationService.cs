@@ -143,7 +143,7 @@ td+td {
   }
 
   public async Task SendAutomationFailed(
-    int userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData)
+    int userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData, bool sendAdmin = true)
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
@@ -189,7 +189,8 @@ td+td {
     client.Connect(_emailSettings.SmtpServer, _emailSettings.SmtpPort, true);
     client.Authenticate(_emailSettings.SmtpUsername, _emailSettings.SmtpPassword);
     _ = await client.SendAsync(userMessage);
-    _ = await client.SendAsync(adminMessage);
+    if (sendAdmin)
+      _ = await client.SendAsync(adminMessage);
     await client.DisconnectAsync(true);
   }
 
