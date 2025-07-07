@@ -34,7 +34,7 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("simulate/{exchangeName}")]
-  public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
+  public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, string source, SimulationReqDto simulationReqDto)
   {
     _logger.LogTrace("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -80,7 +80,7 @@ public class RebalanceController : ControllerBase
     var absAllocsTradable = absAllocsUpdated.Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown).ToList();
 
     // Simulate rebalance.
-    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance, simulationReqDto.Source);
+    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance();
@@ -97,7 +97,7 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("{exchangeName}")]
-  public async Task<ActionResult<OrderDto[]>> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
+  public async Task<ActionResult<OrderDto[]>> Rebalance(string exchangeName, string source, RebalanceReqDto rebalanceReqDto)
   {
     _logger.LogTrace("Handling Rebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -115,13 +115,13 @@ public class RebalanceController : ControllerBase
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
-    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable, null, rebalanceReqDto.Source);
+    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable, null, source);
 
     return Ok(orders);
   }
 
   [HttpPost("execute/{exchangeName}")]
-  public async Task<ActionResult<OrderDto[]>> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
+  public async Task<ActionResult<OrderDto[]>> ExecuteOrders(string exchangeName, string source, ExecuteOrdersReqDto executeOrdersReqDto)
   {
     _logger.LogTrace("Handling ExecuteOrders request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -135,7 +135,7 @@ public class RebalanceController : ControllerBase
 
     // Execute rebalance orders.
     // TODO: Properly handle exchange auth errors.
-    var orders = await exchange.Rebalance(executeOrdersReqDto.Orders);
+    var orders = await exchange.Rebalance(executeOrdersReqDto.Orders, source);
 
     return Ok(orders);
   }

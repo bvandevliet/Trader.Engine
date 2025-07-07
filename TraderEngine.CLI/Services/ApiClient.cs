@@ -128,7 +128,7 @@ public class ApiClient : IApiClient
   public async Task<Result<SimulationDto?, ExchangeErrCodeEnum>> SimulateRebalance(string exchangeName, SimulationReqDto simulationReqDto)
   {
     using var simulationResp = await _httpClient
-      .PostAsJsonAsync($"api/rebalance/simulate/{exchangeName}", simulationReqDto);
+      .PostAsJsonAsync($"api/rebalance/simulate/{exchangeName}?source=automation", simulationReqDto);
 
     // TODO: ERROR HANDLING ??
     if (!simulationResp.IsSuccessStatusCode)
@@ -161,7 +161,7 @@ public class ApiClient : IApiClient
   public async Task<OrderDto[]> Rebalance(string exchangeName, RebalanceReqDto rebalanceReqDto)
   {
     using var rebalanceResp = await _httpClient
-      .PostAsJsonAsync($"api/rebalance/{exchangeName}", rebalanceReqDto);
+      .PostAsJsonAsync($"api/rebalance/{exchangeName}?source=automation", rebalanceReqDto);
 
     // TODO: ERROR HANDLING ??
     if (!rebalanceResp.IsSuccessStatusCode)
@@ -179,7 +179,7 @@ public class ApiClient : IApiClient
   public async Task<OrderDto[]> ExecuteOrders(string exchangeName, ExecuteOrdersReqDto executeOrdersReqDto)
   {
     using var rebalanceResp = await _httpClient
-      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}", executeOrdersReqDto);
+      .PostAsJsonAsync($"api/rebalance/execute/{exchangeName}?source=automation", executeOrdersReqDto);
 
     // TODO: ERROR HANDLING ??
     if (!rebalanceResp.IsSuccessStatusCode)

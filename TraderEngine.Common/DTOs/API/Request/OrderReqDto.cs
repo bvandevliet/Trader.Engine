@@ -5,8 +5,6 @@ namespace TraderEngine.Common.DTOs.API.Request;
 
 public class OrderReqDto
 {
-  public string Source { get; set; } = "API";
-
   /// <summary>
   /// The market to trade.
   /// </summary>
