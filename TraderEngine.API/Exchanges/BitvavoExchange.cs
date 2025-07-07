@@ -131,10 +131,19 @@ public class BitvavoExchange : IExchange
       return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
 
-    var result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
+    List<BitvavoAllocationDto>? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo get balance response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get balance response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     var balance = new Balance(QuoteSymbol);
 
@@ -207,10 +216,19 @@ public class BitvavoExchange : IExchange
       return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
 
-    var result = await response.Content.ReadFromJsonAsync<JsonArray>();
+    JsonArray? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<JsonArray>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo deposit response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo deposit response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return Result<decimal, ExchangeErrCodeEnum>.Success(
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
@@ -249,10 +267,19 @@ public class BitvavoExchange : IExchange
       return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
 
-    var result = await response.Content.ReadFromJsonAsync<JsonArray>();
+    JsonArray? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<JsonArray>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo withdrawal response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo withdrawal response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return Result<decimal, ExchangeErrCodeEnum>.Success(
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
@@ -289,10 +316,19 @@ public class BitvavoExchange : IExchange
       return null;
     }
 
-    var result = await response.Content.ReadFromJsonAsync<BitvavoMarketDataDto>();
+    BitvavoMarketDataDto? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<BitvavoMarketDataDto>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo get market response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get market response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return _mapper.Map<MarketDataDto>(result);
   }
@@ -312,10 +348,19 @@ public class BitvavoExchange : IExchange
       return null;
     }
 
-    var result = await response.Content.ReadFromJsonAsync<BitvavoAssetDataDto>();
+    BitvavoAssetDataDto? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<BitvavoAssetDataDto>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo asset response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo asset response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return _mapper.Map<AssetDataDto>(result);
   }
@@ -335,10 +380,19 @@ public class BitvavoExchange : IExchange
       throw new Exception("Error while requesting price.");
     }
 
-    var result = await response.Content.ReadFromJsonAsync<BitvavoTickerPriceDto>();
+    BitvavoTickerPriceDto? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<BitvavoTickerPriceDto>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo ticker price response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker price response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return decimal.Parse(result.Price);
   }
@@ -395,10 +449,19 @@ public class BitvavoExchange : IExchange
         return Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.Other);
       }
 
-      var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+      BitvavoOrderDto? result;
+      try
+      {
+        result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
 
-      if (null == result)
-        throw new Exception("Failed to deserialize response.");
+        if (null == result)
+          throw new Exception("Bitvavo new order response was empty or null.");
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Failed to deserialize Bitvavo new order response: {Content}", await response.Content.ReadAsStringAsync());
+        throw;
+      }
 
       var executedOrder = _mapper.Map<OrderDto>(result);
 
@@ -427,10 +490,19 @@ public class BitvavoExchange : IExchange
       return null;
     }
 
-    var result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+    BitvavoOrderDto? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo get order response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get order response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return _mapper.Map<OrderDto>(result);
   }
@@ -459,10 +531,19 @@ public class BitvavoExchange : IExchange
       return null;
     }
 
-    var result = await response.Content.ReadFromJsonAsync<List<BitvavoOrderDto>>();
+    List<BitvavoOrderDto>? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<List<BitvavoOrderDto>>();
 
-    if (null == result)
-      throw new Exception("Failed to deserialize response.");
+      if (null == result)
+        throw new Exception("Bitvavo cancel all open orders response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo cancel all open orders response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
 
     return _mapper.Map<IEnumerable<OrderDto>>(result);
   }
