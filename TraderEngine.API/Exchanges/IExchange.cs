@@ -34,15 +34,15 @@ public interface IExchange
 
   Task<decimal> GetPrice(MarketReqDto market);
 
-  Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order);
+  Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API");
 
   Task<OrderDto?> GetOrder(string orderId, MarketReqDto market);
 
-  Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market);
+  Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API");
 
   Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null);
+  Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API");
 
-  Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null);
+  Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null, string source = "API");
 }

@@ -343,13 +343,13 @@ public class BitvavoExchange : IExchange
     return decimal.Parse(result.Price);
   }
 
-  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order)
+  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API")
   {
     var newOrderDto = _mapper.Map<BitvavoOrderReqDto>(order);
 
     newOrderDto.DisableMarketProtection = true;
     newOrderDto.ResponseRequired = false;
-    newOrderDto.OperatorId = $"trader.{order.Source.ToLower()}".GetHashCode();
+    newOrderDto.OperatorId = $"trader.{source.ToLower()}".GetHashCode();
 
     var failedOrder = new OrderDto()
     {
@@ -435,7 +435,7 @@ public class BitvavoExchange : IExchange
     return _mapper.Map<OrderDto>(result);
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API")
   {
     throw new NotImplementedException();
   }
@@ -445,9 +445,9 @@ public class BitvavoExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
+  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API")
   {
-    using var request = CreateRequestMsg(HttpMethod.Delete, "orders");
+    using var request = CreateRequestMsg(HttpMethod.Delete, $"orders?operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -467,7 +467,7 @@ public class BitvavoExchange : IExchange
     return _mapper.Map<IEnumerable<OrderDto>>(result);
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null)
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null, string source = "API")
   {
     throw new NotImplementedException();
   }

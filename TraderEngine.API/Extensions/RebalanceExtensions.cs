@@ -218,7 +218,6 @@ public static partial class Trader
           Market = allocDiff.Market,
           Side = OrderSide.Sell,
           Type = OrderType.Market,
-          Source = source,
         };
 
         // Prevent dust.
@@ -238,7 +237,7 @@ public static partial class Trader
         return order;
       });
 
-    return await @this.SellOveragesAndVerify(orders);
+    return await @this.SellOveragesAndVerify(orders, source);
   }
 
   /// <summary>
@@ -249,7 +248,7 @@ public static partial class Trader
   /// <param name="orders"></param>
   /// <returns></returns>
   private static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<OrderReqDto> orders)
+    this IExchange @this, IEnumerable<OrderReqDto> orders, string source)
   {
     // The sell task loop ..
     return await Task.WhenAll(
@@ -274,7 +273,7 @@ public static partial class Trader
       })
 
       // Sell ..
-      .Select(alloc => @this.NewOrder(alloc)
+      .Select(alloc => @this.NewOrder(alloc, source)
 
         // Continue to verify sell order ended, within same task to optimize performance.
         .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result.Value!, true)).Unwrap()));
@@ -314,10 +313,9 @@ public static partial class Trader
         Side = OrderSide.Buy,
         Type = OrderType.Market,
         AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
-        Source = source,
       });
 
-    return await @this.BuyUnderagesAndVerify(orders, curBalance);
+    return await @this.BuyUnderagesAndVerify(orders, source, curBalance);
   }
 
   /// <summary>
@@ -329,7 +327,7 @@ public static partial class Trader
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, IEnumerable<OrderReqDto> orders, Balance? curBalance = null)
+    this IExchange @this, IEnumerable<OrderReqDto> orders, string source, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
@@ -384,7 +382,7 @@ public static partial class Trader
       .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
 
       // Buy ..
-      .Select(buyOrder => @this.NewOrder(buyOrder)
+      .Select(buyOrder => @this.NewOrder(buyOrder, source)
 
         // Continue to verify buy order ended, within same task to optimize performance.
         .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result.Value!, false)).Unwrap()));
@@ -403,7 +401,7 @@ public static partial class Trader
     ConfigReqDto config,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null,
-    string source = "Trader.Automation")
+    string source = "API")
   {
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
@@ -436,17 +434,18 @@ public static partial class Trader
   /// <param name="orders"></param>
   public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
-    IEnumerable<OrderReqDto> orders)
+    IEnumerable<OrderReqDto> orders,
+    string source = "API")
   {
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(orders);
+    var sellResults = await @this.SellOveragesAndVerify(orders, source);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(orders);
+    var buyResults = await @this.BuyUnderagesAndVerify(orders, source);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

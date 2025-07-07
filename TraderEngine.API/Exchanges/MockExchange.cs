@@ -94,7 +94,7 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order)
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "Mock")
   {
     var quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
 
@@ -156,7 +156,7 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market)
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "Mock")
   {
     throw new NotImplementedException();
   }
@@ -166,12 +166,12 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "Mock")
   {
     return Task.FromResult(new List<OrderDto>().AsEnumerable())!;
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null)
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null, string source = "Mock")
   {
     throw new NotImplementedException();
   }
