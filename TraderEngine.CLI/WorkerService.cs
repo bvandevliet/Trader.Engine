@@ -186,28 +186,28 @@ internal class WorkerService
               return;
             }
 
-            // Build a set of markets that are being sold as a whole.
-            var fullSellMarkets = simulated.Orders
-                .Where(order => order.Side == OrderSide.Sell && order.Amount.HasValue)
-                .Join(
-                    simulated.CurBalance.Allocations,
-                    order => order.Market,
-                    alloc => alloc.Market,
-                    (order, alloc) => new { Order = order, Allocation = alloc }
-                )
-                .Where(x => x.Order.Amount == x.Allocation.Amount)
-                .Select(x => x.Allocation.Market)
-                .ToHashSet();
+            // Correlate allocations with simulated orders.
+            var allocOrders = simulated.CurBalance.Allocations
+              .GroupJoin(
+                simulated.Orders,
+                alloc => alloc.Market,
+                order => order.Market,
+                (alloc, orders) => new { Allocation = alloc, Orders = orders });
 
             // Bail if about to fully sell a non-contiguous allocation, starting from the smallest.
             bool potentialGapFound = false;
-            foreach (var alloc in simulated.CurBalance.Allocations.OrderBy(a => a.AmountQuote))
+            foreach (var x in allocOrders.OrderBy(x => x.Allocation.AmountQuote))
             {
-              if (!fullSellMarkets.Contains(alloc.Market))
+              if (
+                // We are only interested in allocations that are greater than the minimum quote diff,
+                x.Allocation.AmountQuote >= configReqDto.MinimumDiffQuote &&
+                // and are not being sold as a whole.
+                !x.Orders.Any(order => order.Side == OrderSide.Sell && order.Amount == x.Allocation.Amount))
               {
                 potentialGapFound = true;
               }
 
+              // If current allocation is being sold as a whole and we found a potential gap earlier, bail out.
               else if (potentialGapFound)
               {
                 _logger.LogWarning(
