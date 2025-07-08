@@ -289,11 +289,10 @@ public class WorkerService
     }
   }
 
-  public bool IsEligibleForRebalance(ConfigReqDto configReqDto, SimulationDto simulated)
+  public static bool IsEligibleForRebalance(ConfigReqDto configReqDto, SimulationDto simulated)
   {
     // Test if any of the allocation diffs exceed the minimum order size.
     // Ignoring quote takeout, because it's considered out of the game.
-    // TODO: Put in separate method to enable for unit test !!
     decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
     decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
     decimal quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
@@ -311,7 +310,7 @@ public class WorkerService
         order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100));
   }
 
-  public bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
+  public static bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
   {
     // Correlate allocations with simulated orders.
     var allocOrders = simulated.CurBalance.Allocations
