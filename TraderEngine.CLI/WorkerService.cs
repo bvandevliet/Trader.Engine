@@ -171,6 +171,17 @@ public class WorkerService
               return;
             }
 
+            // Check if any of the simulated orders attempt to sell an asset that appears not to be allocated, should not happen.
+            var allocMarkets = simulated.CurBalance.Allocations.Select(alloc => alloc.Market).ToHashSet();
+            if (simulated.Orders.Any(order => order.Side == OrderSide.Sell && !allocMarkets.Contains(order.Market)))
+            {
+              _logger.LogError(
+                "Skipping automation for user '{userId}' because attempted to sell an asset that appears not to be allocated, should not happen. " +
+                "This may indicate an error at the API server.", userConfig.Key);
+
+              return;
+            }
+
             // Bail if about to fully sell a non-contiguous larger allocation, starting from the smallest.
             if (HasNonContiguousFullSellOrder(configReqDto, simulated))
             {
@@ -320,7 +331,7 @@ public class WorkerService
         order => order.Market,
         (alloc, orders) => new { Allocation = alloc, Orders = orders });
 
-    // Bail if about to fully sell a non-contiguous larger allocation, starting from the smallest.
+    // Return true if about to fully sell a non-contiguous larger allocation, starting from the smallest.
     bool potentialGapFound = false;
     return allocOrders
       .OrderBy(x => x.Allocation.AmountQuote)
