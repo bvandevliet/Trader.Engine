@@ -4,7 +4,7 @@ using TraderEngine.Common.Extensions;
 
 namespace TraderEngine.Common.Extensions;
 
-public static partial class IndicatorExtensions
+public static class IndicatorExtensions
 {
   public static IEnumerable<EmaResult> GetEma(this IEnumerable<MarketCapDataDto> marketCaps, int lookbackPeriods)
   {

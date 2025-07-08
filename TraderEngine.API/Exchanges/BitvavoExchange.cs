@@ -10,6 +10,7 @@ using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Models;
 using TraderEngine.Common.Results;
 
