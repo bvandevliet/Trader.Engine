@@ -211,12 +211,12 @@ internal class WorkerService
               else if (potentialGapFound)
               {
                 _logger.LogWarning(
-                  "Skipping automation for user '{userId}' because attempted to fully sell a non-contiguous allocation. " +
+                  "Skipping automation for user '{userId}' because attempted to fully sell a larger non-contiguous allocation. " +
                   "This is just a precaution, if intended, it should be done manually.", userConfig.Key);
 
                 // Send simulation failure notification.
                 await _emailNotification.SendAutomationFailed(
-                  userConfig.Key, now, "Attempted to fully sell a non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
+                  userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
                   simulatedResult.Value?.Orders, simulatedResult.Summary, false);
 
                 return;
