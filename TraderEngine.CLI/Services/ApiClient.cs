@@ -29,8 +29,6 @@ public class ApiClient : IApiClient
     {
       if (totalDepositedResp.StatusCode == HttpStatusCode.Unauthorized)
       {
-        _logger.LogWarning("Invalid API credentials.");
-
         return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
@@ -56,8 +54,6 @@ public class ApiClient : IApiClient
     {
       if (totalWithdrawnResp.StatusCode == HttpStatusCode.Unauthorized)
       {
-        _logger.LogWarning("Invalid API credentials.");
-
         return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
@@ -83,8 +79,6 @@ public class ApiClient : IApiClient
     {
       if (curBalanceResp.StatusCode == HttpStatusCode.Unauthorized)
       {
-        _logger.LogWarning("Invalid API credentials.");
-
         return Result<BalanceDto, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
@@ -141,8 +135,6 @@ public class ApiClient : IApiClient
       }
       else if (simulationResp.StatusCode == HttpStatusCode.Unauthorized)
       {
-        _logger.LogWarning("Invalid API credentials.");
-
         return Result<SimulationDto?, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
       }
 
