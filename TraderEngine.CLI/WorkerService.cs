@@ -2,12 +2,13 @@ using MySqlConnector;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.CLI;
 
-internal class WorkerService
+public class WorkerService
 {
   // TODO: Put quote symbol for market cap records in appsettings.
   private readonly string _quoteSymbol = "EUR";
@@ -161,66 +162,28 @@ internal class WorkerService
               return;
             }
 
-            // Test if any of the allocation diffs exceed the minimum order size.
-            // Ignoring quote takeout, because it's considered out of the game.
-            // TODO: Put in separate method to enable for unit test !!
-            decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
-            decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
-            decimal quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
-            if (
-              // If no orders were simulated, no need to rebalance.
-              simulated.Orders.Length == 0 ||
-              // If the total portfolio is too small, we can't rebalance.
-              relTotal < configReqDto.MinimumDiffQuote ||
-              // If quote diff doesn't exceed the minimum order size,
-              Math.Abs(quoteDiff) < configReqDto.MinimumDiffQuote &&
-              // and none of the simulated orders exceed the minimum order size and diff,
-              false == simulated.Orders.Any(order =>
-                order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
-                order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100))
+            // Check if the portfolio is eligible for rebalancing.
+            if (!IsEligibleForRebalance(configReqDto, simulated))
             {
               _logger.LogInformation(
                 "Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
 
-              // then no need to rebalance.
               return;
             }
 
-            // Build a set of markets that are being sold as a whole.
-            var fullSellMarkets = simulated.Orders
-                .Where(order => order.Side == OrderSide.Sell && order.Amount.HasValue)
-                .Join(
-                    simulated.CurBalance.Allocations,
-                    order => order.Market,
-                    alloc => alloc.Market,
-                    (order, alloc) => new { Order = order, Allocation = alloc }
-                )
-                .Where(x => x.Order.Amount == x.Allocation.Amount)
-                .Select(x => x.Allocation.Market)
-                .ToHashSet();
-
-            // Bail if about to fully sell a non-contiguous allocation, starting from the smallest.
-            bool potentialGapFound = false;
-            foreach (var alloc in simulated.CurBalance.Allocations.OrderBy(a => a.AmountQuote))
+            // Bail if about to fully sell a non-contiguous larger allocation, starting from the smallest.
+            if (HasNonContiguousFullSellOrder(configReqDto, simulated))
             {
-              if (!fullSellMarkets.Contains(alloc.Market))
-              {
-                potentialGapFound = true;
-              }
+              _logger.LogWarning(
+                "Skipping automation for user '{userId}' because attempted to fully sell a larger non-contiguous allocation. " +
+                "This is just a precaution, if intended, it should be done manually.", userConfig.Key);
 
-              else if (potentialGapFound)
-              {
-                _logger.LogWarning(
-                  "Skipping automation for user '{userId}' because attempted to fully sell a non-contiguous allocation. " +
-                  "This is just a precaution, if intended, it should be done manually.", userConfig.Key);
+              // Send simulation failure notification.
+              await _emailNotification.SendAutomationFailed(
+                userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
+                simulatedResult.Value?.Orders, simulatedResult.Summary, false);
 
-                // Send simulation failure notification.
-                await _emailNotification.SendAutomationFailed(
-                  userConfig.Key, now, "Attempted to fully sell a non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
-                  simulatedResult.Value?.Orders, simulatedResult.Summary, false);
-
-                return;
-              }
+              return;
             }
 
             // Construct rebalance request DTO.
@@ -324,5 +287,57 @@ internal class WorkerService
       // Clear all connection pools.
       await MySqlConnection.ClearAllPoolsAsync();
     }
+  }
+
+  public static bool IsEligibleForRebalance(ConfigReqDto configReqDto, SimulationDto simulated)
+  {
+    // Test if any of the allocation diffs exceed the minimum order size.
+    // Ignoring quote takeout, because it's considered out of the game.
+    decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
+    decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
+    decimal quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
+
+    return !(
+      // If no orders were simulated, no need to rebalance.
+      simulated.Orders.Length == 0 ||
+      // If the total portfolio is too small, we can't rebalance.
+      relTotal < configReqDto.MinimumDiffQuote ||
+      // If quote diff doesn't exceed the minimum order size,
+      Math.Abs(quoteDiff) < configReqDto.MinimumDiffQuote &&
+      // and none of the simulated orders exceed the minimum order size and diff,
+      false == simulated.Orders.Any(order =>
+        order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
+        order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100));
+  }
+
+  public static bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
+  {
+    // Correlate allocations with simulated orders.
+    var allocOrders = simulated.CurBalance.Allocations
+      .GroupJoin(
+        simulated.Orders,
+        alloc => alloc.Market,
+        order => order.Market,
+        (alloc, orders) => new { Allocation = alloc, Orders = orders });
+
+    // Bail if about to fully sell a non-contiguous larger allocation, starting from the smallest.
+    bool potentialGapFound = false;
+    return allocOrders
+      .OrderBy(x => x.Allocation.AmountQuote)
+      .Any(x =>
+      {
+        if (
+          // We are only interested in allocations that are greater than the minimum quote diff,
+          x.Allocation.AmountQuote >= configReqDto.MinimumDiffQuote &&
+          // and are not being sold as a whole.
+          !x.Orders.Any(order => order.Side == OrderSide.Sell && order.Amount == x.Allocation.Amount))
+        {
+          potentialGapFound = true;
+          return false;
+        }
+
+        // If current allocation is being sold as a whole and we found a potential gap earlier, bail out.
+        return potentialGapFound;
+      });
   }
 }

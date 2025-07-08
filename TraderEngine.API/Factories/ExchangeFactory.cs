@@ -1,4 +1,4 @@
-using TraderEngine.API.Exchanges;
+using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Factories;
 
 namespace TraderEngine.API.Factories;

@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Models;
 using TraderEngine.Common.Results;
 
-namespace TraderEngine.API.Exchanges;
+namespace TraderEngine.Common.Exchanges;
 
 /// <inheritdoc cref="IExchange"/>
 public class MockExchange : IExchange
@@ -144,9 +145,7 @@ public class MockExchange : IExchange
     returnOrder.FeePaid = amountQuote * TakerFee;
 
     if (null == curAlloc)
-    {
       _ = (_curBalance?.TryAddAllocation(newAlloc));
-    }
 
     return Task.FromResult(Result<OrderDto, ExchangeErrCodeEnum>.Success(returnOrder));
   }

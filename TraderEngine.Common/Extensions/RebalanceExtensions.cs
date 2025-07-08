@@ -1,14 +1,13 @@
-using TraderEngine.API.Exchanges;
-using TraderEngine.API.Extensions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
 
-namespace TraderEngine.API.Extensions;
+namespace TraderEngine.Common.Extensions;
 
-public static partial class Trader
+public static class RebalanceExtensions
 {
   private class AllocDiffReqDto : AllocationDto
   {
@@ -111,9 +110,7 @@ public static partial class Trader
 
       // Skip if not tradable.
       if (null != newAbsAlloc && newAbsAlloc.MarketStatus is not MarketStatus.Trading)
-      {
         continue;
-      }
 
       // Determine relative allocation.
       decimal relAlloc = totalAbsAlloc == 0 || newAbsAlloc == null ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
@@ -133,9 +130,7 @@ public static partial class Trader
     {
       // Skip if not tradable.
       if (newAbsAlloc.MarketStatus is not MarketStatus.Trading)
-      {
         continue;
-      }
 
       // Determine relative allocation.
       decimal relAlloc = totalAbsAlloc == 0 ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
@@ -176,9 +171,7 @@ public static partial class Trader
     }
 
     if (cancel && checks == 0)
-    {
       order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
-    }
 
     return order;
   }

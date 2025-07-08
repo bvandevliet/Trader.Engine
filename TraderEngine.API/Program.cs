@@ -2,6 +2,7 @@ using MySqlConnector;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
+using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Repositories;

@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include=".assets\container\root\etc\crontabs\root" />
+    <None Include=".assets\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -19,6 +19,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\TraderEngine.Common\TraderEngine.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include=".assets\" />
   </ItemGroup>
 
 </Project>

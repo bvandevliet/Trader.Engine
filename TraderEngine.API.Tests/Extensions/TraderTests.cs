@@ -1,7 +1,7 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using TraderEngine.API.Exchanges;
-using TraderEngine.API.Extensions;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Exchanges;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.API.Tests.Extensions;
