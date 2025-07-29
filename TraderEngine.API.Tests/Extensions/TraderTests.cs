@@ -16,10 +16,10 @@ public class TraderTests
 
   private readonly List<AbsAllocReqDto> _absAssetAlloc = new()
   {
-    new(market: new (quoteSymbol: "EUR", baseSymbol: "EUR"), absAlloc: .05m){ MarketStatus = MarketStatus.Trading },
-    new(market: new (quoteSymbol: "EUR", baseSymbol: "BTC"), absAlloc: .40m){ MarketStatus = MarketStatus.Trading },
-    new(market: new (quoteSymbol: "EUR", baseSymbol: "ETH"), absAlloc: .30m){ MarketStatus = MarketStatus.Trading },
-    new(market: new (quoteSymbol: "EUR", baseSymbol: "ADA"), absAlloc: .25m){ MarketStatus = MarketStatus.Trading },
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "EUR"), absAlloc: .05m),
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "BTC"), absAlloc: .40m),
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "ETH"), absAlloc: .30m),
+    new(market: new (quoteSymbol: "EUR", baseSymbol: "ADA"), absAlloc: .25m),
     //                                                                 100%
   };
 

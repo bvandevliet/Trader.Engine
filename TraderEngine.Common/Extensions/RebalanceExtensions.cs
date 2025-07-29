@@ -409,24 +409,27 @@ public static class RebalanceExtensions
   /// </summary>
   /// <param name="this"></param>
   /// <param name="config"></param>
-  /// <param name="absAllocs"></param>
+  /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
   public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
     ConfigReqDto config,
-    IEnumerable<AbsAllocReqDto> absAllocs,
+    IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null,
     string source = "API")
   {
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 
+    // Make sure all market statuses of eligible assets are known.
+    var absAllocList = await @this.GetTopRankingAllocs(newAbsAllocs, config.TopRankingCount);
+
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocs, source, config, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(absAllocList, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocs, source, config);
+    var buyResults = await @this.BuyUnderagesAndVerify(absAllocList, source, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
