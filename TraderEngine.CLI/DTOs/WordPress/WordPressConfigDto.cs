@@ -12,8 +12,6 @@ public class WordPressConfigDto
 
   public Dictionary<string, double> alt_weighting_factors { get; set; } = [];
 
-  public bool defensive_mode { get; set; } = false;
-
   public List<string> tags_to_include { get; set; } = [];
 
   public List<string> tags_to_ignore { get; set; } = [];

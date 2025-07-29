@@ -28,30 +28,52 @@ public static class RebalanceExtensions
   }
 
   /// <summary>
-  /// Try update all unknown market statuses in <paramref name="absAllocs"/>.
+  /// Try update unknown market status in <paramref name="absAlloc"/>.
+  /// </summary>
+  /// <param name="exchange"></param>
+  /// <param name="absAlloc"></param>
+  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
+  public static async Task<AbsAllocReqDto> FetchMarketStatus(this IExchange exchange, AbsAllocReqDto absAlloc)
+  {
+    // Get market data for the asset and update market status.
+    if (absAlloc.MarketStatus == MarketStatus.Unknown)
+    {
+      var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
+
+      var marketData = await exchange.GetMarket(marketDto);
+
+      absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
+    }
+
+    return absAlloc;
+  }
+
+  /// <summary>
+  /// Get the top ranking assets in <paramref name="absAllocs"/> for this exchange.
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="absAllocs"></param>
   /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
-  public static Task<AbsAllocReqDto[]> FetchMarketStatus(this IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs)
+  public static async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(this IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
   {
-    // Get market data for all assets and update market status.
-    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
+    var absAllocsList = new List<AbsAllocReqDto>();
+
+    foreach (var absAlloc in absAllocs)
     {
-      if (absAlloc.MarketStatus == MarketStatus.Unknown)
+      var absAllocUpdated = await exchange.FetchMarketStatus(absAlloc);
+
+      if (absAlloc.MarketStatus != MarketStatus.Unknown)
       {
-        var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
-
-        var marketData = await exchange.GetMarket(marketDto);
-
-        absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
+        // Expecting the collection to be already ordered by market cap.
+        topRankingCount--;
+        absAllocsList.Add(absAllocUpdated);
       }
 
-      return absAlloc;
-    });
+      if (topRankingCount <= 0)
+        break;
+    }
 
-    // Wait for all tasks to complete.
-    return Task.WhenAll(allocsMarketDataTasks);
+    return absAllocsList;
   }
 
   /// <summary>
@@ -387,28 +409,24 @@ public static class RebalanceExtensions
   /// </summary>
   /// <param name="this"></param>
   /// <param name="config"></param>
-  /// <param name="newAbsAllocs"></param>
+  /// <param name="absAllocs"></param>
   /// <param name="curBalance"></param>
   public static async Task<OrderDto[]> Rebalance(
     this IExchange @this,
     ConfigReqDto config,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
+    IEnumerable<AbsAllocReqDto> absAllocs,
     Balance? curBalance = null,
     string source = "API")
   {
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 
-    // Filter for assets that are potentially tradable.
-    var absAllocsUpdated = await @this.FetchMarketStatus(newAbsAllocs);
-    //var absAllocsTradable = GetTradableAssets(absAllocsUpdated).ToList();
-
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocsUpdated, source, config, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(absAllocs, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsUpdated, source, config);
+    var buyResults = await @this.BuyUnderagesAndVerify(absAllocs, source, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

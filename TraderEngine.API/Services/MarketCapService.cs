@@ -110,13 +110,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Sort by weighted Market Cap EMA value.
       .OrderByDescending(alloc => alloc.OrderByAbsAlloc)
 
-      // Take the top count, and any assets with a weighting.
-      .Where(alloc =>
-      {
-        configReqDto.TopRankingCount--;
-        return configReqDto.TopRankingCount >= 0 || (!configReqDto.DefensiveMode && alloc.MarketCap.HasWeighting);
-      })
-
       // Return absolute allocations.
       .Select(alloc => alloc.AbsAllocDto);
   }

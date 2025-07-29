@@ -15,7 +15,6 @@ public class WordPressDbSerializerTests
     QuoteTakeout = 0,
     QuoteAllocation = 0,
     AltWeightingFactors = new() { { "BTC", .6 }, { "DOGE", 0 }, },
-    DefensiveMode = false,
     TagsToInclude = new(),
     TagsToIgnore = new() { "stablecoin", "meme", },
     TopRankingCount = 10,
@@ -34,7 +33,6 @@ public class WordPressDbSerializerTests
     quote_takeout = 0,
     quote_allocation = 0,
     alt_weighting_factors = new() { { "BTC", .6 }, { "DOGE", 0 }, },
-    defensive_mode = false,
     tags_to_include = new(),
     tags_to_ignore = new() { "stablecoin", "meme", },
     top_ranking_count = 10,
@@ -49,11 +47,10 @@ public class WordPressDbSerializerTests
   };
 
   private static readonly string _serializedWpConfigDto =
-    "O:20:\"Trader\\Configuration\":15:{" +
+    "O:20:\"Trader\\Configuration\":14:{" +
     "s:13:\"quote_takeout\";d:0;" +
     "s:16:\"quote_allocation\";d:0;" +
     "s:21:\"alt_weighting_factors\";a:2:{s:3:\"BTC\";d:0.6;s:4:\"DOGE\";d:0;}" +
-    "s:14:\"defensive_mode\";b:0;" +
     "s:15:\"tags_to_include\";a:0:{}" +
     "s:14:\"tags_to_ignore\";a:2:{i:0;s:10:\"stablecoin\";i:1;s:4:\"meme\";}" +
     "s:17:\"top_ranking_count\";i:10;" +
