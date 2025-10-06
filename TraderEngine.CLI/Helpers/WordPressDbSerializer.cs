@@ -236,16 +236,11 @@ public static class WordPressDbSerializer
 
         var propertyInfo = type.GetProperty(keyName);
 
-        if (propertyInfo == null)
-        {
-          continue;
-        }
-
-        object? val = Deserialize(value[endIndex..], propertyInfo.PropertyType, out int valEnd);
+        object? val = Deserialize(value[endIndex..], propertyInfo != null ? propertyInfo.PropertyType : typeof(object), out int valEnd);
 
         endIndex += valEnd;
 
-        propertyInfo.SetValue(instance, val);
+        propertyInfo?.SetValue(instance, val);
       }
 
       // To account for closing '}'.
