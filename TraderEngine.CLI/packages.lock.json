@@ -422,7 +422,7 @@
         "dependencies": {
           "AutoMapper": "[14.0.0, )",
           "Dapper": "[2.1.66, )",
-          "Microsoft.Extensions.Configuration.Abstractions": "[9.0.8, )",
+          "Microsoft.Extensions.Configuration.Abstractions": "[9.0.9, )",
           "Microsoft.Extensions.Http.Polly": "[9.0.8, )",
           "Microsoft.Extensions.Logging.Abstractions": "[9.0.8, )",
           "Microsoft.Extensions.Options": "[9.0.8, )",

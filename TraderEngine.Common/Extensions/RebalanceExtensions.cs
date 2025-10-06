@@ -240,9 +240,9 @@ public static class RebalanceExtensions
         {
           // Honor decimals precision for the amount of this asset.
           var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
-          int decimals = assetData?.Decimals ?? 8;
+          int? decimals = assetData?.Decimals;
 
-          order.Amount = Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, decimals)) / (decimal)Math.Pow(10, decimals);
+          order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
         }
         else
         {
