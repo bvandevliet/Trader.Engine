@@ -1,5 +1,6 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;

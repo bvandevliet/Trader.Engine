@@ -28,30 +28,52 @@ public static class RebalanceExtensions
   }
 
   /// <summary>
-  /// Try update all unknown market statuses in <paramref name="absAllocs"/>.
+  /// Try update unknown market status in <paramref name="absAlloc"/>.
+  /// </summary>
+  /// <param name="exchange"></param>
+  /// <param name="absAlloc"></param>
+  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
+  public static async Task<AbsAllocReqDto> FetchMarketStatus(this IExchange exchange, AbsAllocReqDto absAlloc)
+  {
+    // Get market data for the asset and update market status.
+    if (absAlloc.MarketStatus == MarketStatus.Unknown)
+    {
+      var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
+
+      var marketData = await exchange.GetMarket(marketDto);
+
+      absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
+    }
+
+    return absAlloc;
+  }
+
+  /// <summary>
+  /// Get the top ranking assets in <paramref name="absAllocs"/> for this exchange.
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="absAllocs"></param>
   /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
-  public static Task<AbsAllocReqDto[]> FetchMarketStatus(this IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs)
+  public static async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(this IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
   {
-    // Get market data for all assets and update market status.
-    var allocsMarketDataTasks = absAllocs.Select(async absAlloc =>
+    var absAllocsList = new List<AbsAllocReqDto>();
+
+    foreach (var absAlloc in absAllocs)
     {
-      if (absAlloc.MarketStatus == MarketStatus.Unknown)
+      var absAllocUpdated = await exchange.FetchMarketStatus(absAlloc);
+
+      if (absAlloc.MarketStatus != MarketStatus.Unknown)
       {
-        var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
-
-        var marketData = await exchange.GetMarket(marketDto);
-
-        absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
+        // Expecting the collection to be already ordered by market cap.
+        topRankingCount--;
+        absAllocsList.Add(absAllocUpdated);
       }
 
-      return absAlloc;
-    });
+      if (topRankingCount <= 0)
+        break;
+    }
 
-    // Wait for all tasks to complete.
-    return Task.WhenAll(allocsMarketDataTasks);
+    return absAllocsList;
   }
 
   /// <summary>
@@ -218,9 +240,9 @@ public static class RebalanceExtensions
         {
           // Honor decimals precision for the amount of this asset.
           var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
-          int decimals = assetData?.Decimals ?? 8;
+          int? decimals = assetData?.Decimals;
 
-          order.Amount = Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, decimals)) / (decimal)Math.Pow(10, decimals);
+          order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
         }
         else
         {
@@ -399,16 +421,15 @@ public static class RebalanceExtensions
     // Clear the path ..
     _ = await @this.CancelAllOpenOrders();
 
-    // Filter for assets that are potentially tradable.
-    var absAllocsUpdated = await @this.FetchMarketStatus(newAbsAllocs);
-    //var absAllocsTradable = GetTradableAssets(absAllocsUpdated).ToList();
+    // Make sure all market statuses of eligible assets are known.
+    var absAllocList = await @this.GetTopRankingAllocs(newAbsAllocs, config.TopRankingCount);
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocsUpdated, source, config, curBalance);
+    var sellResults = await @this.SellOveragesAndVerify(absAllocList, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocsUpdated, source, config);
+    var buyResults = await @this.BuyUnderagesAndVerify(absAllocList, source, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

@@ -11,7 +11,7 @@ public class BitvavoMarketDataDto
   /// Determines how many significant digits are allowed.
   /// The rationale behind this is that for higher amounts, smaller price increments are less relevant.
   /// </summary>
-  public int PricePrecision { get; set; }
+  public int? PricePrecision { get; set; }
 
   /// <summary>
   /// The minimum amount in quote currency for valid orders.

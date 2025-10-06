@@ -15,5 +15,5 @@ public class BitvavoAssetDataDto
   /// <summary>
   /// The precision used for specifiying amounts.
   /// </summary>
-  public int Decimals { get; set; }
+  public int? Decimals { get; set; }
 }

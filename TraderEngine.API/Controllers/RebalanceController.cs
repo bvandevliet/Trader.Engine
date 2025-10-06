@@ -57,16 +57,16 @@ public class RebalanceController : ControllerBase
 
     var balance = balanceResult.Value!;
 
-    var absAllocs = simulationReqDto.NewAbsAllocs ??
+    var newAbsAllocs = simulationReqDto.NewAbsAllocs ??
       await _marketCapService().BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config, balance.Allocations.Select(alloc => alloc.Market).ToList());
 
-    if (null == absAllocs)
+    if (null == newAbsAllocs)
     {
       return NotFound("No recent market cap records found.");
     }
 
-    // Get market data for all assets and update market status.
-    var absAllocsUpdateTask = exchange.FetchMarketStatus(absAllocs);
+    // Filter for assets that are potentially tradable.
+    var absAllocsTask = exchange.GetTopRankingAllocs(newAbsAllocs, simulationReqDto.Config.TopRankingCount);
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
@@ -75,12 +75,11 @@ public class RebalanceController : ControllerBase
     // Create mock exchange.
     var simExchange = new SimExchange(exchange, balance);
 
-    // Filter for assets that are potentially tradable.
-    var absAllocsUpdated = await absAllocsUpdateTask;
-    var absAllocsTradable = absAllocsUpdated.Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown).ToList();
+    // Await for the task to complete.
+    var absAllocs = await absAllocsTask;
 
     // Simulate rebalance.
-    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocsTradable, balance, source);
+    var orders = await simExchange.Rebalance(simulationReqDto.Config, absAllocs, balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance();
@@ -90,7 +89,7 @@ public class RebalanceController : ControllerBase
     {
       Config = simulationReqDto.Config,
       Orders = orders,
-      NewAbsAllocs = absAllocsTradable,
+      NewAbsAllocs = absAllocs,
       CurBalance = curBalanceDto,
       NewBalance = newBalanceDto,
     });
@@ -110,12 +109,11 @@ public class RebalanceController : ControllerBase
     exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
 
     // Filter for assets that are potentially tradable.
-    var absAllocsUpdated = await exchange.FetchMarketStatus(rebalanceReqDto.NewAbsAllocs);
-    var absAllocsTradable = absAllocsUpdated.Where(absAlloc => absAlloc.MarketStatus is not MarketStatus.Unknown).ToList();
+    var absAllocs = await exchange.GetTopRankingAllocs(rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.Config.TopRankingCount);
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
-    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocsTradable, null, source);
+    var orders = await exchange.Rebalance(rebalanceReqDto.Config, absAllocs, null, source);
 
     return Ok(orders);
   }
