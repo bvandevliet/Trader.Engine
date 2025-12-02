@@ -1,14 +1,23 @@
 name: Docker publish
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '45 0 * * *'
+    - cron: "45 0 * * *"
   push:
     branches:
-      - '**'
+      - "**"
+    paths-ignore:
+      - "README.md"
+      - "docs/**"
+      - ".github/**"
   pull_request:
     branches:
-      - '**'
+      - "**"
+    paths-ignore:
+      - "README.md"
+      - "docs/**"
+      - ".github/**"
 
 permissions:
   contents: write
@@ -17,18 +26,15 @@ permissions:
   security-events: write
 
 jobs:
-
   analysis:
     name: Run code analysis and tests
     uses: bvandevliet/Actions.Shared/.github/workflows/dotnet-analysis.yml@master
-
   gitversion:
     needs: [analysis]
     name: Execute GitVersion and create tag
     uses: bvandevliet/Actions.Shared/.github/workflows/git-version.yml@master
-
   build-push:
-    needs: [analysis,gitversion]
+    needs: [analysis, gitversion]
     name: Build and push
     uses: bvandevliet/Actions.Shared/.github/workflows/docker-build-push.yml@master
     strategy:
