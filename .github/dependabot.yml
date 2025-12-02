@@ -5,14 +5,22 @@
 
 version: 2
 updates:
-  - package-ecosystem: "nuget" # See documentation for possible values
+  - package-ecosystem: "nuget"
     directories: # Locations of package manifests
       - "/"
       - "*/"
     schedule:
       interval: "weekly"
       day: "wednesday"
+    groups:
+      security:
+        applies-to: security-updates
+      patches:
+        applies-to: version-updates
+        update-types:
+          - "patch"
     ignore:
       - dependency-name: "*"
-        update-types: 
+        update-types:
           - "version-update:semver-major"
+          - "version-update:semver-minor"
