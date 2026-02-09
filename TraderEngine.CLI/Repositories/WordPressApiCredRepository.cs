@@ -44,7 +44,7 @@ public class WordPressApiCredRepository : IApiCredentialsRepository
     string userApiCred;
     try
     {
-      string sqlQuery = $@"
+      var sqlQuery = $@"
 SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta
 WHERE user_id = @UserId AND meta_key = 'api_keys' LIMIT 1;";
 
@@ -63,11 +63,11 @@ WHERE user_id = @UserId AND meta_key = 'api_keys' LIMIT 1;";
 
     // Decrypt API credentials.
     if (null != encryptedApiCred &&
-      encryptedApiCred.TryGetValue($"{exchangeName.ToLower()}_key", out string? encryptedApiKey) &&
-      encryptedApiCred.TryGetValue($"{exchangeName.ToLower()}_secret", out string? encryptedApiSecret))
+      encryptedApiCred.TryGetValue($"{exchangeName.ToLower()}_key", out var encryptedApiKey) &&
+      encryptedApiCred.TryGetValue($"{exchangeName.ToLower()}_secret", out var encryptedApiSecret))
     {
-      string apiKey = await _cryptographyService.Decrypt(encryptedApiKey);
-      string apiSecret = await _cryptographyService.Decrypt(encryptedApiSecret);
+      var apiKey = await _cryptographyService.Decrypt(encryptedApiKey);
+      var apiSecret = await _cryptographyService.Decrypt(encryptedApiSecret);
 
       return new ApiCredReqDto()
       {

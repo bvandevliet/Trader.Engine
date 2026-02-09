@@ -53,8 +53,8 @@ public static class WordPressDbSerializer
     }
     else if (value is DateTime dateTimeValue)
     {
-      string formattedDate = dateTimeValue.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
-      string tzKind = dateTimeValue.Kind.ToString();
+      var formattedDate = dateTimeValue.ToString("yyyy-MM-dd HH:mm:ss.ffffff", CultureInfo.InvariantCulture);
+      var tzKind = dateTimeValue.Kind.ToString();
 
       return $"O:8:\"DateTime\":3:{{s:4:\"date\";s:{formattedDate.Length}:\"{formattedDate}\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:{tzKind.Length}:\"{tzKind.ToUpper()}\";}}";
     }
@@ -66,7 +66,7 @@ public static class WordPressDbSerializer
       var array = (Array)value;
       var elements = new List<string>();
 
-      for (int index = 0; index < array.Length; index++)
+      for (var index = 0; index < array.Length; index++)
       {
         elements.Add($"{Serialize(index)}{Serialize(array.GetValue(index)!)}");
       }
@@ -77,9 +77,9 @@ public static class WordPressDbSerializer
     {
       var elements = new List<string>();
 
-      int index = 0;
+      var index = 0;
 
-      foreach (object? item in enumerable)
+      foreach (var item in enumerable)
       {
         var itemType = item.GetType();
 
@@ -102,8 +102,8 @@ public static class WordPressDbSerializer
       var keyProperty = type.GetProperty("Key")!;
       var valueProperty = type.GetProperty("Value")!;
 
-      object key = keyProperty.GetValue(value)!;
-      object val = valueProperty.GetValue(value)!;
+      var key = keyProperty.GetValue(value)!;
+      var val = valueProperty.GetValue(value)!;
 
       return $"{Serialize(key)}{Serialize(val)}";
     }
@@ -117,7 +117,7 @@ public static class WordPressDbSerializer
         elements.Add($"s:{propertyInfo.Name.Length}:\"{propertyInfo.Name}\";{Serialize(propertyInfo.GetValue(value)!)}");
       }
 
-      string objectName = type.GetCustomAttribute<WordPressObjectAttribute>()?.Name ?? type.Name;
+      var objectName = type.GetCustomAttribute<WordPressObjectAttribute>()?.Name ?? type.Name;
 
       return $"O:{objectName.Length}:\"{objectName}\":{elements.Count}:{{{string.Join("", elements)}}}";
     }
@@ -161,11 +161,11 @@ public static class WordPressDbSerializer
     {
       endIndex = value.IndexOf('{') + 1;
 
-      int elementsCount = int.Parse(value[2..(endIndex - 2)]);
+      var elementsCount = int.Parse(value[2..(endIndex - 2)]);
 
       var genArgs = type.GenericTypeArguments;
 
-      bool isAssoc = genArgs.Length == 2;
+      var isAssoc = genArgs.Length == 2;
 
       var keyType =
         genArgs.Length <= 1 ? typeof(int) : genArgs[0];
@@ -175,15 +175,15 @@ public static class WordPressDbSerializer
 
       var dictionaryType = typeof(Dictionary<,>).MakeGenericType(keyType, valType);
 
-      object instance = Activator.CreateInstance(dictionaryType)!;
+      var instance = Activator.CreateInstance(dictionaryType)!;
 
-      for (int index = 0; index < elementsCount; index++)
+      for (var index = 0; index < elementsCount; index++)
       {
-        object key = Deserialize(value[endIndex..], keyType, out int keyEnd)!;
+        var key = Deserialize(value[endIndex..], keyType, out var keyEnd)!;
 
         endIndex += keyEnd;
 
-        object? val = Deserialize(value[endIndex..], valType, out int valEnd);
+        var val = Deserialize(value[endIndex..], valType, out var valEnd);
 
         endIndex += valEnd;
 
@@ -198,7 +198,7 @@ public static class WordPressDbSerializer
         return instance;
       }
 
-      object listValues = dictionaryType.GetProperty("Values")!.GetValue(instance)!;
+      var listValues = dictionaryType.GetProperty("Values")!.GetValue(instance)!;
 
       var toListMethod = type.IsArray
         ? typeof(Enumerable).GetMethod("ToArray")!.MakeGenericMethod(valType)
@@ -211,32 +211,32 @@ public static class WordPressDbSerializer
     {
       endIndex = value.IndexOf('{') + 1;
 
-      string[] meta = value[..(endIndex - 1)].Split(':');
+      var meta = value[..(endIndex - 1)].Split(':');
 
       if (meta[2].Trim('"') == "DateTime")
       {
-        string[] parts = value[endIndex..].Split(';');
+        var parts = value[endIndex..].Split(';');
 
         // TODO: Handle timezone !!
-        string formattedDate = parts[1].Split('"')[1];
+        var formattedDate = parts[1].Split('"')[1];
         //string tzKind = parts[5].Split('"')[1];
 
         return DateTime.Parse(formattedDate, CultureInfo.InvariantCulture, DateTimeStyles.AdjustToUniversal);
       }
 
-      object instance = Activator.CreateInstance(type)!;
+      var instance = Activator.CreateInstance(type)!;
 
-      int elementsCount = int.Parse(meta[3]);
+      var elementsCount = int.Parse(meta[3]);
 
-      for (int index = 0; index < elementsCount; index++)
+      for (var index = 0; index < elementsCount; index++)
       {
-        string keyName = (string)Deserialize(value[endIndex..], typeof(string), out int keyEnd)!;
+        var keyName = (string)Deserialize(value[endIndex..], typeof(string), out var keyEnd)!;
 
         endIndex += keyEnd;
 
         var propertyInfo = type.GetProperty(keyName);
 
-        object? val = Deserialize(value[endIndex..], propertyInfo != null ? propertyInfo.PropertyType : typeof(object), out int valEnd);
+        var val = Deserialize(value[endIndex..], propertyInfo != null ? propertyInfo.PropertyType : typeof(object), out var valEnd);
 
         endIndex += valEnd;
 

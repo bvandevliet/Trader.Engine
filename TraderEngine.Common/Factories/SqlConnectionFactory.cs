@@ -17,7 +17,7 @@ public class SqlConnectionFactory : INamedTypeFactory<MySqlConnection>
 
   public MySqlConnection GetService(string name)
   {
-    string? connectionString = _configuration.GetConnectionString(name);
+    var connectionString = _configuration.GetConnectionString(name);
 
     if (string.IsNullOrEmpty(connectionString))
     {

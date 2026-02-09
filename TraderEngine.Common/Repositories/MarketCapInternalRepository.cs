@@ -65,7 +65,7 @@ CREATE TABLE IF NOT EXISTS MarketCapData (
 
     try
     {
-      int rowsAffected = await sqlConn.ExecuteAsync(@"
+      var rowsAffected = await sqlConn.ExecuteAsync(@"
 DELETE FROM MarketCapData
 WHERE Updated < @RetentionDate;", new
       {
@@ -96,7 +96,7 @@ WHERE Updated < @RetentionDate;", new
 
     try
     {
-      string sqlSelect = @"
+      var sqlSelect = @"
 SELECT * FROM MarketCapData
 WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol
 ORDER BY Updated DESC LIMIT 1;";
@@ -107,18 +107,18 @@ ORDER BY Updated DESC LIMIT 1;";
         marketCap.Market.BaseSymbol
       });
 
-      int rowsAffected = 0;
+      var rowsAffected = 0;
 
       if (null != lastRecord && OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance < 60 - earlierTolerance)
       {
         _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is too close to the previous record.",
           marketCap.Updated, marketCap.Market);
 
-        string sqlDelete = @"
+        var sqlDelete = @"
 DELETE FROM MarketCapData
 WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol;";
 
-        int rowsDeleted = await sqlConn.ExecuteAsync(sqlDelete, new
+        var rowsDeleted = await sqlConn.ExecuteAsync(sqlDelete, new
         {
           marketCap.Market.QuoteSymbol,
           marketCap.Market.BaseSymbol
@@ -130,7 +130,7 @@ WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol;";
 
       _logger.LogTrace("Inserting new market cap record of '{market}' to database ..", marketCap.Market);
 
-      string sqlInsert = @"
+      var sqlInsert = @"
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
 VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
@@ -159,7 +159,7 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
   {
     _logger.LogDebug("Inserting market cap records into database ..");
 
-    int rowsAffected = 0;
+    var rowsAffected = 0;
 
     // Insert in chunks to avoid overloading the connection pool and cause timeouts.
     // Chunk size should ideally be equeal to the pool size.
@@ -181,7 +181,7 @@ VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
     try
     {
-      string sqlQuery = @"
+      var sqlQuery = @"
 SELECT * FROM MarketCapData
 WHERE
   QuoteSymbol = @QuoteSymbol
@@ -213,7 +213,7 @@ ORDER BY Updated DESC;";
 
     try
     {
-      string sqlQuery = @"
+      var sqlQuery = @"
 SELECT * FROM MarketCapData
 WHERE
   QuoteSymbol = @QuoteSymbol

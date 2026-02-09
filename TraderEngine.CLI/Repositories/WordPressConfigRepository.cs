@@ -46,7 +46,7 @@ public class WordPressConfigRepository : IConfigRepository
 
     try
     {
-      string sqlQuery = $@"
+      var sqlQuery = $@"
 SELECT user_login, display_name, user_email
 FROM {_cmsDbSettings.TablePrefix}users
 WHERE ID = @UserId LIMIT 1;";
@@ -72,12 +72,12 @@ WHERE ID = @UserId LIMIT 1;";
 
     try
     {
-      string sqlQuery = $@"
+      var sqlQuery = $@"
 SELECT meta_value FROM {_cmsDbSettings.TablePrefix}usermeta
 WHERE user_id = @UserId AND meta_key = 'trader_configuration'
 LIMIT 1;";
 
-      string dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(sqlQuery, new
+      var dbConfig = (await sqlConn.QueryFirstOrDefaultAsync<string>(sqlQuery, new
       {
         UserId = userId
       }))!;
@@ -100,7 +100,7 @@ LIMIT 1;";
 
     try
     {
-      string sqlQuery = $@"
+      var sqlQuery = $@"
 SELECT user_id, meta_value
 FROM {_cmsDbSettings.TablePrefix}usermeta
 WHERE meta_key = 'trader_configuration';";
@@ -123,13 +123,13 @@ WHERE meta_key = 'trader_configuration';";
 
     var wpConfig = _mapper.Map<WordPressConfigDto>(configReqDto);
 
-    string dbConfig = WordPressDbSerializer.Serialize(wpConfig);
+    var dbConfig = WordPressDbSerializer.Serialize(wpConfig);
 
     var sqlConn = await GetConnection();
 
     try
     {
-      string sqlQuery = $@"
+      var sqlQuery = $@"
 UPDATE {_cmsDbSettings.TablePrefix}usermeta
 SET meta_value = @MetaValue
 WHERE user_id = @UserId AND meta_key = 'trader_configuration';";

@@ -1,6 +1,8 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
-using System.Diagnostics;
+using Polly;
+using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
@@ -37,28 +39,24 @@ public class Program
         services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
         services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
-
         services.Configure<CmsDbSettings>(builder.Configuration.GetSection("CmsDbSettings"));
-
         services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
-
         services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
 
         services.AddSingleton<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
         services.AddTransient<IMarketCapInternalRepository, MarketCapInternalRepository>();
-
         services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
         {
           var cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
 
           httpClient.BaseAddress = new("https://pro-api.coinmarketcap.com/v1/");
-
           httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
-
           httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
         })
-          .ApplyDefaultPoolAndPolicyConfig();
+          .ApplyDefaultPoolAndPolicyConfig()
+          .AddTransientHttpErrorPolicy(policy =>
+            policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
 
         services.AddHttpClient<ICryptographyService, CryptographyService>((x, httpClient) =>
         {
@@ -71,7 +69,6 @@ public class Program
           .ApplyDefaultPoolAndPolicyConfig();
 
         services.AddTransient<IConfigRepository, WordPressConfigRepository>();
-
         services.AddTransient<IApiCredentialsRepository, WordPressApiCredRepository>();
 
         services.AddTransient<IEmailNotificationService, EmailNotificationService>();
@@ -81,7 +78,6 @@ public class Program
           var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
 
           httpClient.BaseAddress = new($"{addressSettings.TRADER_API}/");
-
           httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
         })
           .ApplyDefaultPoolAndPolicyConfig();
@@ -89,7 +85,7 @@ public class Program
         // Hosted service as singleton.
         services.AddSingleton<WorkerService>();
       })
-      .Build();
+        .Build();
 
     // App logger.
     var logger = host.Services.GetService<ILogger<Program>>()!;
