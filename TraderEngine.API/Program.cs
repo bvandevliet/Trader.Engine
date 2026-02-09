@@ -31,10 +31,6 @@ public class Program
     builder.Services.AddRouting(options => options.LowercaseUrls = true);
     builder.Services.AddControllers();
 
-    // Swagger/OpenAPI.
-    builder.Services.AddEndpointsApiExplorer();
-    builder.Services.AddSwaggerGen();
-
     builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
 
     builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
@@ -47,14 +43,6 @@ public class Program
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 
     var app = builder.Build();
-
-    if (app.Environment.IsDevelopment())
-    {
-      app.UseSwagger();
-      app.UseSwaggerUI();
-    }
-
-    //app.UseAuthorization();
 
     app.MapControllers();
 
