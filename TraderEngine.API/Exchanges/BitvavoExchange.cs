@@ -119,8 +119,9 @@ public class BitvavoExchange : IExchange
           return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
-      catch (Exception)
+      catch (Exception ex)
       {
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get balance error response: {Content}", await response.Content.ReadAsStringAsync());
       }
 
       _logger.LogCritical("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}",
@@ -201,8 +202,9 @@ public class BitvavoExchange : IExchange
           return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
-      catch (Exception)
+      catch (Exception ex)
       {
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get total deposited error response: {Content}", await response.Content.ReadAsStringAsync());
       }
 
       _logger.LogCritical("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}",
@@ -249,8 +251,9 @@ public class BitvavoExchange : IExchange
           return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
-      catch (Exception)
+      catch (Exception ex)
       {
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get total withdrawn error response: {Content}", await response.Content.ReadAsStringAsync());
       }
 
       _logger.LogCritical("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}",
@@ -298,8 +301,9 @@ public class BitvavoExchange : IExchange
           };
         }
       }
-      catch (Exception)
+      catch (Exception ex)
       {
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get market error response: {Content}", await response.Content.ReadAsStringAsync());
       }
 
       _logger.LogError("Failed to get market from Bitvavo. {url} returned {code} {reason} with response: {response}",
@@ -429,8 +433,9 @@ public class BitvavoExchange : IExchange
             return Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.AuthenticationError);
           }
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+          _logger.LogError(ex, "Failed to deserialize Bitvavo new order error response: {Content}", await response.Content.ReadAsStringAsync());
         }
 
         _logger.LogCritical("Failed to create new order on Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",

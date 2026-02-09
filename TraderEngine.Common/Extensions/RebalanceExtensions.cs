@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
@@ -193,7 +194,14 @@ public static class RebalanceExtensions
     }
 
     if (cancel && checks == 0)
-      order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
+      try
+      {
+        order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
+      }
+      catch (Exception ex)
+      {
+        @this.Logger?.LogError(ex, "Failed to cancel order {OrderId} for market {Market}.", order.Id, order.Market);
+      }
 
     return order;
   }
