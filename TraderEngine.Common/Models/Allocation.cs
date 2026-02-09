@@ -93,7 +93,7 @@ public class Allocation
 
   private void UpdatePrice(decimal newValue)
   {
-    decimal oldValue = Price;
+    var oldValue = Price;
     _price = newValue;
 
     if (oldValue != newValue)
@@ -106,7 +106,7 @@ public class Allocation
 
   private void UpdateAmount(decimal newValue)
   {
-    decimal oldValue = Amount;
+    var oldValue = Amount;
     _amount = newValue;
 
     if (oldValue != newValue)
@@ -119,7 +119,7 @@ public class Allocation
 
   private void UpdateAmountQuote(decimal newValue)
   {
-    decimal oldValue = AmountQuote;
+    var oldValue = AmountQuote;
     _amountQuote = newValue;
 
     if (oldValue != newValue)

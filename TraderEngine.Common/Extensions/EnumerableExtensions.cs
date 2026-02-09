@@ -17,7 +17,7 @@ public static class EnumerableExtensions
   /// <inheritdoc cref="List{T}.Find(Predicate{T})"/>
   public static T? FindAndRemove<T>(this List<T> list, Predicate<T> match)
   {
-    int index = list.FindIndex(match);
+    var index = list.FindIndex(match);
 
     if (index >= 0)
     {

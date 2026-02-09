@@ -1,6 +1,5 @@
 using AutoMapper;
 using FluentAssertions;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.CLI.DTOs.WordPress;
 using TraderEngine.CLI.Helpers;
 using TraderEngine.Common.DTOs.API.Request;
@@ -172,7 +171,7 @@ public class WordPressDbSerializerTests
 
     wpDto.Should().BeEquivalentTo(_wpConfigDto);
 
-    string result = WordPressDbSerializer.Serialize(wpDto);
+    var result = WordPressDbSerializer.Serialize(wpDto);
 
     result.Should().Be(_serializedWpConfigDto);
   }

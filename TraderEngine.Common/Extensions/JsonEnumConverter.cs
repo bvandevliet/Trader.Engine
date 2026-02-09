@@ -9,7 +9,7 @@ public abstract class JsonEnumConverterBase<TEnum> : JsonConverter<TEnum> where 
   {
     if (reader.TokenType == JsonTokenType.String)
     {
-      string? enumValueString = reader.GetString();
+      var enumValueString = reader.GetString();
 
       if (Enum.TryParse(enumValueString, ignoreCase: true, out TEnum enumValue))
       {
@@ -18,7 +18,7 @@ public abstract class JsonEnumConverterBase<TEnum> : JsonConverter<TEnum> where 
     }
     else if (reader.TokenType == JsonTokenType.Number)
     {
-      if (reader.TryGetInt32(out int enumValue))
+      if (reader.TryGetInt32(out var enumValue))
       {
         return Enum.IsDefined(typeof(TEnum), enumValue)
             ? (TEnum)Enum.ToObject(typeof(TEnum), enumValue)

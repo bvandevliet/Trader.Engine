@@ -9,14 +9,14 @@ public static class MathExtensions
 
   public static string Floor(this decimal value, int decimals)
   {
-    int mult = (int)Math.Pow(10, decimals);
+    var mult = (int)Math.Pow(10, decimals);
 
     return (Math.Floor(value * mult) / mult).ToString($"F{decimals}");
   }
 
   public static string Ceiling(this decimal value, int decimals)
   {
-    int mult = (int)Math.Pow(10, decimals);
+    var mult = (int)Math.Pow(10, decimals);
 
     return (Math.Ceiling(value * mult) / mult).ToString($"F{decimals}");
   }

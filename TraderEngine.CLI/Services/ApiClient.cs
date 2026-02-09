@@ -40,7 +40,7 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting total deposited.");
     }
 
-    decimal totalDeposited = await totalDepositedResp.Content.ReadFromJsonAsync<decimal>();
+    var totalDeposited = await totalDepositedResp.Content.ReadFromJsonAsync<decimal>();
 
     return Result<decimal, ExchangeErrCodeEnum>.Success(totalDeposited);
   }
@@ -65,7 +65,7 @@ public class ApiClient : IApiClient
       throw new Exception("Error while requesting total withdrawn.");
     }
 
-    decimal totalWithdrawn = await totalWithdrawnResp.Content.ReadFromJsonAsync<decimal>();
+    var totalWithdrawn = await totalWithdrawnResp.Content.ReadFromJsonAsync<decimal>();
 
     return Result<decimal, ExchangeErrCodeEnum>.Success(totalWithdrawn);
   }

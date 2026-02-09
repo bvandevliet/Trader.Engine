@@ -9,41 +9,41 @@ namespace TraderEngine.Common.Exchanges;
 
 public interface IExchange
 {
-  ILogger<IExchange>? Logger { get; }
+  public ILogger<IExchange>? Logger { get; }
 
-  string QuoteSymbol { get; }
+  public string QuoteSymbol { get; }
 
-  decimal MinOrderSizeInQuote { get; }
+  public decimal MinOrderSizeInQuote { get; }
 
-  decimal MakerFee { get; }
+  public decimal MakerFee { get; }
 
-  decimal TakerFee { get; }
+  public decimal TakerFee { get; }
 
-  string ApiKey { get; set; }
+  public string ApiKey { get; set; }
 
-  string ApiSecret { get; set; }
+  public string ApiSecret { get; set; }
 
-  Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance();
+  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance();
 
-  Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited();
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited();
 
-  Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn();
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn();
 
-  Task<MarketDataDto?> GetMarket(MarketReqDto market);
+  public Task<MarketDataDto?> GetMarket(MarketReqDto market);
 
-  Task<AssetDataDto?> GetAsset(string baseSymbol);
+  public Task<AssetDataDto?> GetAsset(string baseSymbol);
 
-  Task<decimal> GetPrice(MarketReqDto market);
+  public Task<decimal> GetPrice(MarketReqDto market);
 
-  Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API");
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API");
 
-  Task<OrderDto?> GetOrder(string orderId, MarketReqDto market);
+  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market);
 
-  Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API");
+  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API");
 
-  Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null);
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null);
 
-  Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API");
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API");
 
-  Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null, string source = "API");
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null, string source = "API");
 }

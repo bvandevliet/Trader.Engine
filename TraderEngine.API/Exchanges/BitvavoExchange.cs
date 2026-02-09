@@ -1,10 +1,10 @@
-using AutoMapper;
-using Microsoft.Net.Http.Headers;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
+using AutoMapper;
+using Microsoft.Net.Http.Headers;
 using TraderEngine.API.DTOs.Bitvavo.Request;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.API.Request;
@@ -66,9 +66,9 @@ public class BitvavoExchange : IExchange
 
     using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(ApiSecret));
 
-    byte[] inputBytes = Encoding.UTF8.GetBytes(hashString.ToString());
+    var inputBytes = Encoding.UTF8.GetBytes(hashString.ToString());
 
-    byte[] signatureBytes = hmac.ComputeHash(inputBytes);
+    var signatureBytes = hmac.ComputeHash(inputBytes);
 
     return BitConverter.ToString(signatureBytes).Replace("-", "").ToLower();
   }
@@ -89,9 +89,9 @@ public class BitvavoExchange : IExchange
     request.Headers.Add(HeaderNames.Accept, "application/json");
     request.Headers.Add("bitvavo-access-window", "60000 ");
 
-    long timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+    var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    string signature = CreateSignature(timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, payload);
+    var signature = CreateSignature(timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, payload);
 
     request.Headers.Add("bitvavo-access-key", ApiKey);
     request.Headers.Add("bitvavo-access-timestamp", timestamp.ToString());
@@ -112,7 +112,7 @@ public class BitvavoExchange : IExchange
       {
         var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-        string? errorCode = error?["errorCode"]?.ToString();
+        var errorCode = error?["errorCode"]?.ToString();
 
         if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
@@ -163,7 +163,7 @@ public class BitvavoExchange : IExchange
       {
         var market = new MarketReqDto(QuoteSymbol, alloc.AllocDto.Symbol);
 
-        decimal price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(market);
+        var price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(market);
 
         var allocation = new Allocation(market, price, alloc.AmountQuote);
 
@@ -194,7 +194,7 @@ public class BitvavoExchange : IExchange
       {
         var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-        string? errorCode = error?["errorCode"]?.ToString();
+        var errorCode = error?["errorCode"]?.ToString();
 
         if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
@@ -242,7 +242,7 @@ public class BitvavoExchange : IExchange
       {
         var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-        string? errorCode = error?["errorCode"]?.ToString();
+        var errorCode = error?["errorCode"]?.ToString();
 
         if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
@@ -422,7 +422,7 @@ public class BitvavoExchange : IExchange
         {
           var error = await response.Content.ReadFromJsonAsync<JsonObject>();
 
-          string? errorCode = error?["errorCode"]?.ToString();
+          var errorCode = error?["errorCode"]?.ToString();
 
           if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
           {

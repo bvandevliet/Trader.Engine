@@ -1,4 +1,3 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
@@ -36,7 +35,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
+    var result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -75,7 +74,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
+    var result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -114,7 +113,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
+    var result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -153,7 +152,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
+    var result = WorkerService.IsEligibleForRebalance(configReqDto, simulated);
 
     // Assert
     Assert.IsTrue(result);
@@ -221,7 +220,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -291,7 +290,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -355,7 +354,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsTrue(result);
@@ -425,7 +424,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsTrue(result);
@@ -502,7 +501,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -585,7 +584,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsFalse(result);
@@ -662,7 +661,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsTrue(result);
@@ -745,7 +744,7 @@ public class WorkerServiceTests
     };
 
     // Act
-    bool result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
     Assert.IsTrue(result);

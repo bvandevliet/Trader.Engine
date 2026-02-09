@@ -2,7 +2,7 @@ namespace TraderEngine.Common.Services;
 
 public interface ICryptographyService
 {
-  Task<string> Decrypt(string cipherText);
+  public Task<string> Decrypt(string cipherText);
 
-  Task<string> Encrypt(string plainText);
+  public Task<string> Encrypt(string plainText);
 }

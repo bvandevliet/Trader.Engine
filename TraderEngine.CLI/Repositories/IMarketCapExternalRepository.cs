@@ -13,12 +13,12 @@ public interface IMarketCapExternalRepository
   /// </summary>
   /// <param name="market">Market for which to get current market cap data.</param>
   /// <returns>Market cap data.</returns>
-  Task<MarketCapDataDto> GetMarketCap(MarketReqDto market);
+  public Task<MarketCapDataDto> GetMarketCap(MarketReqDto market);
 
   /// <summary>
   /// Get the latest market cap data of the top 150 ranked base currencies for the specified quote currency.
   /// </summary>
   /// <param name="quoteSymbol"></param>
   /// <returns></returns>
-  Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol);
+  public Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol);
 }

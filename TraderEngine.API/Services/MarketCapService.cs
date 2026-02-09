@@ -1,5 +1,5 @@
-using AnyClone;
 using System.Text.RegularExpressions;
+using AnyClone;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -57,11 +57,11 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       return null;
     }
 
-    string includeTagsPattern = configReqDto.TagsToInclude.Any() ?
+    var includeTagsPattern = configReqDto.TagsToInclude.Any() ?
       string.Join('|', configReqDto.TagsToInclude.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$")) : ".*";
     var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase);
 
-    string ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
+    var ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
     var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase);
 
     return
@@ -70,9 +70,9 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Determine weighting.
       .Select(marketCapDataDto =>
       {
-        bool hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out double weighting);
-        bool isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
-        double finalWeighting = hasWeighting ? weighting : 1;
+        var hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
+        var isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
+        var finalWeighting = hasWeighting ? weighting : 1;
 
         return new
         {

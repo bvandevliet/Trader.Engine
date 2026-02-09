@@ -1,5 +1,5 @@
-using AutoMapper;
 using System.Net.Http.Json;
+using AutoMapper;
 using TraderEngine.CLI.DTOs.CMC;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;

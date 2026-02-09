@@ -4,5 +4,5 @@ namespace TraderEngine.CLI.Repositories;
 
 public interface IApiCredentialsRepository
 {
-  Task<ApiCredReqDto> GetApiCred(int userId, string exchangeName);
+  public Task<ApiCredReqDto> GetApiCred(int userId, string exchangeName);
 }

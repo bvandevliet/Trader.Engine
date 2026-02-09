@@ -15,7 +15,7 @@ public interface IMarketCapService
   /// <param name="quoteSymbol"></param>
   /// <param name="smoothing"></param>
   /// <returns></returns>
-  Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing);
+  public Task<IEnumerable<MarketCapDataDto>> ListLatest(string quoteSymbol, int smoothing);
 
   /// <summary>
   /// Get the top ranked balanced allocations for the specified <paramref name="configReqDto"/>.
@@ -25,5 +25,5 @@ public interface IMarketCapService
   /// <param name="configReqDto"></param>
   /// <param name="currentAssets"></param>
   /// <returns></returns>
-  Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null);
+  public Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null);
 }
