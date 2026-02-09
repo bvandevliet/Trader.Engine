@@ -11,10 +11,10 @@ namespace TraderEngine.API;
 
 public class Program
 {
-  private static readonly List<Type> _exchanges = new()
-  {
+  private static readonly List<Type> _exchanges =
+  [
     typeof(BitvavoExchange),
-  };
+  ];
 
   public static void Main(string[] args)
   {
@@ -28,11 +28,7 @@ public class Program
     builder.Logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
 #endif
 
-    builder.Services.AddRouting(options =>
-    {
-      options.LowercaseUrls = true;
-    });
-
+    builder.Services.AddRouting(options => options.LowercaseUrls = true);
     builder.Services.AddControllers();
 
     // Swagger/OpenAPI.
@@ -44,13 +40,10 @@ public class Program
     builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 
     builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
-
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
 
     builder.Services.AddHttpClient<IExchange>().ApplyDefaultPoolAndPolicyConfig();
-
     foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
-
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 
     var app = builder.Build();
