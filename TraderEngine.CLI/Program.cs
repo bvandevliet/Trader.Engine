@@ -1,6 +1,6 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
-using System.Diagnostics;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;

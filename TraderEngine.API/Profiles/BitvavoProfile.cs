@@ -1,5 +1,5 @@
-using AutoMapper;
 using System.Text.Json;
+using AutoMapper;
 using TraderEngine.API.DTOs.Bitvavo.Request;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.Common.DTOs.API.Request;

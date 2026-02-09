@@ -113,7 +113,7 @@ public class MockExchange : IExchange
       AmountQuote = order.AmountQuote,
     };
 
-    decimal price = curAlloc?.Price ?? 0;
+    var price = curAlloc?.Price ?? 0;
 
     decimal amountQuote;
 

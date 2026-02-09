@@ -1,9 +1,9 @@
+using System.Text.Json;
+using System.Web;
 using MailKit.Net.Smtp;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Text;
-using System.Text.Json;
-using System.Web;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.Common.DTOs.API.Response;
@@ -51,10 +51,10 @@ td+td {
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    decimal newAmountQuoteTotal = simulated.NewBalance.AmountQuoteTotal;
-    decimal cumulativeValue = newAmountQuoteTotal + totalWithdrawn;
+    var newAmountQuoteTotal = simulated.NewBalance.AmountQuoteTotal;
+    var cumulativeValue = newAmountQuoteTotal + totalWithdrawn;
 
-    string htmlString =
+    var htmlString =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
@@ -147,7 +147,7 @@ td+td {
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    string userMsgBody =
+    var userMsgBody =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
@@ -159,7 +159,7 @@ td+td {
     $"<p>This email was automatically generated. Happy trading!" +
     $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
-    string adminMsgBody =
+    var adminMsgBody =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
@@ -199,7 +199,7 @@ td+td {
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    string userMsgBody =
+    var userMsgBody =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
@@ -228,7 +228,7 @@ td+td {
   {
     var userInfo = await _configRepo.GetUserInfo(userId);
 
-    string htmlString =
+    var htmlString =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
@@ -254,7 +254,7 @@ td+td {
   public async Task SendWorkerException(
     DateTime timestamp, Exception exception)
   {
-    string htmlString =
+    var htmlString =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +

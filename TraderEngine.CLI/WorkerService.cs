@@ -48,7 +48,7 @@ public class WorkerService
     {
       _ = await _marketCapIntRepo.InitDatabase();
 
-      int rowsCleared = await _marketCapIntRepo.CleanupDatabase();
+      var rowsCleared = await _marketCapIntRepo.CleanupDatabase();
 
       if (_appArgs.DoUpdateMarketCap)
       {
@@ -95,7 +95,7 @@ public class WorkerService
             // TODO: Make this configurable !!
             //       And if single exchange, directly call into "simulate",
             //       otherwise, first call into "balanced" and then into "simulate" for each exchange.
-            string exchangeName = "Bitvavo";
+            var exchangeName = "Bitvavo";
 
             // Get API credentials.
             var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
@@ -304,9 +304,9 @@ public class WorkerService
   {
     // Test if any of the allocation diffs exceed the minimum order size.
     // Ignoring quote takeout, because it's considered out of the game.
-    decimal quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
-    decimal relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
-    decimal quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
+    var quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
+    var relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
+    var quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
 
     return !(
       // If no orders were simulated, no need to rebalance.
@@ -332,7 +332,7 @@ public class WorkerService
         (alloc, orders) => new { Allocation = alloc, Orders = orders });
 
     // Return true if about to fully sell a non-contiguous larger allocation, starting from the smallest.
-    bool potentialGapFound = false;
+    var potentialGapFound = false;
     return allocOrders
       .OrderBy(x => x.Allocation.AmountQuote)
       .Any(x =>

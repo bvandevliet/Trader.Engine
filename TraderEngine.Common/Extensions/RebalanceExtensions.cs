@@ -91,7 +91,7 @@ public static class RebalanceExtensions
     List<AbsAllocReqDto> newAbsAllocsList = new();
 
     // Sum of all absolute allocation values.
-    decimal totalAbsAlloc =
+    var totalAbsAlloc =
       newAbsAllocs
 
       // Filter for tradable assets.
@@ -110,11 +110,11 @@ public static class RebalanceExtensions
       });
 
     // Relative quote allocation (including takeout).
-    decimal quoteRelAlloc = curBalance.AmountQuoteTotal == 0 ? 0 : Math.Max(0, Math.Min(1,
+    var quoteRelAlloc = curBalance.AmountQuoteTotal == 0 ? 0 : Math.Max(0, Math.Min(1,
       config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Scale total sum of absolute allocation values to account for relative quote allocation.
-    decimal div = 1 - quoteRelAlloc;
+    var div = 1 - quoteRelAlloc;
     if (div == 0)
       totalAbsAlloc = 0;
     else
@@ -135,10 +135,10 @@ public static class RebalanceExtensions
         continue;
 
       // Determine relative allocation.
-      decimal relAlloc = totalAbsAlloc == 0 || newAbsAlloc == null ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
+      var relAlloc = totalAbsAlloc == 0 || newAbsAlloc == null ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
 
       // Determine new quote amount.
-      decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
+      var newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
       yield return new AllocDiffReqDto(
         curAlloc.Market,
@@ -155,10 +155,10 @@ public static class RebalanceExtensions
         continue;
 
       // Determine relative allocation.
-      decimal relAlloc = totalAbsAlloc == 0 ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
+      var relAlloc = totalAbsAlloc == 0 ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
 
       // Determine new quote amount.
-      decimal newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
+      var newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
       yield return new AllocDiffReqDto(
         newAbsAlloc.Market,
@@ -240,7 +240,7 @@ public static class RebalanceExtensions
         {
           // Honor decimals precision for the amount of this asset.
           var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
-          int? decimals = assetData?.Decimals;
+          var decimals = assetData?.Decimals;
 
           order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
         }
@@ -354,7 +354,7 @@ public static class RebalanceExtensions
 
     // Absolute sum of all negative quote differences,
     // using a single multi-purpose enumeration to eliminate redundant enumerations.
-    decimal totalBuy =
+    var totalBuy =
       orders
 
       // Filter for buy orders.
@@ -376,7 +376,7 @@ public static class RebalanceExtensions
       });
 
     // Multiplication ratio to avoid potentially oversized buy order sizes.
-    decimal ratio = totalBuy == 0 ? 0 :
+    var ratio = totalBuy == 0 ? 0 :
       Math.Min(totalBuy, curBalance.AmountQuoteAvailable) / totalBuy;
 
     // The buy task loop, diffs are already filtered ..
