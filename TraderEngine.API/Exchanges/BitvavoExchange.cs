@@ -87,7 +87,7 @@ public class BitvavoExchange : IExchange
     }
 
     request.Headers.Add(HeaderNames.Accept, "application/json");
-    request.Headers.Add("bitvavo-access-window", "60000 ");
+    request.Headers.Add("bitvavo-access-window", "10000 ");
 
     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
