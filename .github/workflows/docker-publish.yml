@@ -29,6 +29,8 @@ jobs:
   analysis:
     name: Run code analysis and tests
     uses: bvandevliet/Actions.Shared/.github/workflows/dotnet-analysis.yml@master
+    with:
+      DOTNET_VERSION: 10
   gitversion:
     needs: [analysis]
     name: Execute GitVersion and create tag
@@ -51,6 +53,7 @@ jobs:
       semVer: ${{ needs.gitversion.outputs.semVer }}
       assemblySemVer: ${{ needs.gitversion.outputs.assemblySemVer }}
       assemblySemFileVer: ${{ needs.gitversion.outputs.assemblySemFileVer }}
+      DOTNET_VERSION: 10
     secrets:
       CR_USERNAME: ${{ secrets.CR_USERNAME }}
       CR_PASSWORD: ${{ secrets.CR_PASSWORD }}
