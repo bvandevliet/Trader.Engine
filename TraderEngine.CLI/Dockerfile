@@ -4,7 +4,7 @@ RUN apk add -U --no-cache tzdata
 COPY .assets/crontabs/root /etc/crontabs/
 
 WORKDIR /app
-COPY bin/Release/10.0/publish .
+COPY bin/Release/net10.0/publish .
 
 ENV ASPNETCORE_ENVIRONMENT=Production
 ENTRYPOINT ["/bin/sh", "-c" , "crond -f"]
