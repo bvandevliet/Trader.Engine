@@ -30,6 +30,8 @@ public class ExchangeFactory : INamedTypeFactory<IExchange>
     return null;
   }
 
-  private static string GetExchangeName(Type exchangeType) =>
-    exchangeType.Name.Replace("Exchange", string.Empty);
+  private static string GetExchangeName(Type exchangeType)
+  {
+    return exchangeType.Name.Replace("Exchange", string.Empty);
+  }
 }

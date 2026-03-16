@@ -218,9 +218,18 @@ public class SimExchange : MockExchange, IExchange
     }
   }
 
-  public new Task<MarketDataDto?> GetMarket(MarketReqDto market) => _instance.GetMarket(market);
+  public new Task<MarketDataDto?> GetMarket(MarketReqDto market)
+  {
+    return _instance.GetMarket(market);
+  }
 
-  public new Task<AssetDataDto?> GetAsset(string baseSymbol) => _instance.GetAsset(baseSymbol);
+  public new Task<AssetDataDto?> GetAsset(string baseSymbol)
+  {
+    return _instance.GetAsset(baseSymbol);
+  }
 
-  public new Task<decimal> GetPrice(MarketReqDto market) => _instance.GetPrice(market);
+  public new Task<decimal> GetPrice(MarketReqDto market)
+  {
+    return _instance.GetPrice(market);
+  }
 }

@@ -39,11 +39,7 @@ public class Allocation
   /// </summary>
   public decimal Price
   {
-    get => _price;
-    set
-    {
-      UpdatePrice(value);
-    }
+    get => _price; set => UpdatePrice(value);
   }
 
   private decimal _amount;
@@ -52,11 +48,7 @@ public class Allocation
   /// </summary>
   public decimal Amount
   {
-    get => _amount;
-    set
-    {
-      UpdateAmount(value);
-    }
+    get => _amount; set => UpdateAmount(value);
   }
 
   private decimal? _amountQuote;
@@ -65,11 +57,7 @@ public class Allocation
   /// </summary>
   public decimal AmountQuote
   {
-    get => _amountQuote ??= Price * Amount;
-    set
-    {
-      UpdateAmountQuote(value);
-    }
+    get => _amountQuote ??= Price * Amount; set => UpdateAmountQuote(value);
   }
 
   public Allocation(

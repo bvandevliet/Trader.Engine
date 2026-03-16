@@ -59,5 +59,8 @@ public class OrderDto : OrderReqDto
   [JsonIgnore]
   public bool HasEnded => Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;
 
-  public override string ToString() => JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = true });
+  public override string ToString()
+  {
+    return JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = true });
+  }
 }

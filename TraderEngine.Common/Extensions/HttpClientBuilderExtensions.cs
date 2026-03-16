@@ -15,10 +15,7 @@ public static class HttpClientBuilderExtensions
         PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
       })
       .SetHandlerLifetime(Timeout.InfiniteTimeSpan)
-      .ConfigureHttpClient(httpClient =>
-      {
-        httpClient.Timeout = TimeSpan.FromSeconds(299);
-      });
+      .ConfigureHttpClient(httpClient => httpClient.Timeout = TimeSpan.FromSeconds(299));
 
     return clientBuilder;
   }

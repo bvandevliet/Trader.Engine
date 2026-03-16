@@ -33,19 +33,13 @@ public class Balance
   /// <summary>
   /// Amount of quote currency available.
   /// </summary>
-  public decimal AmountQuoteAvailable
-  {
-    get => _amountQuoteAvailable ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
-  }
+  public decimal AmountQuoteAvailable => _amountQuoteAvailable ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
 
   private decimal? _amountQuoteTotal;
   /// <summary>
   /// Total value of portfolio in quote currency.
   /// </summary>
-  public decimal AmountQuoteTotal
-  {
-    get => _amountQuoteTotal ??= Allocations.Sum(alloc => alloc.AmountQuote);
-  }
+  public decimal AmountQuoteTotal => _amountQuoteTotal ??= Allocations.Sum(alloc => alloc.AmountQuote);
 
   /// <summary>
   /// Collection of <see cref="Allocation"/> instances and total quote amount values.
@@ -63,8 +57,10 @@ public class Balance
   /// </summary>
   /// <param name="baseSymbol">The asset to find allocation of.</param>
   /// <returns></returns>
-  public Allocation? GetAllocation(string baseSymbol) =>
-    _allocations.Find(alloc => alloc.Market.BaseSymbol.Equals(baseSymbol));
+  public Allocation? GetAllocation(string baseSymbol)
+  {
+    return _allocations.Find(alloc => alloc.Market.BaseSymbol.Equals(baseSymbol));
+  }
 
   /// <summary>
   /// Add <paramref name="allocation"/> to the <see cref="Allocations"/> collection.

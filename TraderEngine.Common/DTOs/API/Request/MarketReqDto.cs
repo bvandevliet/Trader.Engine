@@ -34,16 +34,35 @@ public class MarketReqDto : IEquatable<MarketReqDto>
     BaseSymbol = baseSymbol;
   }
 
-  public override string ToString() => $"{BaseSymbol}-{QuoteSymbol}";
+  public override string ToString()
+  {
+    return $"{BaseSymbol}-{QuoteSymbol}";
+  }
 
-  public override int GetHashCode() => ToString().GetHashCode();
+  public override int GetHashCode()
+  {
+    return ToString().GetHashCode();
+  }
 
-  public bool Equals(MarketReqDto? obj) => obj is not null
+  public bool Equals(MarketReqDto? obj)
+  {
+    return obj is not null
     && QuoteSymbol.Equals(obj.QuoteSymbol, StringComparison.OrdinalIgnoreCase)
     && BaseSymbol.Equals(obj.BaseSymbol, StringComparison.OrdinalIgnoreCase);
+  }
 
-  public override bool Equals(object? obj) => Equals(obj as MarketReqDto);
+  public override bool Equals(object? obj)
+  {
+    return Equals(obj as MarketReqDto);
+  }
 
-  public static bool operator ==(MarketReqDto? a, MarketReqDto? b) => a?.Equals(b) is true;
-  public static bool operator !=(MarketReqDto? a, MarketReqDto? b) => a?.Equals(b) is not true;
+  public static bool operator ==(MarketReqDto? a, MarketReqDto? b)
+  {
+    return a?.Equals(b) is true;
+  }
+
+  public static bool operator !=(MarketReqDto? a, MarketReqDto? b)
+  {
+    return a?.Equals(b) is not true;
+  }
 }

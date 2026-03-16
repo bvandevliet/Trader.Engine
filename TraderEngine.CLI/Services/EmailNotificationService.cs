@@ -121,7 +121,7 @@ td+td {
       $"<tr>" +
       $"<td>{alloc.Market.BaseSymbol}</td>" +
       $"<td style=\"text-align:right;\">{alloc.AmountQuote.Round(2)} {alloc.Market.QuoteSymbol}</td>" +
-      $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : (alloc.AmountQuote / newAmountQuoteTotal) * 100).Round(2)} %</td>" +
+      $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : alloc.AmountQuote / newAmountQuoteTotal * 100).Round(2)} %</td>" +
       $"</tr>")) +
     $"</table>" +
     $"<p>This email was automatically generated. Happy trading!<br>" +

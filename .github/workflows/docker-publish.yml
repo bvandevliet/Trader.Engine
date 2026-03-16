@@ -45,15 +45,15 @@ jobs:
           - TraderEngine.API
           - TraderEngine.CLI
     with:
-      CR_REGISTRY: ${{ vars.CR_REGISTRY }}/${{ github.repository_owner }}
       CSPROJ_NAME: ${{ matrix.project }}
-      IMAGE_NAME: ${{ vars.CR_REGISTRY }}/${{ matrix.project }}
+      DOTNET_VERSION: 10
+      IMAGE_NAME: ${{ vars.CR_REGISTRY }}/bvandevliet/${{ matrix.project }}
       majorMinorPatch: ${{ needs.gitversion.outputs.majorMinorPatch }}
       preReleaseLabel: ${{ needs.gitversion.outputs.preReleaseLabel }}
       semVer: ${{ needs.gitversion.outputs.semVer }}
       assemblySemVer: ${{ needs.gitversion.outputs.assemblySemVer }}
       assemblySemFileVer: ${{ needs.gitversion.outputs.assemblySemFileVer }}
-      DOTNET_VERSION: 10
+      CR_REGISTRY: ${{ vars.CR_REGISTRY }}
     secrets:
       CR_USERNAME: ${{ secrets.CR_USERNAME }}
       CR_PASSWORD: ${{ secrets.CR_PASSWORD }}

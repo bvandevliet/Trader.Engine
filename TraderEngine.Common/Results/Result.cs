@@ -8,16 +8,28 @@ public class Result<TSuccess>(TSuccess? value, string[]? messages)
 
   public string Summary => string.Join("; ", Messages);
 
-  public static Result<TSuccess> Success(TSuccess value, string[]? messages = null) => new(value, messages);
+  public static Result<TSuccess> Success(TSuccess value, string[]? messages = null)
+  {
+    return new(value, messages);
+  }
 
-  public static Result<TSuccess> Failure(TSuccess? value, string[]? messages = null) => new(value, messages);
+  public static Result<TSuccess> Failure(TSuccess? value, string[]? messages = null)
+  {
+    return new(value, messages);
+  }
 }
 
 public class Result<TSuccess, TErrCode>(TSuccess? value, TErrCode errorCode, string[]? messages) : Result<TSuccess>(value, messages) where TErrCode : Enum
 {
   public TErrCode ErrorCode { get; } = errorCode;
 
-  public new static Result<TSuccess, TErrCode> Success(TSuccess value, string[]? messages = null) => new(value, default!, messages);
+  public static new Result<TSuccess, TErrCode> Success(TSuccess value, string[]? messages = null)
+  {
+    return new(value, default!, messages);
+  }
 
-  public static Result<TSuccess, TErrCode> Failure(TSuccess? value, TErrCode errorCode, string[]? messages = null) => new(value, errorCode, messages);
+  public static Result<TSuccess, TErrCode> Failure(TSuccess? value, TErrCode errorCode, string[]? messages = null)
+  {
+    return new(value, errorCode, messages);
+  }
 }

@@ -93,18 +93,15 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoreTagsRegex.IsMatch(tag)))
 
       // Apply weighting and dampening.
-      .Select(marketCap =>
+      .Select(marketCap => new
       {
-        return new
+        MarketCap = marketCap,
+        AbsAllocDto = new AbsAllocReqDto()
         {
-          MarketCap = marketCap,
-          AbsAllocDto = new AbsAllocReqDto()
-          {
-            Market = marketCap.MarketCapDataDto.Market,
-            AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
-          },
-          OrderByAbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
-        };
+          Market = marketCap.MarketCapDataDto.Market,
+          AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+        },
+        OrderByAbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
       })
 
       // Sort by weighted Market Cap EMA value.
