@@ -47,13 +47,13 @@ jobs:
     with:
       CSPROJ_NAME: ${{ matrix.project }}
       DOTNET_VERSION: 10
-      IMAGE_NAME: ${{ vars.CR_REGISTRY }}/bvandevliet/${{ matrix.project }}
       majorMinorPatch: ${{ needs.gitversion.outputs.majorMinorPatch }}
       preReleaseLabel: ${{ needs.gitversion.outputs.preReleaseLabel }}
       semVer: ${{ needs.gitversion.outputs.semVer }}
       assemblySemVer: ${{ needs.gitversion.outputs.assemblySemVer }}
       assemblySemFileVer: ${{ needs.gitversion.outputs.assemblySemFileVer }}
-      CR_REGISTRY: ${{ vars.CR_REGISTRY }}
+      CR_REGISTRY: ${{ vars.CR_REGISTRY }}/bvandevliet
+      IMAGE_NAME: ${{ vars.CR_REGISTRY }}/${{ matrix.project }}
     secrets:
       CR_USERNAME: ${{ secrets.CR_USERNAME }}
       CR_PASSWORD: ${{ secrets.CR_PASSWORD }}
