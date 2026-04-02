@@ -1,19 +1,12 @@
-using System.Reflection;
-using AutoMapper;
+using TraderEngine.API.Mappers;
 
 namespace TraderEngine.API.Tests.Helpers;
 
-internal class MapperHelper
+internal static class MapperHelper
 {
-  public static IMapper CreateMapper()
+  public static IApiMapper CreateApiMapper()
   {
-    IEnumerable<Assembly> assembliesToScan = AppDomain.CurrentDomain.GetAssemblies();
-
-    assembliesToScan = new HashSet<Assembly>(assembliesToScan.Where((a) => !a.IsDynamic && a != typeof(Mapper).Assembly));
-
-    var config = new MapperConfiguration(cfg => cfg.AddMaps(assembliesToScan));
-
-    return config.CreateMapper();
+    return new ApiMapper();
   }
 }
 

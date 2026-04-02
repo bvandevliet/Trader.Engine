@@ -1,10 +1,10 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Mappers;
 
 namespace TraderEngine.API.Controllers;
 
@@ -15,14 +15,14 @@ public class AllocationsController : ControllerBase
   private readonly string _quoteSymbol = "EUR";
 
   private readonly ILogger<AllocationsController> _logger;
-  private readonly IMapper _mapper;
+  private readonly ICommonMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
   private readonly Func<IMarketCapService> _marketCapService;
 
   public AllocationsController(
     ILogger<AllocationsController> logger,
     IServiceProvider serviceProvider,
-    IMapper mapper,
+    ICommonMapper mapper,
     ExchangeFactory exchangeFactory)
   {
     _logger = logger;
@@ -49,7 +49,7 @@ public class AllocationsController : ControllerBase
     return balanceResult.ErrorCode switch
     {
       ExchangeErrCodeEnum.AuthenticationError => Unauthorized(balanceResult.Summary),
-      ExchangeErrCodeEnum.Ok => Ok(_mapper.Map<BalanceDto>(balanceResult.Value)),
+      ExchangeErrCodeEnum.Ok => Ok(_mapper.MapBalance(balanceResult.Value!)),
       _ => StatusCode(500, balanceResult.Summary)
     };
   }

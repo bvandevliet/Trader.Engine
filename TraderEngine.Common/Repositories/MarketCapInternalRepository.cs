@@ -1,4 +1,3 @@
-using AutoMapper;
 using Dapper;
 using Microsoft.Extensions.Logging;
 using MySqlConnector;
@@ -7,18 +6,19 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.DTOs.Database;
 using TraderEngine.Common.Factories;
+using TraderEngine.Common.Mappers;
 
 namespace TraderEngine.Common.Repositories;
 
 public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInternalRepository
 {
   private readonly ILogger<MarketCapInternalRepository> _logger;
-  private readonly IMapper _mapper;
+  private readonly ICommonMapper _mapper;
   private readonly INamedTypeFactory<MySqlConnection> _sqlConnectionFactory;
 
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
-    IMapper mapper,
+    ICommonMapper mapper,
     INamedTypeFactory<MySqlConnection> sqlConnectionFactory)
   {
     _logger = logger;
@@ -134,7 +134,7 @@ WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol;";
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
 VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
-      var marketCapData = _mapper.Map<MarketCapDataDb>(marketCap);
+      var marketCapData = _mapper.MarketCapToDb(marketCap);
 
       rowsAffected += await sqlConn.ExecuteAsync(sqlInsert, marketCapData);
 
@@ -196,7 +196,7 @@ ORDER BY Updated DESC;";
         Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
       });
 
-      return _mapper.Map<IEnumerable<MarketCapDataDto>>(listHistorical);
+      return _mapper.MarketCapsFromDb(listHistorical);
     }
     finally
     {
@@ -243,7 +243,7 @@ ORDER BY Updated DESC;";
       {
         var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
 
-        return _mapper.Map<IEnumerable<MarketCapDataDto>>(assetGroup.AsEnumerable());
+        return _mapper.MarketCapsFromDb(assetGroup.AsEnumerable());
       });
     }
     finally

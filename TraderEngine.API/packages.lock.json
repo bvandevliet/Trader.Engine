@@ -8,10 +8,11 @@
         "resolved": "1.1.6",
         "contentHash": "iksQmOt2vCnFupLXxEY/o9PJabQj9N1wzWIMR07QqoY/QWctbKS8KLRHXCvQINH+EJtez5de+Z8+UeyndNhKsw=="
       },
-      "AutoMapper": {
-        "type": "Transitive",
-        "resolved": "14.0.0",
-        "contentHash": "OC+1neAPM4oCCqQj3g2GJ2shziNNhOkxmNB9cVS8jtx4JbgmRzLcUOxB9Tsz6cVPHugdkHgCaCrTjjSI0Z5sCQ=="
+      "Riok.Mapperly": {
+        "type": "Direct",
+        "requested": "[4.3.1, )",
+        "resolved": "4.3.1",
+        "contentHash": "oSE+OVLHyiojrws0QVbQaAT2YKsYbyHqJXPdV7EhGseR/dYgeWS2x1T5qY5I4E+RJkJqMSG+FyZOq4SljWgJWQ=="
       },
       "Dapper": {
         "type": "Transitive",
@@ -58,11 +59,11 @@
       "traderengine.common": {
         "type": "Project",
         "dependencies": {
-          "AutoMapper": "[14.0.0, )",
           "Dapper": "[2.1.72, )",
           "Microsoft.Extensions.Http.Polly": "[10.0.5, )",
           "MySqlConnector": "[2.5.0, )",
           "Polly.Contrib.WaitAndRetry": "[1.1.1, )",
+          "Riok.Mapperly": "[4.3.1, )",
           "Skender.Stock.Indicators": "[2.7.1, )"
         }
       }

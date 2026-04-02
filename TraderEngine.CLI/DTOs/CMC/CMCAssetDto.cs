@@ -1,6 +1,6 @@
 namespace TraderEngine.CLI.DTOs.CMC;
 
-internal class CMCAssetDto
+public class CMCAssetDto
 {
   /// <summary>
   /// The name of this cryptocurrency.

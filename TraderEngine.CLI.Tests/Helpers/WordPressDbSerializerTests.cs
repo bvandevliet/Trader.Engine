@@ -1,7 +1,7 @@
-using AutoMapper;
 using FluentAssertions;
 using TraderEngine.CLI.DTOs.WordPress;
 using TraderEngine.CLI.Helpers;
+using TraderEngine.CLI.Mappers;
 using TraderEngine.Common.DTOs.API.Request;
 
 namespace TraderEngine.CLI.Tests.Helpers;
@@ -62,11 +62,11 @@ public class WordPressDbSerializerTests
     "s:28:\"current_alloc_weighting_mult\";d:1.05;" +
     "s:14:\"last_rebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
 
-  private readonly IMapper _mapper;
+  private readonly ICliMapper _mapper;
 
   public WordPressDbSerializerTests()
   {
-    _mapper = MapperHelper.CreateMapper();
+    _mapper = MapperHelper.CreateCliMapper();
   }
 
   [TestMethod()]
@@ -167,7 +167,7 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void SerializeCustomTypesTest()
   {
-    var wpDto = _mapper.Map<WordPressConfigDto>(_configDto);
+    var wpDto = _mapper.MapConfigReverse(_configDto);
 
     wpDto.Should().BeEquivalentTo(_wpConfigDto);
 
@@ -183,11 +183,11 @@ public class WordPressDbSerializerTests
 
     wpDto1.Should().BeEquivalentTo(_wpConfigDto);
 
-    var configDto = _mapper.Map<ConfigReqDto>(wpDto1);
+    var configDto = _mapper.MapConfig(wpDto1);
 
     configDto.Should().BeEquivalentTo(_configDto);
 
-    var wpDto2 = _mapper.Map<WordPressConfigDto>(configDto);
+    var wpDto2 = _mapper.MapConfigReverse(configDto);
 
     wpDto2.Should().BeEquivalentTo(_wpConfigDto);
   }

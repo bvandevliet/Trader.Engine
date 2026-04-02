@@ -3,10 +3,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
-using AutoMapper;
 using Microsoft.Net.Http.Headers;
-using TraderEngine.API.DTOs.Bitvavo.Request;
 using TraderEngine.API.DTOs.Bitvavo.Response;
+using TraderEngine.API.Mappers;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
@@ -19,7 +18,7 @@ namespace TraderEngine.API.Exchanges;
 public class BitvavoExchange : IExchange
 {
   private readonly ILogger<BitvavoExchange> _logger;
-  private readonly IMapper _mapper;
+  private readonly IApiMapper _mapper;
   private readonly HttpClient _httpClient;
 
   public ILogger<IExchange> Logger => _logger;
@@ -40,7 +39,7 @@ public class BitvavoExchange : IExchange
 
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
-    IMapper mapper,
+    IApiMapper mapper,
     HttpClient httpClient)
   {
     _logger = logger;
@@ -326,7 +325,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.Map<MarketDataDto>(result);
+    return _mapper.MapMarketData(result);
   }
 
   public async Task<AssetDataDto?> GetAsset(string baseSymbol)
@@ -358,7 +357,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.Map<AssetDataDto>(result);
+    return _mapper.MapAssetData(result);
   }
 
   public async Task<decimal> GetPrice(MarketReqDto market)
@@ -395,7 +394,7 @@ public class BitvavoExchange : IExchange
 
   public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API")
   {
-    var newOrderDto = _mapper.Map<BitvavoOrderReqDto>(order);
+    var newOrderDto = _mapper.MapOrderReq(order);
 
     newOrderDto.DisableMarketProtection = true;
     newOrderDto.ResponseRequired = false;
@@ -458,7 +457,7 @@ public class BitvavoExchange : IExchange
         throw;
       }
 
-      var executedOrder = _mapper.Map<OrderDto>(result);
+      var executedOrder = _mapper.MapOrder(result);
 
       return Result<OrderDto, ExchangeErrCodeEnum>.Success(executedOrder);
     }
@@ -499,7 +498,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.Map<OrderDto>(result);
+    return _mapper.MapOrder(result);
   }
 
   public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API")
@@ -540,7 +539,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.Map<IEnumerable<OrderDto>>(result);
+    return _mapper.MapOrders(result);
   }
 
   public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null, string source = "API")
