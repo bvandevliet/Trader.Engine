@@ -1,10 +1,12 @@
 using MySqlConnector;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
+using TraderEngine.API.Mappers;
 using TraderEngine.API.Services;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
+using TraderEngine.Common.Mappers;
 using TraderEngine.Common.Repositories;
 
 namespace TraderEngine.API;
@@ -31,7 +33,8 @@ public class Program
     builder.Services.AddRouting(options => options.LowercaseUrls = true);
     builder.Services.AddControllers();
 
-    builder.Services.AddAutoMapper(AppDomain.CurrentDomain.GetAssemblies());
+    builder.Services.AddSingleton<ICommonMapper, CommonMapper>();
+    builder.Services.AddSingleton<IApiMapper, ApiMapper>();
 
     builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
 

@@ -14,7 +14,7 @@ public class BitvavoExchangeTests
   {
     var loggerMock = new Mock<ILogger<BitvavoExchange>>();
 
-    var mapper = MapperHelper.CreateMapper();
+    var mapper = MapperHelper.CreateApiMapper();
 
     var httpClient = new HttpClient
     {

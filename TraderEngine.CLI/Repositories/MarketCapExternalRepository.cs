@@ -1,6 +1,6 @@
 using System.Net.Http.Json;
-using AutoMapper;
 using TraderEngine.CLI.DTOs.CMC;
+using TraderEngine.CLI.Mappers;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 
@@ -8,11 +8,11 @@ namespace TraderEngine.CLI.Repositories;
 
 internal class MarketCapExternalRepository : IMarketCapExternalRepository
 {
-  private readonly IMapper _mapper;
+  private readonly ICliMapper _mapper;
   private readonly HttpClient _httpClient;
 
   public MarketCapExternalRepository(
-    IMapper mapper,
+    ICliMapper mapper,
     HttpClient httpClient)
   {
     _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
@@ -29,6 +29,6 @@ internal class MarketCapExternalRepository : IMarketCapExternalRepository
     var listLatest = await _httpClient.GetFromJsonAsync<CMCListLatestDto>(
       $"cryptocurrency/listings/latest?sort=market_cap&limit=150&convert={quoteSymbol}");
 
-    return _mapper.Map<IEnumerable<MarketCapDataDto>>(listLatest?.Data);
+    return _mapper.MapCMCAssets(listLatest?.Data ?? []);
   }
 }

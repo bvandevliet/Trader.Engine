@@ -1,4 +1,3 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
@@ -7,6 +6,7 @@ using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
+using TraderEngine.Common.Mappers;
 
 namespace TraderEngine.API.Controllers;
 
@@ -17,14 +17,14 @@ public class RebalanceController : ControllerBase
   private readonly string _quoteSymbol = "EUR";
 
   private readonly ILogger<RebalanceController> _logger;
-  private readonly IMapper _mapper;
+  private readonly ICommonMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
   private readonly Func<IMarketCapService> _marketCapService;
 
   public RebalanceController(
     ILogger<RebalanceController> logger,
     IServiceProvider serviceProvider,
-    IMapper mapper,
+    ICommonMapper mapper,
     ExchangeFactory exchangeFactory)
   {
     _logger = logger;
@@ -70,7 +70,7 @@ public class RebalanceController : ControllerBase
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
-    var curBalanceDto = _mapper.Map<BalanceDto>(balance);
+    var curBalanceDto = _mapper.MapBalance(balance);
 
     // Create mock exchange.
     var simExchange = new SimExchange(exchange, balance);
@@ -83,7 +83,7 @@ public class RebalanceController : ControllerBase
 
     // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance();
-    var newBalanceDto = _mapper.Map<BalanceDto>(balance);
+    var newBalanceDto = _mapper.MapBalance(balance);
 
     return Ok(new SimulationDto()
     {

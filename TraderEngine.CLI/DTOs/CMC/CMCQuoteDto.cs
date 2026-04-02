@@ -1,6 +1,6 @@
 namespace TraderEngine.CLI.DTOs.CMC;
 
-internal class CMCQuoteDto
+public class CMCQuoteDto
 {
   /// <summary>
   /// Price in the specified currency for this historical.

@@ -1,10 +1,10 @@
-using AutoMapper;
 using Dapper;
 using Microsoft.Extensions.Options;
 using MySqlConnector;
 using TraderEngine.CLI.AppSettings;
 using TraderEngine.CLI.DTOs.WordPress;
 using TraderEngine.CLI.Helpers;
+using TraderEngine.CLI.Mappers;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Factories;
 
@@ -13,13 +13,13 @@ namespace TraderEngine.CLI.Repositories;
 public class WordPressConfigRepository : IConfigRepository
 {
   private readonly ILogger<WordPressConfigRepository> _logger;
-  private readonly IMapper _mapper;
+  private readonly ICliMapper _mapper;
   private readonly INamedTypeFactory<MySqlConnection> _sqlConnectionFactory;
   private readonly CmsDbSettings _cmsDbSettings;
 
   public WordPressConfigRepository(
     ILogger<WordPressConfigRepository> logger,
-    IMapper mapper,
+    ICliMapper mapper,
     INamedTypeFactory<MySqlConnection> sqlConnectionFactory,
     IOptions<CmsDbSettings> cmsDbOptions)
   {
@@ -84,7 +84,7 @@ LIMIT 1;";
 
       var wpConfig = WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig);
 
-      return _mapper.Map<ConfigReqDto>(wpConfig);
+      return _mapper.MapConfig(wpConfig!);
     }
     finally
     {
@@ -109,7 +109,7 @@ WHERE meta_key = 'trader_configuration';";
 
       return dbConfigs
         .Select(dbConfig => new KeyValuePair<int, ConfigReqDto>(dbConfig.user_id,
-        _mapper.Map<ConfigReqDto>(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.meta_value))));
+        _mapper.MapConfig(WordPressDbSerializer.Deserialize<WordPressConfigDto>(dbConfig.meta_value)!)));
     }
     finally
     {
@@ -121,7 +121,7 @@ WHERE meta_key = 'trader_configuration';";
   {
     _logger.LogTrace("Saving config for user '{UserId}' ..", userId);
 
-    var wpConfig = _mapper.Map<WordPressConfigDto>(configReqDto);
+    var wpConfig = _mapper.MapConfigReverse(configReqDto);
 
     var dbConfig = WordPressDbSerializer.Serialize(wpConfig);
 
