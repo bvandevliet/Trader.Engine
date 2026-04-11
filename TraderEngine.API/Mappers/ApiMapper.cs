@@ -96,10 +96,10 @@ public partial class ApiMapper : IApiMapper
     return Enum.TryParse<MarketStatus>(value, ignoreCase: true, out var result) ? result : default;
   }
 
-  // string → decimal  (invariant culture; used for non-nullable fields)
-  private static decimal ParseDecimal(string value)
+  // string? → decimal  (invariant culture; returns 0 for null, matching AutoMapper default behaviour)
+  private static decimal ParseDecimal(string? value)
   {
-    return decimal.Parse(value, CultureInfo.InvariantCulture);
+    return value is null ? 0m : decimal.Parse(value, CultureInfo.InvariantCulture);
   }
 
   // decimal? → string?  (invariant culture)

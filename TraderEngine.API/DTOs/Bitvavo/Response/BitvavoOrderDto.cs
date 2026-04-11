@@ -50,12 +50,12 @@ public class BitvavoOrderDto
   /// <summary>
   /// Amount in base currency filled.
   /// </summary>
-  public string FilledAmount { get; set; } = null!;
+  public string? FilledAmount { get; set; }
 
   /// <summary>
   /// Amount in quote currency filled.
   /// </summary>
-  public string FilledAmountQuote { get; set; } = null!;
+  public string? FilledAmountQuote { get; set; }
 
   /// <summary>
   /// Only for orders with <see cref="Amount"/> supplied.
@@ -72,7 +72,7 @@ public class BitvavoOrderDto
   /// <summary>
   /// Amount in quote currency paid for fee.
   /// </summary>
-  public string FeePaid { get; set; } = null!;
+  public string? FeePaid { get; set; }
 
   /// <summary>
   /// Timestamp this order was created.
