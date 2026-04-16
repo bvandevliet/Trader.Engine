@@ -19,41 +19,118 @@ on:
       - "docs/**"
       - ".github/**"
 
-permissions:
-  contents: write
-  packages: read
-  actions: read
-  security-events: write
+env:
+  IS_MAIN: ${{ github.event.repository.default_branch == github.ref_name }}
+  DOTNET_VERSION: 10
 
 jobs:
-  analysis:
-    name: Run code analysis and tests
-    uses: bvandevliet/Actions.Shared/.github/workflows/dotnet-analysis.yml@master
-    with:
-      DOTNET_VERSION: 10
   gitversion:
-    needs: [analysis]
     name: Execute GitVersion and create tag
-    uses: bvandevliet/Actions.Shared/.github/workflows/git-version.yml@master
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      majorMinorPatch: ${{ steps.gitversion.outputs.majorMinorPatch }}
+      preReleaseLabel: ${{ steps.gitversion.outputs.preReleaseLabel }}
+      semVer: ${{ steps.gitversion.outputs.semVer }}
+      assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
+      assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
+    steps:
+      - name: Unshallow checkout
+        uses: actions/checkout@main
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Setup dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 8
+      - name: Setup GitVersion
+        uses: gittools/actions/gitversion/setup@v4
+        with:
+          versionSpec: "6.x.x"
+      - name: Execute GitVersion
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v4
+        with:
+          configFilePath: .github/GitVersion.yml
+      - name: Create Git tag
+        if: github.event.repository.default_branch == github.ref_name
+        continue-on-error: true
+        run: |
+          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
+          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
   build-push:
-    needs: [analysis, gitversion]
+    needs: [gitversion]
     name: Build and push
-    uses: bvandevliet/Actions.Shared/.github/workflows/docker-build-push.yml@master
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
     strategy:
       matrix:
         project:
           - TraderEngine.API
           - TraderEngine.CLI
-    with:
-      CSPROJ_NAME: ${{ matrix.project }}
-      DOTNET_VERSION: 10
-      majorMinorPatch: ${{ needs.gitversion.outputs.majorMinorPatch }}
-      preReleaseLabel: ${{ needs.gitversion.outputs.preReleaseLabel }}
-      semVer: ${{ needs.gitversion.outputs.semVer }}
-      assemblySemVer: ${{ needs.gitversion.outputs.assemblySemVer }}
-      assemblySemFileVer: ${{ needs.gitversion.outputs.assemblySemFileVer }}
-      CR_REGISTRY: ${{ vars.CR_REGISTRY }}/bvandevliet
-      IMAGE_NAME: ${{ vars.CR_REGISTRY }}/${{ matrix.project }}
-    secrets:
-      CR_USERNAME: ${{ secrets.CR_USERNAME }}
-      CR_PASSWORD: ${{ secrets.CR_PASSWORD }}
+    env:
+      DOCKER_HOST: tcp://git.dind:2375
+    steps:
+      - name: Checkout
+        uses: actions/checkout@main
+        with:
+          ref: ${{ github.sha }}
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: |
+            ${{ vars.CR_REGISTRY }}/${{ matrix.project }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ needs.gitversion.outputs.semVer }}
+            type=semver,enable=${{ env.IS_MAIN == 'true' }},pattern={{major}}.{{minor}},value=${{ needs.gitversion.outputs.semVer }}
+            type=semver,enable=${{ env.IS_MAIN == 'true' }},pattern={{major}},value=${{ needs.gitversion.outputs.semVer }}
+            type=ref,event=branch
+            type=raw,enable=${{ env.IS_MAIN == 'false' }},value=${{ needs.gitversion.outputs.preReleaseLabel }}
+            type=raw,enable=${{ env.IS_MAIN == 'true' }},value=nightly
+            type=schedule,pattern=nightly
+      - name: Setup dotnet
+        if: steps.meta.outputs.tags != ''
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10
+      - name: Dotnet publish
+        if: steps.meta.outputs.tags != ''
+        run: |
+          dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" \
+            -c Release /p:UseAppHost=false \
+            /p:Version=${{ needs.gitversion.outputs.semVer }} \
+            /p:AssemblyVersion=${{ needs.gitversion.outputs.assemblySemVer }} \
+            /p:FileVersion=${{ needs.gitversion.outputs.assemblySemFileVer }}
+      - name: Install Docker CLI
+        if: steps.meta.outputs.tags != ''
+        run: apt-get update -qq && apt-get install -y -qq docker.io
+      - name: Set up QEMU
+        if: steps.meta.outputs.tags != ''
+        uses: docker/setup-qemu-action@v4
+      - name: Set up Buildx
+        id: buildx
+        if: steps.meta.outputs.tags != ''
+        uses: docker/setup-buildx-action@v4
+        with:
+          platforms: linux/amd64,linux/arm64
+          driver-opts: network=host
+      - name: Login to container registry
+        if: steps.meta.outputs.tags != ''
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ vars.CR_REGISTRY }}/bvandevliet
+          username: ${{ secrets.CR_USERNAME }}
+          password: ${{ secrets.CR_PASSWORD }}
+      - name: Build and publish
+        if: steps.meta.outputs.tags != ''
+        uses: docker/build-push-action@v7
+        with:
+          context: ./${{ matrix.project }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          platforms: ${{ steps.buildx.outputs.platforms }}
+          push: true
