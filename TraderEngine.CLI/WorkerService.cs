@@ -192,7 +192,7 @@ public class WorkerService
               // Send simulation failure notification.
               await _emailNotification.SendAutomationFailed(
                 userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
-                simulatedResult.Value?.Orders, simulatedResult.Summary, false);
+                simulatedResult.Value?.Orders, simulatedResult.Summary, true);
 
               return;
             }
@@ -329,7 +329,11 @@ public class WorkerService
         simulated.Orders,
         alloc => alloc.Market,
         order => order.Market,
-        (alloc, orders) => new { Allocation = alloc, Orders = orders });
+        (alloc, orders) => new
+        {
+          Allocation = alloc,
+          Orders = orders
+        });
 
     // Return true if about to fully sell a non-contiguous larger allocation, starting from the smallest.
     var potentialGapFound = false;
