@@ -192,7 +192,7 @@ public class WorkerService
               // Send simulation failure notification.
               await _emailNotification.SendAutomationFailed(
                 userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
-                simulatedResult.Value?.Orders, simulatedResult.Summary, false);
+                simulatedResult.Value?.Orders, new { }, true);
 
               return;
             }
@@ -329,7 +329,11 @@ public class WorkerService
         simulated.Orders,
         alloc => alloc.Market,
         order => order.Market,
-        (alloc, orders) => new { Allocation = alloc, Orders = orders });
+        (alloc, orders) => new
+        {
+          Allocation = alloc,
+          Orders = orders
+        });
 
     // Return true if about to fully sell a non-contiguous larger allocation, starting from the smallest.
     var potentialGapFound = false;
@@ -338,7 +342,9 @@ public class WorkerService
       .Any(x =>
       {
         if (
-          // We are only interested in allocations that are greater than the minimum quote diff,
+          // We are not looking at quote allocation,
+          x.Allocation.Market.BaseSymbol != x.Allocation.Market.QuoteSymbol &&
+          // and are only interested in allocations that are greater than the minimum quote diff,
           x.Allocation.AmountQuote >= configReqDto.MinimumDiffQuote &&
           // and are not being sold as a whole.
           !x.Orders.Any(order => order.Side == OrderSide.Sell && order.Amount == x.Allocation.Amount))
