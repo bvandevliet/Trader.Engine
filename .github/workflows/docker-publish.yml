@@ -24,44 +24,7 @@ env:
   DOTNET_VERSION: 10
 
 jobs:
-  gitversion:
-    name: Execute GitVersion and create tag
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    outputs:
-      majorMinorPatch: ${{ steps.gitversion.outputs.majorMinorPatch }}
-      preReleaseLabel: ${{ steps.gitversion.outputs.preReleaseLabel }}
-      semVer: ${{ steps.gitversion.outputs.semVer }}
-      assemblySemVer: ${{ steps.gitversion.outputs.assemblySemVer }}
-      assemblySemFileVer: ${{ steps.gitversion.outputs.assemblySemFileVer }}
-    steps:
-      - name: Unshallow checkout
-        uses: actions/checkout@main
-        with:
-          ref: ${{ github.sha }}
-          fetch-depth: 0
-      - name: Setup dotnet
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: 8
-      - name: Setup GitVersion
-        uses: gittools/actions/gitversion/setup@v4
-        with:
-          versionSpec: "6.x.x"
-      - name: Execute GitVersion
-        id: gitversion
-        uses: gittools/actions/gitversion/execute@v4
-        with:
-          configFilePath: .github/GitVersion.yml
-      - name: Create Git tag
-        if: github.event.repository.default_branch == github.ref_name
-        continue-on-error: true
-        run: |
-          git tag v${{ steps.gitversion.outputs.majorMinorPatch }}
-          git push origin v${{ steps.gitversion.outputs.majorMinorPatch }}
   build-push:
-    needs: [gitversion]
     name: Build and push
     runs-on: ubuntu-latest
     permissions:
@@ -69,7 +32,7 @@ jobs:
     strategy:
       matrix:
         project:
-          - TraderEngine.API
+          # - TraderEngine.API
           - TraderEngine.CLI
     env:
       DOCKER_HOST: tcp://git.dind:2375
@@ -85,26 +48,17 @@ jobs:
           images: |
             ${{ vars.CR_REGISTRY }}/${{ matrix.project }}
           tags: |
-            type=semver,pattern={{version}},value=${{ needs.gitversion.outputs.semVer }}
-            type=semver,enable=${{ env.IS_MAIN == 'true' }},pattern={{major}}.{{minor}},value=${{ needs.gitversion.outputs.semVer }}
-            type=semver,enable=${{ env.IS_MAIN == 'true' }},pattern={{major}},value=${{ needs.gitversion.outputs.semVer }}
             type=ref,event=branch
-            type=raw,enable=${{ env.IS_MAIN == 'false' }},value=${{ needs.gitversion.outputs.preReleaseLabel }}
-            type=raw,enable=${{ env.IS_MAIN == 'true' }},value=nightly
-            type=schedule,pattern=nightly
+            type=raw,enable=${{ env.IS_MAIN == 'false' }},value=alpha
       - name: Setup dotnet
         if: steps.meta.outputs.tags != ''
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: 10
+          dotnet-version: ${{ env.DOTNET_VERSION }}
       - name: Dotnet publish
         if: steps.meta.outputs.tags != ''
         run: |
-          dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" \
-            -c Release /p:UseAppHost=false \
-            /p:Version=${{ needs.gitversion.outputs.semVer }} \
-            /p:AssemblyVersion=${{ needs.gitversion.outputs.assemblySemVer }} \
-            /p:FileVersion=${{ needs.gitversion.outputs.assemblySemFileVer }}
+          dotnet publish "${{ matrix.project }}/${{ matrix.project }}.csproj" -c Release /p:UseAppHost=false
       - name: Install Docker CLI
         if: steps.meta.outputs.tags != ''
         run: apt-get update -qq && apt-get install -y -qq docker.io

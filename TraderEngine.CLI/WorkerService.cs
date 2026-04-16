@@ -192,7 +192,7 @@ public class WorkerService
               // Send simulation failure notification.
               await _emailNotification.SendAutomationFailed(
                 userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
-                simulatedResult.Value?.Orders, simulatedResult.Summary, true);
+                simulatedResult.Value?.Orders, simulatedResult.Value!, true);
 
               return;
             }
