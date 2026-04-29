@@ -4,11 +4,11 @@
     "net10.0": {
       "MailKit": {
         "type": "Direct",
-        "requested": "[4.15.1, )",
-        "resolved": "4.15.1",
-        "contentHash": "4mLbqTbH3ctd0NlukHjVQbU3ZnNDuCtB6ttNZDLPZLWMA2Dr31rh/eCSTqOwDojUX8zfDOVaxstMgJTE9PwZNA==",
+        "requested": "[4.16.0, )",
+        "resolved": "4.16.0",
+        "contentHash": "trJ82DOpAmo8i1jO1vNE+dGn4mPRyeYfy4swRcAGgMJhPoI1Kohf4OFJJf0+YIj4iUxgxPn8W+ht7e7KiYzSjg==",
         "dependencies": {
-          "MimeKit": "4.15.1"
+          "MimeKit": "4.16.0"
         }
       },
       "Microsoft.Extensions.Hosting": {
@@ -204,23 +204,23 @@
       },
       "Microsoft.Extensions.Http": {
         "type": "Transitive",
-        "resolved": "10.0.6",
-        "contentHash": "FbWxJqgUUQosm/tZEnjbdS2EfE+kBT5C8AQdWJsOtpgAR82gNGdfnYF4ZyHReGa7wpNltBB/GFKWMr9GlVuZbw==",
+        "resolved": "10.0.7",
+        "contentHash": "1wbd+RPhRo3hJKNJhdGEO5ls0LGe55Ho4BUjlFtRUrWxDVVBd7g0Ydq9fbNy86pmvx/j7AGcSPo7YNCo1IRI6Q==",
         "dependencies": {
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.6",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.6",
-          "Microsoft.Extensions.Diagnostics": "10.0.6",
-          "Microsoft.Extensions.Logging": "10.0.6",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.6",
-          "Microsoft.Extensions.Options": "10.0.6"
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.7",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.7",
+          "Microsoft.Extensions.Diagnostics": "10.0.7",
+          "Microsoft.Extensions.Logging": "10.0.7",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.7",
+          "Microsoft.Extensions.Options": "10.0.7"
         }
       },
       "Microsoft.Extensions.Http.Polly": {
         "type": "Transitive",
-        "resolved": "10.0.6",
-        "contentHash": "FffxO3VZVv3JgvyNuUTlM5IAmkhIrbnT07tkbD1IKH20qRUxiFF86Rjas1mIAFFeUu+FDKkALJHEiyiGwUnjzA==",
+        "resolved": "10.0.7",
+        "contentHash": "pcUsPoqMHvOp+QJsLA/Hlg/W+IBnAoUXKEBc7FqMcY0sUez15DOKXtbEo81TvHL9xwjWQcF3ZMayNpcvpI7Bqg==",
         "dependencies": {
-          "Microsoft.Extensions.Http": "10.0.6",
+          "Microsoft.Extensions.Http": "10.0.7",
           "Polly": "7.2.4",
           "Polly.Extensions.Http": "3.0.0"
         }
@@ -332,8 +332,8 @@
       },
       "MimeKit": {
         "type": "Transitive",
-        "resolved": "4.15.1",
-        "contentHash": "cxCcQhD0zhboFoG136jJuJtQjNRDJ+BxBm3f2vWn+53bff/CRo+K1mAkWjsW4Wuyy5O22F40MdMG2nRzQu1cJw==",
+        "resolved": "4.16.0",
+        "contentHash": "X0LFxeM4gPRIhODyY/HYS9b+zRZ7y//v59rFzgS6wLxcPuZThnMtNZHtrr0fjLyRRkg3gqJBtvW36XfUzZ7Djw==",
         "dependencies": {
           "BouncyCastle.Cryptography": "2.6.2",
           "System.Security.Cryptography.Pkcs": "10.0.0"
@@ -386,9 +386,9 @@
         "dependencies": {
           "Dapper": "[2.1.72, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.7, )",
-          "Microsoft.Extensions.Http.Polly": "[10.0.6, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.6, )",
-          "Microsoft.Extensions.Options": "[10.0.6, )",
+          "Microsoft.Extensions.Http.Polly": "[10.0.7, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.7, )",
+          "Microsoft.Extensions.Options": "[10.0.7, )",
           "MySqlConnector": "[2.5.0, )",
           "Polly.Contrib.WaitAndRetry": "[1.1.1, )",
           "Riok.Mapperly": "[4.3.1, )",
