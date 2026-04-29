@@ -32,7 +32,7 @@ jobs:
     strategy:
       matrix:
         project:
-          # - TraderEngine.API
+          - TraderEngine.API
           - TraderEngine.CLI
     env:
       DOCKER_HOST: tcp://git.dind:2375
