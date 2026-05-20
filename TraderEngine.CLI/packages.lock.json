@@ -54,8 +54,8 @@
       },
       "Dapper": {
         "type": "Transitive",
-        "resolved": "2.1.72",
-        "contentHash": "ns4mGqQd9a/MhP8m6w556vVlZIa0/MfUu03zrxjZC/jlr1uVCsUac8bkdB+Fs98Llbd56rRSo1eZH5VVmeGZyw=="
+        "resolved": "2.1.79",
+        "contentHash": "8YijbzgTfmqmQOnVNorYM6K++pxqnW3nJ4aC1sRHzxUA2CcuoJ9gsTem3kgBnPRMc38zZHl4Esb6hAezXIEEuw=="
       },
       "Microsoft.Extensions.Configuration": {
         "type": "Transitive",
@@ -204,23 +204,23 @@
       },
       "Microsoft.Extensions.Http": {
         "type": "Transitive",
-        "resolved": "10.0.7",
-        "contentHash": "1wbd+RPhRo3hJKNJhdGEO5ls0LGe55Ho4BUjlFtRUrWxDVVBd7g0Ydq9fbNy86pmvx/j7AGcSPo7YNCo1IRI6Q==",
+        "resolved": "10.0.8",
+        "contentHash": "/9LU/KWJOrtZJB9ymPjcARDyjp679BvBA/aSncv2Kt84WlSKz767HtxHg8EFsu8n21BMLZi+5XxlkKbLwfn4iA==",
         "dependencies": {
-          "Microsoft.Extensions.Configuration.Abstractions": "10.0.7",
-          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.7",
-          "Microsoft.Extensions.Diagnostics": "10.0.7",
-          "Microsoft.Extensions.Logging": "10.0.7",
-          "Microsoft.Extensions.Logging.Abstractions": "10.0.7",
-          "Microsoft.Extensions.Options": "10.0.7"
+          "Microsoft.Extensions.Configuration.Abstractions": "10.0.8",
+          "Microsoft.Extensions.DependencyInjection.Abstractions": "10.0.8",
+          "Microsoft.Extensions.Diagnostics": "10.0.8",
+          "Microsoft.Extensions.Logging": "10.0.8",
+          "Microsoft.Extensions.Logging.Abstractions": "10.0.8",
+          "Microsoft.Extensions.Options": "10.0.8"
         }
       },
       "Microsoft.Extensions.Http.Polly": {
         "type": "Transitive",
-        "resolved": "10.0.7",
-        "contentHash": "pcUsPoqMHvOp+QJsLA/Hlg/W+IBnAoUXKEBc7FqMcY0sUez15DOKXtbEo81TvHL9xwjWQcF3ZMayNpcvpI7Bqg==",
+        "resolved": "10.0.8",
+        "contentHash": "XXYEV1G6ILrK7F3zwjQxxbYKZba79NUz7cgy1wEjctcxNHI5i8YI5eOCkPhcZ//vvuT8vd+GdNBfPdYDOPCL1A==",
         "dependencies": {
-          "Microsoft.Extensions.Http": "10.0.7",
+          "Microsoft.Extensions.Http": "10.0.8",
           "Polly": "7.2.4",
           "Polly.Extensions.Http": "3.0.0"
         }
@@ -384,11 +384,11 @@
       "traderengine.common": {
         "type": "Project",
         "dependencies": {
-          "Dapper": "[2.1.72, )",
+          "Dapper": "[2.1.79, )",
           "Microsoft.Extensions.Configuration.Abstractions": "[10.0.8, )",
-          "Microsoft.Extensions.Http.Polly": "[10.0.7, )",
-          "Microsoft.Extensions.Logging.Abstractions": "[10.0.7, )",
-          "Microsoft.Extensions.Options": "[10.0.7, )",
+          "Microsoft.Extensions.Http.Polly": "[10.0.8, )",
+          "Microsoft.Extensions.Logging.Abstractions": "[10.0.8, )",
+          "Microsoft.Extensions.Options": "[10.0.8, )",
           "MySqlConnector": "[2.5.0, )",
           "Polly.Contrib.WaitAndRetry": "[1.1.1, )",
           "Riok.Mapperly": "[4.3.1, )",
