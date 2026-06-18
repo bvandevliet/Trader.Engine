@@ -2,8 +2,6 @@ name: Docker publish
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "45 0 * * *"
   push:
     branches:
       - "**"
