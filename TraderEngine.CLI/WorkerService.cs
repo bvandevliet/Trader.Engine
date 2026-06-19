@@ -192,7 +192,7 @@ public class WorkerService
               // Send simulation failure notification.
               await _emailNotification.SendAutomationFailed(
                 userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
-                simulatedResult.Value?.Orders, new { }, true);
+                simulatedResult.Value?.Orders, simulated, true);
 
               return;
             }
@@ -323,38 +323,36 @@ public class WorkerService
 
   public static bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
   {
-    // Correlate allocations with simulated orders.
-    var allocOrders = simulated.CurBalance.Allocations
-      .GroupJoin(
-        simulated.Orders,
-        alloc => alloc.Market,
-        order => order.Market,
-        (alloc, orders) => new
-        {
-          Allocation = alloc,
-          Orders = orders
-        });
+    // Index sell orders by market for efficient lookup.
+    var sellOrdersByMarket = simulated.Orders
+      .Where(o => o.Side == OrderSide.Sell)
+      .ToLookup(o => o.Market);
 
-    // Return true if about to fully sell a non-contiguous larger allocation, starting from the smallest.
-    var potentialGapFound = false;
-    return allocOrders
-      .OrderBy(x => x.Allocation.AmountQuote)
-      .Any(x =>
+    // Walk allocations from smallest to largest, skipping the quote currency itself.
+    var gapDetected = false;
+    foreach (var allocation in simulated.CurBalance.Allocations
+      .Where(a => a.Market.BaseSymbol != a.Market.QuoteSymbol)
+      .OrderBy(a => a.AmountQuote))
+    {
+      // Skip dust allocations — too small to matter.
+      if (allocation.AmountQuote < configReqDto.MinimumDiffQuote)
+        continue;
+
+      var isFullySold = sellOrdersByMarket[allocation.Market]
+        .Any(o => o.Amount == allocation.Amount);
+
+      if (!isFullySold)
       {
-        if (
-          // We are not looking at quote allocation,
-          x.Allocation.Market.BaseSymbol != x.Allocation.Market.QuoteSymbol &&
-          // and are only interested in allocations that are greater than the minimum quote diff,
-          x.Allocation.AmountQuote >= configReqDto.MinimumDiffQuote &&
-          // and are not being sold as a whole.
-          !x.Orders.Any(order => order.Side == OrderSide.Sell && order.Amount == x.Allocation.Amount))
-        {
-          potentialGapFound = true;
-          return false;
-        }
+        // This allocation is kept — any subsequent full sell would be non-contiguous.
+        gapDetected = true;
+      }
+      else if (gapDetected)
+      {
+        // A larger allocation is being fully sold while a smaller one is kept — bail out.
+        return true;
+      }
+    }
 
-        // If current allocation is being sold as a whole and we found a potential gap earlier, bail out.
-        return potentialGapFound;
-      });
+    return false;
   }
 }

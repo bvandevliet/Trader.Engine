@@ -21,8 +21,8 @@
       },
       "Microsoft.Extensions.Http.Polly": {
         "type": "Transitive",
-        "resolved": "10.0.8",
-        "contentHash": "XXYEV1G6ILrK7F3zwjQxxbYKZba79NUz7cgy1wEjctcxNHI5i8YI5eOCkPhcZ//vvuT8vd+GdNBfPdYDOPCL1A==",
+        "resolved": "10.0.9",
+        "contentHash": "bwfSg08DwmF6sR3HMLBLklxfHSoIgQFTsBqY+omxbNqVDPtjoGiWqMcZ5r+gSXRNEaptsXdVeN3QwHAKPspB+w==",
         "dependencies": {
           "Polly": "7.2.4",
           "Polly.Extensions.Http": "3.0.0"
@@ -30,8 +30,8 @@
       },
       "MySqlConnector": {
         "type": "Transitive",
-        "resolved": "2.5.0",
-        "contentHash": "hoAwfHHF8DlRRqwHOhN3u1KLi+XbX/4LPS7Anfa+SYC97vRyIfdEOEEfj1L50q01Ik8aDNvmDrNmu/VPFiAiaQ=="
+        "resolved": "2.6.0",
+        "contentHash": "YLceXhrEznpXf8XkwvH6JWHjAq0AA2lsf/zYWiESe4B9ki2v473XH2GRcPbLwktBqYu1Uy3Dvs7G+mu48QKL2w=="
       },
       "Polly": {
         "type": "Transitive",
@@ -60,8 +60,8 @@
         "type": "Project",
         "dependencies": {
           "Dapper": "[2.1.79, )",
-          "Microsoft.Extensions.Http.Polly": "[10.0.8, )",
-          "MySqlConnector": "[2.5.0, )",
+          "Microsoft.Extensions.Http.Polly": "[10.0.9, )",
+          "MySqlConnector": "[2.6.0, )",
           "Polly.Contrib.WaitAndRetry": "[1.1.1, )",
           "Riok.Mapperly": "[4.3.1, )",
           "Skender.Stock.Indicators": "[2.7.1, )"
