@@ -21,8 +21,8 @@
       },
       "Microsoft.Extensions.Http.Polly": {
         "type": "Transitive",
-        "resolved": "10.0.9",
-        "contentHash": "bwfSg08DwmF6sR3HMLBLklxfHSoIgQFTsBqY+omxbNqVDPtjoGiWqMcZ5r+gSXRNEaptsXdVeN3QwHAKPspB+w==",
+        "resolved": "10.0.10",
+        "contentHash": "ceKyX9V/C+mtapMfXQ0ClKRkxDHAW2AAJoDgTcsh7UdOteCQKB5wRTFgHJ82Lh/3O+UlPA47LRGEZkRxtz/lCA==",
         "dependencies": {
           "Polly": "7.2.4",
           "Polly.Extensions.Http": "3.0.0"
@@ -30,8 +30,8 @@
       },
       "MySqlConnector": {
         "type": "Transitive",
-        "resolved": "2.6.0",
-        "contentHash": "YLceXhrEznpXf8XkwvH6JWHjAq0AA2lsf/zYWiESe4B9ki2v473XH2GRcPbLwktBqYu1Uy3Dvs7G+mu48QKL2w=="
+        "resolved": "2.6.1",
+        "contentHash": "MzNSfnHWBc0Mo3zVbYxG+556zuex9obs8NYtwcPCwFahel40e49stH+osjX4k/doEHp4LT/zTtGdax4nlGWhcw=="
       },
       "Polly": {
         "type": "Transitive",
@@ -53,18 +53,18 @@
       },
       "Skender.Stock.Indicators": {
         "type": "Transitive",
-        "resolved": "2.7.1",
-        "contentHash": "HsHVlg9Tcb1gUV50dpazlUh2Qy1F9NtG7Fe4pYcxgnnloW4Fdh8TQTA7IB5M7rWubEvtFgzx+1U1vI2LzJPWXg=="
+        "resolved": "2.7.3",
+        "contentHash": "ByQorYjigM3n17OEk1mcFuTIhNxSryOGWtxLT9g/nQbkfYQHYuS+J0KWqz6e0YzIbrzILoLDCZrd3ASymtHQFg=="
       },
       "traderengine.common": {
         "type": "Project",
         "dependencies": {
           "Dapper": "[2.1.79, )",
-          "Microsoft.Extensions.Http.Polly": "[10.0.9, )",
-          "MySqlConnector": "[2.6.0, )",
+          "Microsoft.Extensions.Http.Polly": "[10.0.10, )",
+          "MySqlConnector": "[2.6.1, )",
           "Polly.Contrib.WaitAndRetry": "[1.1.1, )",
           "Riok.Mapperly": "[4.3.1, )",
-          "Skender.Stock.Indicators": "[2.7.1, )"
+          "Skender.Stock.Indicators": "[2.7.3, )"
         }
       }
     }
