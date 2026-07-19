@@ -7,11 +7,11 @@ using TraderEngine.Common.DTOs.API.Response;
 namespace TraderEngine.CLI.Mappers;
 
 [Mapper]
-public partial class CliMapper : ICliMapper
+public static partial class CliMapper
 {
   // ── CMCAssetDto → MarketCapDataDto ───────────────────────────────────────────
 
-  public MarketCapDataDto MapCMCAsset(CMCAssetDto source)
+  public static MarketCapDataDto MapCMCAsset(CMCAssetDto source)
   {
     var firstQuote = source.Quote.FirstOrDefault();
     return new MarketCapDataDto
@@ -24,7 +24,7 @@ public partial class CliMapper : ICliMapper
     };
   }
 
-  public IEnumerable<MarketCapDataDto> MapCMCAssets(IEnumerable<CMCAssetDto> source)
+  public static IEnumerable<MarketCapDataDto> MapCMCAssets(IEnumerable<CMCAssetDto> source)
   {
     return source.Select(MapCMCAsset);
   }
@@ -45,7 +45,7 @@ public partial class CliMapper : ICliMapper
   [MapProperty(nameof(WordPressConfigDto.interval_hours), nameof(ConfigReqDto.IntervalHours))]
   [MapProperty(nameof(WordPressConfigDto.current_alloc_weighting_mult), nameof(ConfigReqDto.CurrentAllocWeightingMult))]
   [MapProperty(nameof(WordPressConfigDto.last_rebalance), nameof(ConfigReqDto.LastRebalance))]
-  public partial ConfigReqDto MapConfig(WordPressConfigDto source);
+  public static partial ConfigReqDto MapConfig(WordPressConfigDto source);
 
   // ── ConfigReqDto → WordPressConfigDto ────────────────────────────────────────
 
@@ -63,5 +63,5 @@ public partial class CliMapper : ICliMapper
   [MapProperty(nameof(ConfigReqDto.IntervalHours), nameof(WordPressConfigDto.interval_hours))]
   [MapProperty(nameof(ConfigReqDto.CurrentAllocWeightingMult), nameof(WordPressConfigDto.current_alloc_weighting_mult))]
   [MapProperty(nameof(ConfigReqDto.LastRebalance), nameof(WordPressConfigDto.last_rebalance))]
-  public partial WordPressConfigDto MapConfigReverse(ConfigReqDto source);
+  public static partial WordPressConfigDto MapConfigReverse(ConfigReqDto source);
 }

@@ -8,7 +8,7 @@ using TraderEngine.Common.Models;
 namespace TraderEngine.Common.Mappers;
 
 [Mapper]
-public partial class CommonMapper : ICommonMapper
+public static partial class CommonMapper
 {
   private static readonly JsonSerializerOptions _jsonOptions = new()
   {
@@ -18,11 +18,11 @@ public partial class CommonMapper : ICommonMapper
 
   // ── Allocation ──────────────────────────────────────────────────────────────
 
-  public partial AllocationDto MapAllocation(Allocation source);
+  public static partial AllocationDto MapAllocation(Allocation source);
 
   // ── Balance ──────────────────────────────────────────────────────────────────
 
-  public BalanceDto MapBalance(Balance source)
+  public static BalanceDto MapBalance(Balance source)
   {
     return new()
     {
@@ -39,7 +39,7 @@ public partial class CommonMapper : ICommonMapper
 
   // ── MarketCapDataDto → MarketCapDataDb ───────────────────────────────────────
 
-  public MarketCapDataDb MarketCapToDb(MarketCapDataDto source)
+  public static MarketCapDataDb MarketCapToDb(MarketCapDataDto source)
   {
     return new()
     {
@@ -54,7 +54,7 @@ public partial class CommonMapper : ICommonMapper
 
   // ── MarketCapDataDb → MarketCapDataDto ───────────────────────────────────────
 
-  public MarketCapDataDto MarketCapFromDb(MarketCapDataDb source)
+  public static MarketCapDataDto MarketCapFromDb(MarketCapDataDb source)
   {
     return new()
     {
@@ -66,7 +66,7 @@ public partial class CommonMapper : ICommonMapper
     };
   }
 
-  public IEnumerable<MarketCapDataDto> MarketCapsFromDb(IEnumerable<MarketCapDataDb> source)
+  public static IEnumerable<MarketCapDataDto> MarketCapsFromDb(IEnumerable<MarketCapDataDb> source)
   {
     return source.Select(MarketCapFromDb);
   }

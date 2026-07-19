@@ -10,18 +10,18 @@ using TraderEngine.Common.Enums;
 namespace TraderEngine.API.Mappers;
 
 [Mapper]
-public partial class ApiMapper : IApiMapper
+public static partial class ApiMapper
 {
   // ── BitvavoMarketDataDto → MarketDataDto ─────────────────────────────────────
 
   [MapProperty(nameof(BitvavoMarketDataDto.MinOrderInQuoteAsset), nameof(MarketDataDto.MinOrderSizeInQuote))]
   [MapProperty(nameof(BitvavoMarketDataDto.MinOrderInBaseAsset), nameof(MarketDataDto.MinOrderSizeInBase))]
-  public partial MarketDataDto MapMarketData(BitvavoMarketDataDto source);
+  public static partial MarketDataDto MapMarketData(BitvavoMarketDataDto source);
 
   // ── BitvavoAssetDataDto → AssetDataDto ───────────────────────────────────────
 
   [MapProperty(nameof(BitvavoAssetDataDto.Symbol), nameof(AssetDataDto.BaseSymbol))]
-  public partial AssetDataDto MapAssetData(BitvavoAssetDataDto source);
+  public static partial AssetDataDto MapAssetData(BitvavoAssetDataDto source);
 
   // ── OrderReqDto → BitvavoOrderReqDto ────────────────────────────────────────
 
@@ -30,7 +30,7 @@ public partial class ApiMapper : IApiMapper
   [MapperIgnoreTarget(nameof(BitvavoOrderReqDto.ResponseRequired))]
   [MapperIgnoreTarget(nameof(BitvavoOrderReqDto.TimeInForce))]
   [MapperIgnoreTarget(nameof(BitvavoOrderReqDto.DisableMarketProtection))]
-  public partial BitvavoOrderReqDto MapOrderReq(OrderReqDto source);
+  public static partial BitvavoOrderReqDto MapOrderReq(OrderReqDto source);
 
   // ── BitvavoOrderDto → OrderDto ───────────────────────────────────────────────
 
@@ -38,9 +38,9 @@ public partial class ApiMapper : IApiMapper
   [MapProperty(nameof(BitvavoOrderDto.FilledAmount), nameof(OrderDto.AmountFilled))]
   [MapProperty(nameof(BitvavoOrderDto.FilledAmountQuote), nameof(OrderDto.AmountQuoteFilled))]
   [MapProperty(nameof(BitvavoOrderDto.OrderType), nameof(OrderDto.Type))]
-  public partial OrderDto MapOrder(BitvavoOrderDto source);
+  public static partial OrderDto MapOrder(BitvavoOrderDto source);
 
-  public IEnumerable<OrderDto> MapOrders(IEnumerable<BitvavoOrderDto> source)
+  public static IEnumerable<OrderDto> MapOrders(IEnumerable<BitvavoOrderDto> source)
   {
     return source.Select(MapOrder);
   }

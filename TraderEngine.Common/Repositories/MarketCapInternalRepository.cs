@@ -13,16 +13,13 @@ namespace TraderEngine.Common.Repositories;
 public class MarketCapInternalRepository : MarketCapHandlingBase, IMarketCapInternalRepository
 {
   private readonly ILogger<MarketCapInternalRepository> _logger;
-  private readonly ICommonMapper _mapper;
   private readonly INamedTypeFactory<MySqlConnection> _sqlConnectionFactory;
 
   public MarketCapInternalRepository(
     ILogger<MarketCapInternalRepository> logger,
-    ICommonMapper mapper,
     INamedTypeFactory<MySqlConnection> sqlConnectionFactory)
   {
     _logger = logger;
-    _mapper = mapper;
     _sqlConnectionFactory = sqlConnectionFactory;
   }
 
@@ -134,7 +131,7 @@ WHERE QuoteSymbol = @QuoteSymbol AND BaseSymbol = @BaseSymbol;";
 INSERT INTO MarketCapData ( QuoteSymbol, BaseSymbol, Price, MarketCap, Tags, Updated )
 VALUES ( @QuoteSymbol, @BaseSymbol, @Price, @MarketCap, @Tags, @Updated );";
 
-      var marketCapData = _mapper.MarketCapToDb(marketCap);
+      var marketCapData = CommonMapper.MarketCapToDb(marketCap);
 
       rowsAffected += await sqlConn.ExecuteAsync(sqlInsert, marketCapData);
 
@@ -196,7 +193,7 @@ ORDER BY Updated DESC;";
         Updated = DateTime.UtcNow.AddHours(-(hours + earlierTolerance / 60)),
       });
 
-      return _mapper.MarketCapsFromDb(listHistorical);
+      return CommonMapper.MarketCapsFromDb(listHistorical);
     }
     finally
     {
@@ -243,7 +240,7 @@ ORDER BY Updated DESC;";
       {
         var market = new MarketReqDto(quoteSymbol, assetGroup.Key);
 
-        return _mapper.MarketCapsFromDb(assetGroup.AsEnumerable());
+        return CommonMapper.MarketCapsFromDb(assetGroup.AsEnumerable());
       });
     }
     finally

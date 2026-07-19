@@ -15,18 +15,15 @@ public class AllocationsController : ControllerBase
   private readonly string _quoteSymbol = "EUR";
 
   private readonly ILogger<AllocationsController> _logger;
-  private readonly ICommonMapper _mapper;
   private readonly ExchangeFactory _exchangeFactory;
   private readonly Func<IMarketCapService> _marketCapService;
 
   public AllocationsController(
     ILogger<AllocationsController> logger,
     IServiceProvider serviceProvider,
-    ICommonMapper mapper,
     ExchangeFactory exchangeFactory)
   {
     _logger = logger;
-    _mapper = mapper;
     _exchangeFactory = exchangeFactory;
     _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
   }
@@ -49,7 +46,7 @@ public class AllocationsController : ControllerBase
     return balanceResult.ErrorCode switch
     {
       ExchangeErrCodeEnum.AuthenticationError => Unauthorized(balanceResult.Summary),
-      ExchangeErrCodeEnum.Ok => Ok(_mapper.MapBalance(balanceResult.Value!)),
+      ExchangeErrCodeEnum.Ok => Ok(CommonMapper.MapBalance(balanceResult.Value!)),
       _ => StatusCode(500, balanceResult.Summary)
     };
   }

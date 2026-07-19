@@ -3,7 +3,6 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
-using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
 
 namespace TraderEngine.Common.Extensions;
@@ -170,6 +169,74 @@ public static class RebalanceExtensions
   }
 
   /// <summary>
+  /// Places <paramref name="orderReq"/> and, on success, verifies it has ended.
+  /// Never throws: a <see cref="Results.Result{TSuccess, TErrCode}"/> failure carrying no order
+  /// payload, or any unexpected exception raised while placing or verifying the order, is
+  /// converted into a synthetic <see cref="OrderStatus.Failed"/> <see cref="OrderDto"/> instead
+  /// of propagating. This guarantees every order in a <see cref="Task.WhenAll{TResult}"/> batch
+  /// resolves to a result, so one failing order can never discard the results of the others.
+  /// </summary>
+  /// <param name="this"></param>
+  /// <param name="orderReq"></param>
+  /// <param name="source"></param>
+  /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
+  /// <returns>The placed (and, where possible, ended) order, or a synthetic failed order.</returns>
+  private static async Task<OrderDto> PlaceAndVerifyOrder(
+    this IExchange @this, OrderReqDto orderReq, string source, bool cancel)
+  {
+    OrderDto order;
+
+    try
+    {
+      var result = await @this.NewOrder(orderReq, source);
+
+      if (result.Value is null)
+      {
+        @this.Logger?.LogError(
+          "Failed to place order for market {Market}: exchange returned no order payload (error code {ErrorCode}).",
+          orderReq.Market, result.ErrorCode);
+
+        return NewFailedOrder(orderReq);
+      }
+
+      order = result.Value;
+    }
+    catch (Exception ex)
+    {
+      @this.Logger?.LogError(ex, "Failed to place order for market {Market}.", orderReq.Market);
+
+      return NewFailedOrder(orderReq);
+    }
+
+    try
+    {
+      return await @this.VerifyOrderEnded(order, cancel);
+    }
+    catch (Exception ex)
+    {
+      @this.Logger?.LogError(ex, "Failed to verify order {OrderId} for market {Market} has ended.", order.Id, order.Market);
+
+      // Return the last known state rather than the placement failure,
+      // since the order itself was successfully placed.
+      return order;
+    }
+  }
+
+  private static OrderDto NewFailedOrder(OrderReqDto orderReq)
+  {
+    return new()
+    {
+      Market = orderReq.Market,
+      Side = orderReq.Side,
+      Type = orderReq.Type,
+      Price = orderReq.Price,
+      Amount = orderReq.Amount,
+      AmountQuote = orderReq.AmountQuote,
+      Status = OrderStatus.Failed,
+    };
+  }
+
+  /// <summary>
   /// A task that will complete when verified that the given <paramref name="order"/> has ended.
   /// If the given order is not completed within given amount of <paramref name="checks"/>, it will be cancelled.
   /// Every new check is performed one second after the previous has been resolved.
@@ -295,11 +362,8 @@ public static class RebalanceExtensions
         return sellOrder;
       })
 
-      // Sell ..
-      .Select(alloc => @this.NewOrder(alloc, source)
-
-        // Continue to verify sell order ended, within same task to optimize performance.
-        .ContinueWith(sellTask => @this.VerifyOrderEnded(sellTask.Result.Value!, true)).Unwrap()));
+      // Sell, then verify the sell order ended.
+      .Select(sellOrder => @this.PlaceAndVerifyOrder(sellOrder, source, cancel: true)));
   }
 
   /// <summary>
@@ -404,11 +468,8 @@ public static class RebalanceExtensions
       // Check if still reached minimum order size.
       .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
 
-      // Buy ..
-      .Select(buyOrder => @this.NewOrder(buyOrder, source)
-
-        // Continue to verify buy order ended, within same task to optimize performance.
-        .ContinueWith(buyTask => @this.VerifyOrderEnded(buyTask.Result.Value!, false)).Unwrap()));
+      // Buy, then verify the buy order ended.
+      .Select(buyOrder => @this.PlaceAndVerifyOrder(buyOrder, source, cancel: false)));
   }
 
   /// <summary>

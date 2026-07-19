@@ -8,14 +8,11 @@ namespace TraderEngine.CLI.Repositories;
 
 internal class MarketCapExternalRepository : IMarketCapExternalRepository
 {
-  private readonly ICliMapper _mapper;
   private readonly HttpClient _httpClient;
 
   public MarketCapExternalRepository(
-    ICliMapper mapper,
     HttpClient httpClient)
   {
-    _mapper = mapper ?? throw new ArgumentNullException(nameof(mapper));
     _httpClient = httpClient;
   }
 
@@ -29,6 +26,6 @@ internal class MarketCapExternalRepository : IMarketCapExternalRepository
     var listLatest = await _httpClient.GetFromJsonAsync<CMCListLatestDto>(
       $"cryptocurrency/listings/latest?sort=market_cap&limit=150&convert={quoteSymbol}");
 
-    return _mapper.MapCMCAssets(listLatest?.Data ?? []);
+    return CliMapper.MapCMCAssets(listLatest?.Data ?? []);
   }
 }

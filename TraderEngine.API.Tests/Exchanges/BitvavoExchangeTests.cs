@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Moq;
 using TraderEngine.API.Exchanges;
-using TraderEngine.API.Tests.Helpers;
 using TraderEngine.Common.Enums;
 
 namespace TraderEngine.API.Tests.Exchanges;
@@ -14,14 +13,12 @@ public class BitvavoExchangeTests
   {
     var loggerMock = new Mock<ILogger<BitvavoExchange>>();
 
-    var mapper = MapperHelper.CreateApiMapper();
-
     var httpClient = new HttpClient
     {
       BaseAddress = new("https://api.bitvavo.com/v2/")
     };
 
-    var bitvavo = new BitvavoExchange(loggerMock.Object, mapper, httpClient);
+    var bitvavo = new BitvavoExchange(loggerMock.Object, httpClient);
 
     var result = await bitvavo.NewOrder(new()
     {

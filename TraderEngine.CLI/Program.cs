@@ -4,12 +4,10 @@ using MySqlConnector;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
 using TraderEngine.CLI.AppSettings;
-using TraderEngine.CLI.Mappers;
 using TraderEngine.CLI.Repositories;
 using TraderEngine.CLI.Services;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
-using TraderEngine.Common.Mappers;
 using TraderEngine.Common.Repositories;
 using TraderEngine.Common.Services;
 
@@ -37,9 +35,6 @@ public class Program
       .ConfigureServices((builder, services) =>
       {
         services.AddSingleton(x => new AppArgs(args));
-
-        services.AddSingleton<ICommonMapper, CommonMapper>();
-        services.AddSingleton<ICliMapper, CliMapper>();
 
         services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
         services.Configure<CmsDbSettings>(builder.Configuration.GetSection("CmsDbSettings"));

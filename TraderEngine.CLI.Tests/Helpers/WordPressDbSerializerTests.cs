@@ -62,13 +62,6 @@ public class WordPressDbSerializerTests
     "s:28:\"current_alloc_weighting_mult\";d:1.05;" +
     "s:14:\"last_rebalance\";O:8:\"DateTime\":3:{s:4:\"date\";s:26:\"2022-10-24 00:00:00.000000\";s:13:\"timezone_type\";i:3;s:8:\"timezone\";s:3:\"UTC\";}}";
 
-  private readonly ICliMapper _mapper;
-
-  public WordPressDbSerializerTests()
-  {
-    _mapper = MapperHelper.CreateCliMapper();
-  }
-
   [TestMethod()]
   public void SerializeBasicTypesTest()
   {
@@ -167,7 +160,7 @@ public class WordPressDbSerializerTests
   [TestMethod()]
   public void SerializeCustomTypesTest()
   {
-    var wpDto = _mapper.MapConfigReverse(_configDto);
+    var wpDto = CliMapper.MapConfigReverse(_configDto);
 
     wpDto.Should().BeEquivalentTo(_wpConfigDto);
 
@@ -183,11 +176,11 @@ public class WordPressDbSerializerTests
 
     wpDto1.Should().BeEquivalentTo(_wpConfigDto);
 
-    var configDto = _mapper.MapConfig(wpDto1);
+    var configDto = CliMapper.MapConfig(wpDto1);
 
     configDto.Should().BeEquivalentTo(_configDto);
 
-    var wpDto2 = _mapper.MapConfigReverse(configDto);
+    var wpDto2 = CliMapper.MapConfigReverse(configDto);
 
     wpDto2.Should().BeEquivalentTo(_wpConfigDto);
   }

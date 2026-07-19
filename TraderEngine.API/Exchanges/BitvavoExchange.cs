@@ -18,7 +18,6 @@ namespace TraderEngine.API.Exchanges;
 public class BitvavoExchange : IExchange
 {
   private readonly ILogger<BitvavoExchange> _logger;
-  private readonly IApiMapper _mapper;
   private readonly HttpClient _httpClient;
 
   public ILogger<IExchange> Logger => _logger;
@@ -39,11 +38,9 @@ public class BitvavoExchange : IExchange
 
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
-    IApiMapper mapper,
     HttpClient httpClient)
   {
     _logger = logger;
-    _mapper = mapper;
 
     _httpClient = httpClient;
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
@@ -325,7 +322,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.MapMarketData(result);
+    return ApiMapper.MapMarketData(result);
   }
 
   public async Task<AssetDataDto?> GetAsset(string baseSymbol)
@@ -357,7 +354,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.MapAssetData(result);
+    return ApiMapper.MapAssetData(result);
   }
 
   public async Task<decimal> GetPrice(MarketReqDto market)
@@ -394,7 +391,7 @@ public class BitvavoExchange : IExchange
 
   public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API")
   {
-    var newOrderDto = _mapper.MapOrderReq(order);
+    var newOrderDto = ApiMapper.MapOrderReq(order);
 
     newOrderDto.DisableMarketProtection = true;
     newOrderDto.ResponseRequired = false;
@@ -457,7 +454,7 @@ public class BitvavoExchange : IExchange
         throw;
       }
 
-      var executedOrder = _mapper.MapOrder(result);
+      var executedOrder = ApiMapper.MapOrder(result);
 
       return Result<OrderDto, ExchangeErrCodeEnum>.Success(executedOrder);
     }
@@ -498,12 +495,39 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.MapOrder(result);
+    return ApiMapper.MapOrder(result);
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API")
+  public async Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API")
   {
-    throw new NotImplementedException();
+    using var request = CreateRequestMsg(
+      HttpMethod.Delete, $"order?orderId={orderId}&market={market}");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("Failed to cancel order on Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    BitvavoOrderDto? result;
+    try
+    {
+      result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+
+      if (null == result)
+        throw new Exception("Bitvavo cancel order response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo cancel order response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
+
+    return ApiMapper.MapOrder(result);
   }
 
   public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
@@ -539,7 +563,7 @@ public class BitvavoExchange : IExchange
       throw;
     }
 
-    return _mapper.MapOrders(result);
+    return ApiMapper.MapOrders(result);
   }
 
   public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null, string source = "API")
