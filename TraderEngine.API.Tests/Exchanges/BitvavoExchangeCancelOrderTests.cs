@@ -1,6 +1,6 @@
 using System.Net;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
@@ -21,7 +21,7 @@ public class BitvavoExchangeCancelOrderTests
   {
     var httpClient = new HttpClient(handler) { BaseAddress = new("https://api.bitvavo.com/v2/") };
 
-    return new BitvavoExchange(new Mock<ILogger<BitvavoExchange>>().Object, httpClient)
+    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient)
     {
       ApiKey = "key",
       ApiSecret = "secret",

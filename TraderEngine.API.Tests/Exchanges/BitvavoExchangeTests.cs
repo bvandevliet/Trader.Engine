@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.Enums;
 
@@ -11,14 +11,14 @@ public class BitvavoExchangeTests
   [TestMethod()]
   public async Task NewOrderTest()
   {
-    var loggerMock = new Mock<ILogger<BitvavoExchange>>();
+    var logger = Substitute.For<ILogger<BitvavoExchange>>();
 
     var httpClient = new HttpClient
     {
       BaseAddress = new("https://api.bitvavo.com/v2/")
     };
 
-    var bitvavo = new BitvavoExchange(loggerMock.Object, httpClient);
+    var bitvavo = new BitvavoExchange(logger, httpClient);
 
     var result = await bitvavo.NewOrder(new()
     {
