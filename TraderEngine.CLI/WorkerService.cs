@@ -323,13 +323,15 @@ public class WorkerService
 
   public static bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
   {
+    var skipAllowance = 1;
+
     // Index sell orders by market for efficient lookup.
     var sellOrdersByMarket = simulated.Orders
       .Where(o => o.Side == OrderSide.Sell)
       .ToLookup(o => o.Market);
 
     // Walk allocations from smallest to largest, skipping the quote currency itself.
-    var gapDetected = false;
+    var keptAllocations = 0;
     foreach (var allocation in simulated.CurBalance.Allocations
       .Where(a => a.Market.BaseSymbol != a.Market.QuoteSymbol)
       .OrderBy(a => a.AmountQuote))
@@ -338,15 +340,15 @@ public class WorkerService
       if (allocation.AmountQuote < configReqDto.MinimumDiffQuote)
         continue;
 
-      var isFullySold = sellOrdersByMarket[allocation.Market]
+      var isKept = !sellOrdersByMarket[allocation.Market]
         .Any(o => o.Amount == allocation.Amount);
 
-      if (!isFullySold)
+      if (isKept)
       {
         // This allocation is kept — any subsequent full sell would be non-contiguous.
-        gapDetected = true;
+        keptAllocations++;
       }
-      else if (gapDetected)
+      else if (keptAllocations > skipAllowance)
       {
         // A larger allocation is being fully sold while a smaller one is kept — bail out.
         return true;

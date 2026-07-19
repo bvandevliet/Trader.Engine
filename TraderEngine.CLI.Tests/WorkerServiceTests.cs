@@ -361,9 +361,12 @@ public class WorkerServiceTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_SmallestAllocationAndNonContiguousFullSell_ReturnsTrue()
+  public void HasNonContiguousFullSellOrder_SmallestFullSellThenSingleKeptAllocation_ToleratedReturnsFalse()
   {
     // Arrange
+    // BNB (smallest) is fully sold, then ADA is kept, then ETH (larger) is fully sold.
+    // Only one allocation (ADA) is kept before the ETH full sell — the skip allowance (1)
+    // tolerates exactly one kept allocation, so this is no longer flagged as non-contiguous.
     var configReqDto = new ConfigReqDto
     {
       MinimumDiffQuote = 5,
@@ -427,7 +430,7 @@ public class WorkerServiceTests
     var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
-    Assert.IsTrue(result);
+    Assert.IsFalse(result);
   }
 
   [TestMethod]
@@ -668,9 +671,12 @@ public class WorkerServiceTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_SmallestAllocationAndNonContiguousFullSell_IgnoresAllocationsBelowMinimumDiff_ReturnsTrue()
+  public void HasNonContiguousFullSellOrder_SmallestFullSellThenSingleKeptAllocation_IgnoresAllocationsBelowMinimumDiff_ToleratedReturnsFalse()
   {
     // Arrange
+    // Same as the non-dust variant, plus a dust LTC full sell that must be ignored entirely.
+    // Only one above-minimum allocation (ADA) is kept before the ETH full sell — tolerated
+    // by the skip allowance (1).
     var configReqDto = new ConfigReqDto
     {
       MinimumDiffQuote = 5,
@@ -739,6 +745,119 @@ public class WorkerServiceTests
             AmountQuote = 1,
             Amount = 5
           },
+        ]
+      }
+    };
+
+    // Act
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+
+    // Assert
+    Assert.IsFalse(result);
+  }
+
+  // ── Skip allowance (single kept allocation tolerated) ──────────────────────
+
+  [TestMethod]
+  public void HasNonContiguousFullSellOrder_SingleSmallerAllocationKept_LargerFullySold_ReturnsFalse()
+  {
+    // Arrange
+    // Only ADA (smaller) is kept while ETH (larger) is fully sold — a single kept allocation
+    // sits within the skip allowance (1) and must not trigger the protective gate.
+    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+
+    var marketEth = new MarketReqDto("EUR", "ETH");
+    var marketAda = new MarketReqDto("EUR", "ADA");
+
+    var simulated = new SimulationDto
+    {
+      Orders =
+      [
+        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+      ],
+      CurBalance = new BalanceDto
+      {
+        Allocations =
+        [
+          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 }, // kept
+          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10  }, // fully sold
+        ]
+      }
+    };
+
+    // Act
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+
+    // Assert
+    Assert.IsFalse(result);
+  }
+
+  [TestMethod]
+  public void HasNonContiguousFullSellOrder_TwoSmallerAllocationsKept_LargerFullySold_ReturnsTrue()
+  {
+    // Arrange
+    // BNB and ADA (both smaller) are kept while ETH (larger) is fully sold — two kept
+    // allocations exceed the skip allowance (1), so the gate must fire.
+    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+
+    var marketEth = new MarketReqDto("EUR", "ETH");
+    var marketAda = new MarketReqDto("EUR", "ADA");
+    var marketBnb = new MarketReqDto("EUR", "BNB");
+
+    var simulated = new SimulationDto
+    {
+      Orders =
+      [
+        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+      ],
+      CurBalance = new BalanceDto
+      {
+        Allocations =
+        [
+          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 }, // kept
+          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 }, // kept
+          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10  }, // fully sold
+        ]
+      }
+    };
+
+    // Act
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+
+    // Assert
+    Assert.IsTrue(result);
+  }
+
+  [TestMethod]
+  public void HasNonContiguousFullSellOrder_SkipAllowanceIsCumulative_SecondKeptAfterToleratedFullSell_ReturnsTrue()
+  {
+    // Arrange
+    // BNB is kept (1st kept), ADA is fully sold (tolerated — only 1 kept so far), ETH is kept
+    // (2nd kept, cumulative total now exceeds the skip allowance), BTC is fully sold.
+    // The allowance is a running budget across the whole walk — it is not reset after being
+    // spent once on an earlier, tolerated full sell.
+    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+
+    var marketBtc = new MarketReqDto("EUR", "BTC");
+    var marketEth = new MarketReqDto("EUR", "ETH");
+    var marketAda = new MarketReqDto("EUR", "ADA");
+    var marketBnb = new MarketReqDto("EUR", "BNB");
+
+    var simulated = new SimulationDto
+    {
+      Orders =
+      [
+        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 100 }, // fully sold, tolerated
+        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 2   }, // fully sold, flagged
+      ],
+      CurBalance = new BalanceDto
+      {
+        Allocations =
+        [
+          new AllocationDto { Market = marketBnb, AmountQuote = 10,  Amount = 100 }, // kept (1st)
+          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 }, // fully sold, tolerated
+          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  }, // kept (2nd)
+          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   }, // fully sold — flagged
         ]
       }
     };
@@ -927,12 +1046,12 @@ public class WorkerServiceTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_PartialSellOnSmallest_FullSellOnLarger_ReturnsTrue()
+  public void HasNonContiguousFullSellOrder_PartialSellOnSmallest_FullSellOnLarger_SingleKeptTolerated_ReturnsFalse()
   {
     // Arrange
-    // ADA (smallest) is partially reduced — treated as "kept" because it's not a full sell,
-    // so potentialGapFound is set to true. ETH (larger) is fully sold alongside this.
-    // The method correctly identifies the non-contiguous full sell: ETH > ADA and ADA is kept.
+    // ADA (smallest) is partially reduced — treated as "kept" because it's not a full sell.
+    // ETH (larger) is fully sold alongside this. Only one allocation (ADA) is kept before the
+    // full sell, which is within the skip allowance (1), so the gate does not fire.
     var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -960,8 +1079,46 @@ public class WorkerServiceTests
     // Act
     var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
-    // Assert — correctly fires: ETH (70) is fully sold while ADA (15) is still in the portfolio
-    // (partially sold = treated as kept). This is the intended detection.
+    // Assert
+    Assert.IsFalse(result);
+  }
+
+  [TestMethod]
+  public void HasNonContiguousFullSellOrder_PartialSellsOnTwoSmaller_FullSellOnLargest_ReturnsTrue()
+  {
+    // Arrange
+    // Both ADA and ETH (smaller) are partially reduced — both treated as "kept" because
+    // neither is a full sell. BTC (largest) is fully sold. Two kept allocations exceed the
+    // skip allowance (1), so the gate correctly fires.
+    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+
+    var marketBtc = new MarketReqDto("EUR", "BTC");
+    var marketEth = new MarketReqDto("EUR", "ETH");
+    var marketAda = new MarketReqDto("EUR", "ADA");
+
+    var simulated = new SimulationDto
+    {
+      Orders =
+      [
+        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 50 }, // partial: allocation.Amount = 100
+        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 5  }, // partial: allocation.Amount = 10
+        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 2  }, // full sell: matches allocation.Amount
+      ],
+      CurBalance = new BalanceDto
+      {
+        Allocations =
+        [
+          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 },
+          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
+          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
+        ]
+      }
+    };
+
+    // Act
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+
+    // Assert
     Assert.IsTrue(result);
   }
 
@@ -1207,11 +1364,12 @@ public class WorkerServiceTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_DustBetweenAboveThresholdAllocations_NonContiguousFullSell_ReturnsTrue()
+  public void HasNonContiguousFullSellOrder_DustBetweenAboveThresholdAllocations_SingleKeptTolerated_ReturnsFalse()
   {
     // Arrange
     // Same setup as above but ETH (70) is fully sold while ADA (30) is kept.
-    // Dust allocations (BNB=10, XRP=18) must not affect gap detection.
+    // Dust allocations (BNB=10, XRP=18) must not affect gap detection. Only one above-minimum
+    // allocation (ADA) is kept before the ETH full sell — tolerated by the skip allowance (1).
     var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -1243,7 +1401,7 @@ public class WorkerServiceTests
     var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
 
     // Assert
-    Assert.IsTrue(result);
+    Assert.IsFalse(result);
   }
 
   [TestMethod]
@@ -1293,17 +1451,57 @@ public class WorkerServiceTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_DustAllocationFullySold_NonContiguousAboveMinimumFullySold_ReturnsTrue()
+  public void HasNonContiguousFullSellOrder_DustAllocationFullySold_SingleAboveMinimumKeptTolerated_ReturnsFalse()
   {
     // Arrange
-    // Dust allocation (XRP=18) has a full-sell order AND there is a genuine non-contiguous
-    // full sell among the above-minimum allocations (ADA=30 kept, ETH=70 fully sold).
-    // The dust full-sell must not suppress the correct detection — the method should still
-    // return true solely based on the above-minimum allocations.
+    // Dust allocation (XRP=18) has a full-sell order that must be ignored entirely. Only one
+    // above-minimum allocation (ADA=30) is kept before ETH (70) is fully sold — tolerated by
+    // the skip allowance (1), so the gate does not fire.
     var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
+    var marketAda = new MarketReqDto("EUR", "ADA");
+    var marketXrp = new MarketReqDto("EUR", "XRP");
+
+    var simulated = new SimulationDto
+    {
+      Orders =
+      [
+        new OrderDto { Market = marketXrp, Side = OrderSide.Sell, Amount = 200 }, // dust full sell — ignored
+        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10  }, // full sell, tolerated
+      ],
+      CurBalance = new BalanceDto
+      {
+        Allocations =
+        [
+          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
+          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
+          new AllocationDto { Market = marketAda, AmountQuote = 30,  Amount = 100 }, // kept
+          new AllocationDto { Market = marketXrp, AmountQuote = 18,  Amount = 200 }, // dust
+        ]
+      }
+    };
+
+    // Act
+    var result = WorkerService.HasNonContiguousFullSellOrder(configReqDto, simulated);
+
+    // Assert
+    Assert.IsFalse(result);
+  }
+
+  [TestMethod]
+  public void HasNonContiguousFullSellOrder_DustAllocationFullySold_TwoAboveMinimumKeptExceedsAllowance_ReturnsTrue()
+  {
+    // Arrange
+    // Dust allocation (XRP=18) has a full-sell order that must be ignored entirely. Two
+    // above-minimum allocations (ADA=30, SOL=45) are kept before ETH (70) is fully sold —
+    // this exceeds the skip allowance (1), so the gate correctly fires.
+    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
+
+    var marketBtc = new MarketReqDto("EUR", "BTC");
+    var marketEth = new MarketReqDto("EUR", "ETH");
+    var marketSol = new MarketReqDto("EUR", "SOL");
     var marketAda = new MarketReqDto("EUR", "ADA");
     var marketXrp = new MarketReqDto("EUR", "XRP");
 
@@ -1320,7 +1518,8 @@ public class WorkerServiceTests
         [
           new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
           new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketAda, AmountQuote = 30,  Amount = 100 }, // kept → gapDetected
+          new AllocationDto { Market = marketSol, AmountQuote = 45,  Amount = 5   }, // kept (2nd)
+          new AllocationDto { Market = marketAda, AmountQuote = 30,  Amount = 100 }, // kept (1st)
           new AllocationDto { Market = marketXrp, AmountQuote = 18,  Amount = 200 }, // dust
         ]
       }
