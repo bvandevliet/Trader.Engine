@@ -1,4 +1,4 @@
-using FluentAssertions;
+using AwesomeAssertions;
 using TraderEngine.CLI.DTOs.WordPress;
 using TraderEngine.CLI.Helpers;
 using TraderEngine.CLI.Mappers;
