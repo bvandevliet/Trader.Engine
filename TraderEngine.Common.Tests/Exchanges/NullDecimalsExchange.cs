@@ -19,7 +19,7 @@ internal sealed class NullDecimalsExchange : MockExchange, IExchange
   {
   }
 
-  public new Task<AssetDataDto?> GetAsset(string baseSymbol)
+  public new Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
     return Task.FromResult<AssetDataDto?>(new AssetDataDto
     {

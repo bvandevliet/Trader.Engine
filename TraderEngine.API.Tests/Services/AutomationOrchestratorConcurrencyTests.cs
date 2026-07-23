@@ -3,7 +3,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
-using TraderEngine.API.DTOs.WordPress;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Repositories;
 using TraderEngine.API.Services;
@@ -19,24 +18,23 @@ namespace TraderEngine.API.Tests.Services;
 
 /// <summary>
 /// Guards against a critical class of bug: <see cref="AutomationOrchestrator.RunAsync"/>
-/// processes every user's automation concurrently via <c>Task.WhenAll</c>. If it were to ever
-/// resolve <see cref="IExchange"/> from a single shared DI scope again (as it did before the
-/// per-user-scope fix), concurrent users could share one mutable exchange instance and race on
-/// its <see cref="IExchange.ApiKey"/>/<see cref="IExchange.ApiSecret"/> — meaning one user's
-/// calculated orders could execute against another user's exchange account. This must never
-/// happen, so this test asserts, under real concurrent load with real (not lock-step, not
-/// mocked-away) scheduling, that every user's automation cycle only ever observes its own
-/// credentials.
+/// processes every user's automation concurrently via <c>Task.WhenAll</c>. Credentials are now
+/// threaded through as an explicit <see cref="ExchangeCredentials"/> parameter on every call
+/// (rather than mutable <c>IExchange.ApiKey</c>/<c>ApiSecret</c> properties), so there is no
+/// shared mutable state left to race on. This test still asserts, under real concurrent load
+/// with real (not lock-step, not mocked-away) scheduling, that every user's automation cycle only
+/// ever passes its own credentials — protecting against ever reintroducing shared mutable
+/// credential state that could let one user's calculated orders execute against another user's
+/// exchange account.
 /// </summary>
 [TestClass]
 public class AutomationOrchestratorConcurrencyTests
 {
   /// <summary>
-  /// Records the API key an <see cref="IExchange"/> instance actually had set on it at the
-  /// moment each simulated exchange call was served, gated behind a real async delay so that,
-  /// if the exchange instance were shared across users, every other concurrent user's credential
-  /// write has ample opportunity to land before this read — turning an intermittent race into a
-  /// reliably observable one.
+  /// Records the API key passed to each simulated exchange call, gated behind a real async delay
+  /// so that, if credentials were ever shared/mutated across users, every other concurrent
+  /// user's write would have ample opportunity to land before this read — turning an
+  /// intermittent race into a reliably observable one.
   /// </summary>
   private sealed class CredentialObservationRecorder
   {
@@ -56,53 +54,50 @@ public class AutomationOrchestratorConcurrencyTests
     public decimal MinOrderSizeInQuote => 1;
     public decimal MakerFee => 0;
     public decimal TakerFee => 0;
-    public string ApiKey { get; set; } = "";
-    public string ApiSecret { get; set; } = "";
 
-    public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance()
+    public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
     {
-      // Widen the race window: only read back ApiKey after yielding, so that if this instance
-      // is shared, every other concurrently-running user's credential write gets a chance to
-      // land in between their own write and this read.
+      // Widen the race window: only record the credentials after yielding, so that if this
+      // instance is ever shared, every other concurrently-running user's call gets a chance to
+      // land in between.
       await Task.Delay(50);
 
-      recorder.ObservedApiKeys.Add(ApiKey);
+      recorder.ObservedApiKeys.Add(credentials.ApiKey);
 
       // Short-circuits AutomationOrchestrator.RunAsync right after credential use via the
       // existing AuthenticationError path, so this test needs no further downstream mocking.
       return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
     }
 
-    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited() => throw new NotSupportedException();
-    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn() => throw new NotSupportedException();
-    public Task<MarketDataDto?> GetMarket(MarketReqDto market) => throw new NotSupportedException();
-    public Task<AssetDataDto?> GetAsset(string baseSymbol) => throw new NotSupportedException();
-    public Task<decimal> GetPrice(MarketReqDto market) => throw new NotSupportedException();
-    public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API") => throw new NotSupportedException();
-    public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market) => throw new NotSupportedException();
-    public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API") => throw new NotSupportedException();
-    public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null) => throw new NotSupportedException();
-    public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API") => throw new NotSupportedException();
-    public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null, string source = "API") => throw new NotSupportedException();
+    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials) => throw new NotSupportedException();
+    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials) => throw new NotSupportedException();
+    public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market) => throw new NotSupportedException();
+    public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol) => throw new NotSupportedException();
+    public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market) => throw new NotSupportedException();
+    public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API") => throw new NotSupportedException();
+    public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market) => throw new NotSupportedException();
+    public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API") => throw new NotSupportedException();
+    public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null) => throw new NotSupportedException();
+    public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API") => throw new NotSupportedException();
+    public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API") => throw new NotSupportedException();
   }
 
-  private sealed class FakeApiCredentialsRepository(IReadOnlyDictionary<int, string> apiKeysByUser) : IApiCredentialsRepository
+  private sealed class FakeApiCredentialsRepository(IReadOnlyDictionary<Guid, string> apiKeysByUser) : IApiCredentialsRepository
   {
-    public Task<ApiCredReqDto> GetApiCred(int userId, string exchangeName) =>
+    public Task<ApiCredReqDto> GetApiCred(Guid userId, string exchangeName) =>
       Task.FromResult(new ApiCredReqDto { ApiKey = apiKeysByUser[userId], ApiSecret = apiKeysByUser[userId] });
+
+    public Task SaveApiCred(Guid userId, string exchangeName, ApiCredReqDto apiCred) => Task.CompletedTask;
   }
 
-  private sealed class FakeConfigRepository(IReadOnlyDictionary<int, ConfigReqDto> configs) : IConfigRepository
+  private sealed class FakeConfigRepository(IReadOnlyDictionary<Guid, ConfigReqDto> configs) : IConfigRepository
   {
-    public Task<WordPressUserDto> GetUserInfo(int userId) =>
-      Task.FromResult(new WordPressUserDto { user_login = $"user{userId}", display_name = $"User {userId}", user_email = $"user{userId}@test.local" });
+    public Task<ConfigReqDto> GetConfig(Guid userId) => Task.FromResult(configs[userId]);
 
-    public Task<ConfigReqDto> GetConfig(int userId) => Task.FromResult(configs[userId]);
+    public Task<IEnumerable<KeyValuePair<Guid, ConfigReqDto>>> GetConfigs() =>
+      Task.FromResult<IEnumerable<KeyValuePair<Guid, ConfigReqDto>>>(configs.ToList());
 
-    public Task<IEnumerable<KeyValuePair<int, ConfigReqDto>>> GetConfigs() =>
-      Task.FromResult<IEnumerable<KeyValuePair<int, ConfigReqDto>>>(configs.ToList());
-
-    public Task<int> SaveConfig(int userId, ConfigReqDto configReqDto) => Task.FromResult(1);
+    public Task<int> SaveConfig(Guid userId, ConfigReqDto configReqDto) => Task.FromResult(1);
   }
 
   [TestMethod]
@@ -111,10 +106,11 @@ public class AutomationOrchestratorConcurrencyTests
     // Arrange
     const int userCount = 20;
 
-    var apiKeysByUser = Enumerable.Range(1, userCount)
-      .ToDictionary(userId => userId, userId => $"user-{userId}-api-key");
+    var userIds = Enumerable.Range(1, userCount).Select(_ => Guid.NewGuid()).ToList();
 
-    var configs = apiKeysByUser.Keys.ToDictionary(userId => userId, _ => new ConfigReqDto
+    var apiKeysByUser = userIds.ToDictionary(userId => userId, userId => $"user-{userId}-api-key");
+
+    var configs = userIds.ToDictionary(userId => userId, _ => new ConfigReqDto
     {
       AutomationEnabled = true,
       LastRebalance = null,
@@ -130,7 +126,7 @@ public class AutomationOrchestratorConcurrencyTests
     var recorder = provider.GetRequiredService<CredentialObservationRecorder>();
 
     var emailNotification = Substitute.For<IEmailNotificationService>();
-    emailNotification.SendAutomationApiAuthFailed(Arg.Any<int>(), Arg.Any<DateTime>()).Returns(Task.CompletedTask);
+    emailNotification.SendAutomationApiAuthFailed(Arg.Any<Guid>(), Arg.Any<DateTime>()).Returns(Task.CompletedTask);
 
     var orchestrator = new AutomationOrchestrator(
       NullLogger<AutomationOrchestrator>.Instance,
@@ -148,14 +144,14 @@ public class AutomationOrchestratorConcurrencyTests
     Assert.AreEqual(userCount, recorder.ObservedApiKeys.Count,
       "Every user's automation cycle should have reached the exchange call exactly once.");
 
-    // With correct per-user DI scoping, every observed key deterministically equals that call's
-    // own user's key, regardless of scheduling — no shared mutable state exists to race on. If
-    // exchange instances were ever shared again, concurrent writes would clobber each other
-    // during the delay above, and this would observe duplicated/foreign keys instead of the
-    // full distinct set.
+    // With correct per-user credential threading, every observed key deterministically equals
+    // that call's own user's key, regardless of scheduling — no shared mutable state exists to
+    // race on. If credentials were ever held as shared mutable state again, concurrent writes
+    // would clobber each other during the delay above, and this would observe duplicated/foreign
+    // keys instead of the full distinct set.
     CollectionAssert.AreEquivalent(
       apiKeysByUser.Values.ToList(),
       recorder.ObservedApiKeys.ToList(),
-      "An exchange instance's ApiKey was observed by more than one user — exchange instances are being shared across concurrent automation cycles, which can execute one user's orders against another user's exchange account.");
+      "An exchange call observed another user's API key — credentials are leaking across concurrent automation cycles, which can execute one user's orders against another user's exchange account.");
   }
 }

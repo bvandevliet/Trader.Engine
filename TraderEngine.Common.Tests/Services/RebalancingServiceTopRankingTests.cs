@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Services;
 using TraderEngine.Common.Tests.Exchanges;
 
@@ -10,6 +11,8 @@ namespace TraderEngine.Common.Tests.Services;
 public class RebalancingServiceTopRankingTests
 {
   private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+
+  private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
   #region FetchMarketStatus Tests
 
@@ -23,7 +26,7 @@ public class RebalancingServiceTopRankingTests
     var absAlloc = new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m);
 
     // Act
-    var result = await _service.FetchMarketStatus(exchange, absAlloc);
+    var result = await _service.FetchMarketStatus(exchange, _credentials, absAlloc);
 
     // Assert
     Assert.AreEqual(MarketStatus.Trading, result.MarketStatus);
@@ -45,7 +48,7 @@ public class RebalancingServiceTopRankingTests
     };
 
     // Act
-    var result = await _service.FetchMarketStatus(exchange, absAlloc);
+    var result = await _service.FetchMarketStatus(exchange, _credentials, absAlloc);
 
     // Assert
     Assert.AreEqual(MarketStatus.Halted, result.MarketStatus);
@@ -63,7 +66,7 @@ public class RebalancingServiceTopRankingTests
     var absAlloc = new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m);
 
     // Act
-    var result = await _service.FetchMarketStatus(exchange, absAlloc);
+    var result = await _service.FetchMarketStatus(exchange, _credentials, absAlloc);
 
     // Assert
     Assert.AreEqual(MarketStatus.Unknown, result.MarketStatus);
@@ -96,7 +99,7 @@ public class RebalancingServiceTopRankingTests
     };
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, absAllocs, topRankingCount: 3);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, absAllocs, topRankingCount: 3);
 
     // Assert
     CollectionAssert.AreEqual(
@@ -125,7 +128,7 @@ public class RebalancingServiceTopRankingTests
     };
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, absAllocs, topRankingCount: 3);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, absAllocs, topRankingCount: 3);
 
     // Assert
     CollectionAssert.AreEqual(
@@ -149,7 +152,7 @@ public class RebalancingServiceTopRankingTests
     };
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, absAllocs, topRankingCount: 10);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, absAllocs, topRankingCount: 10);
 
     // Assert
     CollectionAssert.AreEqual(new[] { "BTC", "ETH" }, result.Select(a => a.Market.BaseSymbol).ToList());
@@ -164,7 +167,7 @@ public class RebalancingServiceTopRankingTests
     var exchange = new ScriptedExchange();
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, Array.Empty<AbsAllocReqDto>(), topRankingCount: 10);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, Array.Empty<AbsAllocReqDto>(), topRankingCount: 10);
 
     // Assert
     Assert.AreEqual(0, result.Count);

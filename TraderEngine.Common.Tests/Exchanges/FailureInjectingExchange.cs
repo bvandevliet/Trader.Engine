@@ -75,10 +75,10 @@ internal sealed class FailureInjectingExchange : MockExchange, IExchange
       }));
   }
 
-  public new Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "Mock")
+  public new Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "Mock")
   {
     return _newOrderOverrides.TryGetValue(order.Market.BaseSymbol, out var overrideFn)
       ? overrideFn()
-      : base.NewOrder(order, source);
+      : base.NewOrder(credentials, order, source);
   }
 }

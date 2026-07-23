@@ -8,7 +8,6 @@ namespace TraderEngine.Common.Repositories;
 /// </summary>
 public interface IMarketCapInternalRepository
 {
-  public Task<int> InitDatabase();
   public Task<int> CleanupDatabase(int daysRetention = 14);
 
   /// <summary>

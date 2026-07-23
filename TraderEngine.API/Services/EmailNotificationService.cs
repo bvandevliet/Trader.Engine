@@ -1,28 +1,35 @@
 using System.Text.Json;
 using System.Web;
 using MailKit.Net.Smtp;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using MimeKit.Text;
 using TraderEngine.API.AppSettings;
-using TraderEngine.API.Repositories;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Extensions;
+using TraderEngine.Data.Entities;
 
 namespace TraderEngine.API.Services;
 
 public class EmailNotificationService : IEmailNotificationService
 {
   private readonly EmailSettings _emailSettings;
-  private readonly IConfigRepository _configRepo;
+  private readonly UserManager<AppUser> _userManager;
 
   public EmailNotificationService(
     IOptions<EmailSettings> emailOptions,
-    IConfigRepository configRepo)
+    UserManager<AppUser> userManager)
   {
     _emailSettings = emailOptions.Value;
-    _configRepo = configRepo;
+    _userManager = userManager;
+  }
+
+  private async Task<AppUser> GetUserOrThrow(Guid userId)
+  {
+    return await _userManager.FindByIdAsync(userId.ToString())
+      ?? throw new InvalidOperationException($"User '{userId}' not found.");
   }
 
   private readonly string _cssString =
@@ -47,9 +54,9 @@ td+td {
 }";
 
   public async Task SendAutomationSucceeded(
-    int userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, SimulationDto simulated, OrderDto[] ordersExecuted)
+    Guid userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, SimulationDto simulated, OrderDto[] ordersExecuted)
   {
-    var userInfo = await _configRepo.GetUserInfo(userId);
+    var userInfo = await GetUserOrThrow(userId);
 
     var newAmountQuoteTotal = simulated.NewBalance.AmountQuoteTotal;
     var cumulativeValue = newAmountQuoteTotal + totalWithdrawn;
@@ -57,7 +64,7 @@ td+td {
     var htmlString =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
+    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
     $"<p>Your current balance summary:<br>" +
     $"<table class=\"monospace\">" +
@@ -130,7 +137,7 @@ td+td {
     using var message = new MimeMessage();
 
     message.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
-    message.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    message.To.Add(new MailboxAddress(userInfo.DisplayName, userInfo.Email!));
     message.Subject = "Trader automation succeeded";
     message.Body = new TextPart(TextFormat.Html) { Text = htmlString };
 
@@ -143,14 +150,14 @@ td+td {
   }
 
   public async Task SendAutomationFailed(
-    int userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData, bool sendAdmin = true)
+    Guid userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData, bool sendAdmin = true)
   {
-    var userInfo = await _configRepo.GetUserInfo(userId);
+    var userInfo = await GetUserOrThrow(userId);
 
     var userMsgBody =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
+    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
     $"We will try again within an hour.</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
@@ -163,7 +170,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
-    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
+    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>Debug data:</p>" +
     $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), new JsonSerializerOptions() { WriteIndented = true })}</pre>" +
@@ -173,7 +180,7 @@ td+td {
     using var userMessage = new MimeMessage();
 
     userMessage.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
-    userMessage.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    userMessage.To.Add(new MailboxAddress(userInfo.DisplayName, userInfo.Email!));
     userMessage.Subject = "Trader automation failed";
     userMessage.Body = new TextPart(TextFormat.Html) { Text = userMsgBody };
 
@@ -195,14 +202,14 @@ td+td {
   }
 
   public async Task SendAutomationApiAuthFailed(
-    int userId, DateTime timestamp)
+    Guid userId, DateTime timestamp)
   {
-    var userInfo = await _configRepo.GetUserInfo(userId);
+    var userInfo = await GetUserOrThrow(userId);
 
     var userMsgBody =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.display_name)},</p>" +
+    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
     $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} " +
     $"but failed because exchange API authentication failed!</p>" +
     $"<p>Please update your exchange API key or disable automation.<br>" +
@@ -211,7 +218,7 @@ td+td {
     using var userMessage = new MimeMessage();
 
     userMessage.From.Add(new MailboxAddress("Trader Bot", _emailSettings.FromAddress));
-    userMessage.To.Add(new MailboxAddress(userInfo.display_name, userInfo.user_email));
+    userMessage.To.Add(new MailboxAddress(userInfo.DisplayName, userInfo.Email!));
     userMessage.Subject = "Trader automation failed";
     userMessage.Body = new TextPart(TextFormat.Html) { Text = userMsgBody };
 
@@ -224,15 +231,15 @@ td+td {
   }
 
   public async Task SendAutomationException(
-    int userId, DateTime timestamp, Exception exception)
+    Guid userId, DateTime timestamp, Exception exception)
   {
-    var userInfo = await _configRepo.GetUserInfo(userId);
+    var userInfo = await GetUserOrThrow(userId);
 
     var htmlString =
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
-    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.display_name}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
+    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
     $"<p>{exception.Message}:</p>" +
     $"<pre>{exception.StackTrace}</pre>";
 

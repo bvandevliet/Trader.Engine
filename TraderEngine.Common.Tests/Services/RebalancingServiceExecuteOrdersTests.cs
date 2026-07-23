@@ -18,6 +18,8 @@ public class RebalancingServiceExecuteOrdersTests
 {
   private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
+  private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
+
   private static readonly MarketReqDto _eur = new("EUR", "EUR");
   private static readonly MarketReqDto _btc = new("EUR", "BTC");
   private static readonly MarketReqDto _eth = new("EUR", "ETH");
@@ -40,7 +42,7 @@ public class RebalancingServiceExecuteOrdersTests
     };
 
     // Act
-    var results = await _service.Rebalance(exchange, orders, "Test");
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
 
     // Assert
     Assert.AreEqual(2, results.Length);
@@ -69,7 +71,7 @@ public class RebalancingServiceExecuteOrdersTests
     };
 
     // Act
-    var results = await _service.Rebalance(exchange, orders, "Test");
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
 
     // Assert
     Assert.AreEqual(1, results.Length);
@@ -92,7 +94,7 @@ public class RebalancingServiceExecuteOrdersTests
     };
 
     // Act
-    var results = await _service.Rebalance(exchange, orders, "Test");
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
 
     // Assert
     Assert.AreEqual(1, results.Length);
@@ -118,7 +120,7 @@ public class RebalancingServiceExecuteOrdersTests
     };
 
     // Act
-    var results = await _service.Rebalance(exchange, orders, "Test");
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
 
     // Assert
     Assert.AreEqual(1, results.Length);
@@ -139,11 +141,11 @@ public class RebalancingServiceExecuteOrdersTests
     {
     }
 
-    public new Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "Mock")
+    public new Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "Mock")
     {
       CancelAllOpenOrdersCallCount++;
 
-      return base.CancelAllOpenOrders(market, source);
+      return base.CancelAllOpenOrders(credentials, market, source);
     }
   }
 }

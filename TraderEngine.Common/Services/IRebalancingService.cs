@@ -11,18 +11,20 @@ public interface IRebalancingService
   /// Try update unknown market status in <paramref name="absAlloc"/>.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="absAlloc"></param>
   /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns>
-  Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, AbsAllocReqDto absAlloc);
+  Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, AbsAllocReqDto absAlloc);
 
   /// <summary>
   /// Get the top ranking assets in <paramref name="absAllocs"/> for this exchange.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="absAllocs"></param>
   /// <param name="topRankingCount"></param>
   /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns>
-  Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount);
+  Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount);
 
   /// <summary>
   /// A task that will complete when verified that the given <paramref name="order"/> has ended.
@@ -30,23 +32,26 @@ public interface IRebalancingService
   /// Every new check is performed one second after the previous has been resolved.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="order"></param>
   /// <param name="cancel"></param>
   /// <param name="checks"></param>
   /// <returns>Completes when verified that the given <paramref name="order"/> has ended.</returns>
-  Task<OrderDto> VerifyOrderEnded(IExchange exchange, OrderDto order, bool cancel = true, int checks = 60);
+  Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60);
 
   /// <summary>
   /// Asynchronously performs a portfolio rebalance.
   /// Quote allocation and takeout will be handled.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="config"></param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
   /// <param name="source"></param>
   Task<OrderDto[]> Rebalance(
     IExchange exchange,
+    ExchangeCredentials credentials,
     ConfigReqDto config,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null,
@@ -57,10 +62,12 @@ public interface IRebalancingService
   /// Just executes the given orders, without any checks.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="orders"></param>
   /// <param name="source"></param>
   Task<OrderDto[]> Rebalance(
     IExchange exchange,
+    ExchangeCredentials credentials,
     IEnumerable<OrderReqDto> orders,
     string source = "API");
 }

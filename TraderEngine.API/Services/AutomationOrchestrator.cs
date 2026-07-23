@@ -100,11 +100,10 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // Get API credentials.
         var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
-        exchange.ApiKey = apiCred.ApiKey;
-        exchange.ApiSecret = apiCred.ApiSecret;
+        var credentials = new ExchangeCredentials(apiCred.ApiKey, apiCred.ApiSecret);
 
         // Get current balance.
-        var balanceResult = await exchange.GetBalance();
+        var balanceResult = await exchange.GetBalance(credentials);
 
         if (balanceResult.ErrorCode == ExchangeErrCodeEnum.AuthenticationError)
         {
@@ -137,7 +136,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // Filter for assets that are potentially tradable.
-        var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, newAbsAllocs, configReqDto.TopRankingCount);
+        var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, newAbsAllocs, configReqDto.TopRankingCount);
 
         // Map here to retain current balance as it will be
         // modified by the simulation since it is passed by reference.
@@ -150,7 +149,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         var absAllocs = await absAllocsTask;
 
         // Simulate rebalance.
-        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, configReqDto, absAllocs, balance, "automation");
+        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, absAllocs, balance, "automation");
 
         var newBalanceDto = CommonMapper.MapBalance(balance);
 
@@ -219,7 +218,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // Execute and return resulting rebalance DTO.
-        var ordersExecuted = await _rebalancingService.Rebalance(exchange, simulated.Orders, "automation");
+        var ordersExecuted = await _rebalancingService.Rebalance(exchange, credentials, simulated.Orders, "automation");
 
         // If no orders were placed, return.
         if (ordersExecuted.Length == 0)
@@ -281,8 +280,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         _ = await _configRepo.SaveConfig(userConfig.Key, configReqDto);
 
         // Send success notification.
-        var totalDepositedTask = exchange.TotalDeposited();
-        var totalWithdrawnTask = exchange.TotalWithdrawn();
+        var totalDepositedTask = exchange.TotalDeposited(credentials);
+        var totalWithdrawnTask = exchange.TotalWithdrawn(credentials);
         _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
         await _emailNotification.SendAutomationSucceeded(
           userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated, ordersExecuted);

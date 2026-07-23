@@ -43,11 +43,10 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    exchange.ApiKey = simulationReqDto.ExchangeApiCred.ApiKey;
-    exchange.ApiSecret = simulationReqDto.ExchangeApiCred.ApiSecret;
+    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret);
 
     // Get current balance.
-    var balanceResult = await exchange.GetBalance();
+    var balanceResult = await exchange.GetBalance(credentials);
 
     if (balanceResult.ErrorCode == ExchangeErrCodeEnum.AuthenticationError)
       return Unauthorized(balanceResult.Summary);
@@ -66,7 +65,7 @@ public class RebalanceController : ControllerBase
     }
 
     // Filter for assets that are potentially tradable.
-    var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, newAbsAllocs, simulationReqDto.Config.TopRankingCount);
+    var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, newAbsAllocs, simulationReqDto.Config.TopRankingCount);
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
@@ -79,10 +78,10 @@ public class RebalanceController : ControllerBase
     var absAllocs = await absAllocsTask;
 
     // Simulate rebalance.
-    var orders = await _rebalancingService.Rebalance(simExchange, simulationReqDto.Config, absAllocs, balance, source);
+    var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, absAllocs, balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.
-    //var newBalance = await simExchange.GetBalance();
+    //var newBalance = await simExchange.GetBalance(credentials);
     var newBalanceDto = CommonMapper.MapBalance(balance);
 
     return Ok(new SimulationDto()
@@ -105,15 +104,14 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    exchange.ApiKey = rebalanceReqDto.ExchangeApiCred.ApiKey;
-    exchange.ApiSecret = rebalanceReqDto.ExchangeApiCred.ApiSecret;
+    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret);
 
     // Filter for assets that are potentially tradable.
-    var absAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.Config.TopRankingCount);
+    var absAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials, rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.Config.TopRankingCount);
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
-    var orders = await _rebalancingService.Rebalance(exchange, rebalanceReqDto.Config, absAllocs, null, source);
+    var orders = await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, absAllocs, null, source);
 
     return Ok(orders);
   }
@@ -128,12 +126,11 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    exchange.ApiKey = executeOrdersReqDto.ExchangeApiCred.ApiKey;
-    exchange.ApiSecret = executeOrdersReqDto.ExchangeApiCred.ApiSecret;
+    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret);
 
     // Execute rebalance orders.
     // TODO: Properly handle exchange auth errors.
-    var orders = await _rebalancingService.Rebalance(exchange, executeOrdersReqDto.Orders, source);
+    var orders = await _rebalancingService.Rebalance(exchange, credentials, executeOrdersReqDto.Orders, source);
 
     return Ok(orders);
   }

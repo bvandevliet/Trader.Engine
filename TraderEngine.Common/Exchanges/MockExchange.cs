@@ -22,10 +22,6 @@ public class MockExchange : IExchange
 
   public decimal TakerFee { get; }
 
-  public string ApiKey { get; set; } = string.Empty;
-
-  public string ApiSecret { get; set; } = string.Empty;
-
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
@@ -55,22 +51,22 @@ public class MockExchange : IExchange
   /// Null, if no initial <see cref="Balance"/> was given.
   /// </summary>
   /// <returns></returns>
-  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance()
+  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
   {
     return Task.FromResult(Result<Balance, ExchangeErrCodeEnum>.Success(_curBalance));
   }
 
-  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited()
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn()
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials)
   {
     throw new NotImplementedException();
   }
 
-  public Task<MarketDataDto?> GetMarket(MarketReqDto market)
+  public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
   {
     return Task.FromResult(new MarketDataDto()
     {
@@ -80,7 +76,7 @@ public class MockExchange : IExchange
     })!;
   }
 
-  public Task<AssetDataDto?> GetAsset(string baseSymbol)
+  public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
     return Task.FromResult(new AssetDataDto()
     {
@@ -90,12 +86,12 @@ public class MockExchange : IExchange
     })!;
   }
 
-  public Task<decimal> GetPrice(MarketReqDto market)
+  public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "Mock")
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "Mock")
   {
     var quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
 
@@ -150,27 +146,27 @@ public class MockExchange : IExchange
     return Task.FromResult(Result<OrderDto, ExchangeErrCodeEnum>.Success(returnOrder));
   }
 
-  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
+  public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "Mock")
+  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "Mock")
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "Mock")
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "Mock")
   {
     return Task.FromResult(new List<OrderDto>().AsEnumerable())!;
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null, string source = "Mock")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? asset = null, string source = "Mock")
   {
     throw new NotImplementedException();
   }
@@ -197,7 +193,7 @@ public class SimExchange : MockExchange, IExchange
     _instance = exchangeService;
   }
 
-  public async Task ProcessOrders(IEnumerable<OrderDto> orders)
+  public async Task ProcessOrders(ExchangeCredentials credentials, IEnumerable<OrderDto> orders)
   {
     foreach (var order in orders)
     {
@@ -214,22 +210,22 @@ public class SimExchange : MockExchange, IExchange
         order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled : order.AmountQuote;
       }
 
-      _ = await NewOrder(order);
+      _ = await NewOrder(credentials, order);
     }
   }
 
-  public new Task<MarketDataDto?> GetMarket(MarketReqDto market)
+  public new Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
   {
-    return _instance.GetMarket(market);
+    return _instance.GetMarket(credentials, market);
   }
 
-  public new Task<AssetDataDto?> GetAsset(string baseSymbol)
+  public new Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
-    return _instance.GetAsset(baseSymbol);
+    return _instance.GetAsset(credentials, baseSymbol);
   }
 
-  public new Task<decimal> GetPrice(MarketReqDto market)
+  public new Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
   {
-    return _instance.GetPrice(market);
+    return _instance.GetPrice(credentials, market);
   }
 }

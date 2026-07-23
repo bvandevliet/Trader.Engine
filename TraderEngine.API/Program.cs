@@ -1,6 +1,13 @@
+using System.Text;
 using System.Threading.Channels;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using MySqlConnector;
+using Microsoft.IdentityModel.Tokens;
 using Polly;
 using Polly.Contrib.WaitAndRetry;
 using TraderEngine.API.AppSettings;
@@ -10,9 +17,10 @@ using TraderEngine.API.Repositories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
-using TraderEngine.Common.Factories;
 using TraderEngine.Common.Repositories;
 using TraderEngine.Common.Services;
+using TraderEngine.Data;
+using TraderEngine.Data.Entities;
 
 namespace TraderEngine.API;
 
@@ -36,16 +44,66 @@ public class Program
 #endif
 
     builder.Services.AddRouting(options => options.LowercaseUrls = true);
-    builder.Services.AddControllers();
 
-    builder.Services.Configure<AddressSettings>(builder.Configuration.GetSection("Addresses"));
-    builder.Services.Configure<CmsDbSettings>(builder.Configuration.GetSection("CmsDbSettings"));
+    // Every endpoint requires authentication by default (interim, API-only JWT auth backed by
+    // AppUser — see AuthController); actions must opt out explicitly via [AllowAnonymous] rather
+    // than opt in via [Authorize], so a newly added controller can't accidentally end up
+    // reachable without a valid token.
+    builder.Services.AddControllers(options =>
+      options.Filters.Add(new AuthorizeFilter()));
+
     builder.Services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
+    builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+    builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
 
-    builder.Services.AddScoped<INamedTypeFactory<MySqlConnection>, SqlConnectionFactory>();
+    // A factory (rather than a plain scoped AddDbContext) so repositories that fan out
+    // concurrent work (e.g. EfMarketCapInternalRepository.TryInsertMany) can create their own
+    // short-lived context instances — a single DbContext instance is not thread-safe. A scoped
+    // TraderEngineDbContext is still available for constructor injection everywhere else, since
+    // AddDbContextFactory registers both.
+    builder.Services.AddDbContextFactory<TraderEngineDbContext>(options => options
+      .UseNpgsql(builder.Configuration.GetConnectionString("Postgres"))
+      .UseSnakeCaseNamingConvention());
 
-    builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
+    builder.Services
+      .AddIdentityCore<AppUser>()
+      .AddRoles<IdentityRole<Guid>>()
+      .AddSignInManager()
+      .AddEntityFrameworkStores<TraderEngineDbContext>();
+
+    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
+
+    builder.Services
+      .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+      .AddJwtBearer(options =>
+      {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+          ValidateIssuer = true,
+          ValidIssuer = jwtSettings.Issuer,
+          ValidateAudience = true,
+          ValidAudience = jwtSettings.Audience,
+          ValidateLifetime = true,
+          ValidateIssuerSigningKey = true,
+          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SigningKey)),
+        };
+      });
+
+    builder.Services.AddAuthorization();
+
+    // Keys are persisted to a dedicated volume rather than TraderEngineDbContext's own database
+    // deliberately: the key ring must live in a different failure/compromise domain than the
+    // ExchangeApiCredential ciphertext it protects, otherwise a single database compromise
+    // defeats the encryption entirely. Mirrors the volume the previous cryptography microservice
+    // used for the same purpose (see docker-compose.yml).
+    builder.Services
+      .AddDataProtection()
+      .PersistKeysToFileSystem(new DirectoryInfo(
+        builder.Configuration["DataProtection:KeyRingPath"] ?? Path.Combine(AppContext.BaseDirectory, "secrets")))
+      .SetApplicationName("TraderEngine");
+
+    builder.Services.AddScoped<IMarketCapInternalRepository, EfMarketCapInternalRepository>();
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
     builder.Services.AddScoped<IRebalancingService, RebalancingService>();
 
@@ -61,16 +119,8 @@ public class Program
       .AddTransientHttpErrorPolicy(policy =>
         policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
 
-    builder.Services.AddHttpClient<ICryptographyService, CryptographyService>((x, httpClient) =>
-    {
-      var addressSettings = x.GetRequiredService<IOptions<AddressSettings>>().Value;
-
-      httpClient.BaseAddress = new($"{addressSettings.TRADER_CRYPTO}/");
-    })
-      .ApplyDefaultPoolAndPolicyConfig();
-
-    builder.Services.AddScoped<IConfigRepository, WordPressConfigRepository>();
-    builder.Services.AddScoped<IApiCredentialsRepository, WordPressApiCredRepository>();
+    builder.Services.AddScoped<IConfigRepository, EfConfigRepository>();
+    builder.Services.AddScoped<IApiCredentialsRepository, EfApiCredentialsRepository>();
 
     builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
 
@@ -93,8 +143,55 @@ public class Program
 
     var app = builder.Build();
 
+    using (var scope = app.Services.CreateScope())
+    {
+      scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>().Database.Migrate();
+
+      SeedAdminUser(scope.ServiceProvider).GetAwaiter().GetResult();
+    }
+
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     app.MapControllers();
 
     app.Run();
+  }
+
+  /// <summary>
+  /// Idempotently creates the single operator account from <see cref="AdminSeedSettings"/>, if
+  /// configured and not already present. No-op (and never overwrites an existing user) otherwise.
+  /// </summary>
+  private static async Task SeedAdminUser(IServiceProvider services)
+  {
+    var seedSettings = services.GetRequiredService<IOptions<AdminSeedSettings>>().Value;
+
+    if (string.IsNullOrEmpty(seedSettings.UserName) ||
+      string.IsNullOrEmpty(seedSettings.Email) ||
+      string.IsNullOrEmpty(seedSettings.Password))
+    {
+      return;
+    }
+
+    var userManager = services.GetRequiredService<UserManager<AppUser>>();
+
+    if (await userManager.FindByNameAsync(seedSettings.UserName) != null)
+      return;
+
+    var user = new AppUser
+    {
+      UserName = seedSettings.UserName,
+      Email = seedSettings.Email,
+      DisplayName = seedSettings.UserName,
+      EmailConfirmed = true,
+    };
+
+    var result = await userManager.CreateAsync(user, seedSettings.Password);
+
+    if (!result.Succeeded)
+    {
+      var logger = services.GetRequiredService<ILogger<Program>>();
+      logger.LogCritical("Failed to seed admin user: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
+    }
   }
 }

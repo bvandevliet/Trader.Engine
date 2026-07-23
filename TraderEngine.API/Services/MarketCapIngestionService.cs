@@ -62,8 +62,6 @@ public sealed class MarketCapIngestionService : BackgroundService
 
     try
     {
-      _ = await marketCapIntRepo.InitDatabase();
-
       _ = await marketCapIntRepo.CleanupDatabase();
 
       _logger.LogInformation("Updating market cap data ..");

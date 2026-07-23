@@ -35,14 +35,14 @@ public class RebalancingService : IRebalancingService
     }
   }
 
-  public async Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, AbsAllocReqDto absAlloc)
+  public async Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, AbsAllocReqDto absAlloc)
   {
     // Get market data for the asset and update market status.
     if (absAlloc.MarketStatus == MarketStatus.Unknown)
     {
       var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
 
-      var marketData = await exchange.GetMarket(marketDto);
+      var marketData = await exchange.GetMarket(credentials, marketDto);
 
       absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
     }
@@ -50,13 +50,13 @@ public class RebalancingService : IRebalancingService
     return absAlloc;
   }
 
-  public async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
+  public async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
   {
     var absAllocsList = new List<AbsAllocReqDto>();
 
     foreach (var absAlloc in absAllocs)
     {
-      var absAllocUpdated = await FetchMarketStatus(exchange, absAlloc);
+      var absAllocUpdated = await FetchMarketStatus(exchange, credentials, absAlloc);
 
       if (absAlloc.MarketStatus != MarketStatus.Unknown)
       {
@@ -174,18 +174,19 @@ public class RebalancingService : IRebalancingService
   /// resolves to a result, so one failing order can never discard the results of the others.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="orderReq"></param>
   /// <param name="source"></param>
   /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
   /// <returns>The placed (and, where possible, ended) order, or a synthetic failed order.</returns>
   private async Task<OrderDto> PlaceAndVerifyOrder(
-    IExchange exchange, OrderReqDto orderReq, string source, bool cancel)
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel)
   {
     OrderDto order;
 
     try
     {
-      var result = await exchange.NewOrder(orderReq, source);
+      var result = await exchange.NewOrder(credentials, orderReq, source);
 
       if (result.Value is null)
       {
@@ -207,7 +208,7 @@ public class RebalancingService : IRebalancingService
 
     try
     {
-      return await VerifyOrderEnded(exchange, order, cancel);
+      return await VerifyOrderEnded(exchange, credentials, order, cancel);
     }
     catch (Exception ex)
     {
@@ -233,7 +234,7 @@ public class RebalancingService : IRebalancingService
     };
   }
 
-  public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, OrderDto order, bool cancel = true, int checks = 60)
+  public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60)
   {
     while (
       checks > 0 &&
@@ -242,7 +243,7 @@ public class RebalancingService : IRebalancingService
     {
       await Task.Delay(1000);
 
-      order = await exchange.GetOrder(order.Id, order.Market) ?? order;
+      order = await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
 
       checks--;
     }
@@ -250,7 +251,7 @@ public class RebalancingService : IRebalancingService
     if (cancel && checks == 0)
       try
       {
-        order = await exchange.CancelOrder(order.Id!, order.Market) ?? order;
+        order = await exchange.CancelOrder(credentials, order.Id!, order.Market) ?? order;
       }
       catch (Exception ex)
       {
@@ -265,17 +266,18 @@ public class RebalancingService : IRebalancingService
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="source"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> SellOveragesAndVerify(
-    IExchange exchange, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
-      var curBalanceResult = await exchange.GetBalance();
+      var curBalanceResult = await exchange.GetBalance(credentials);
       curBalance = curBalanceResult.Value!;
     }
 
@@ -302,7 +304,7 @@ public class RebalancingService : IRebalancingService
         if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < exchange.MinOrderSizeInQuote)
         {
           // Honor decimals precision for the amount of this asset.
-          var assetData = exchange.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
+          var assetData = exchange.GetAsset(credentials, allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
           var decimals = assetData?.Decimals;
 
           order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
@@ -315,7 +317,7 @@ public class RebalancingService : IRebalancingService
         return order;
       });
 
-    return await SellOveragesAndVerify(exchange, orders, source);
+    return await SellOveragesAndVerify(exchange, credentials, orders, source);
   }
 
   /// <summary>
@@ -323,11 +325,12 @@ public class RebalancingService : IRebalancingService
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="orders"></param>
   /// <param name="source"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> SellOveragesAndVerify(
-    IExchange exchange, IEnumerable<OrderReqDto> orders, string source)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<OrderReqDto> orders, string source)
   {
     // The sell task loop ..
     return await Task.WhenAll(
@@ -352,7 +355,7 @@ public class RebalancingService : IRebalancingService
       })
 
       // Sell, then verify the sell order ended.
-      .Select(sellOrder => PlaceAndVerifyOrder(exchange, sellOrder, source, cancel: true)));
+      .Select(sellOrder => PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true)));
   }
 
   /// <summary>
@@ -360,17 +363,18 @@ public class RebalancingService : IRebalancingService
   /// Completes when all triggered buy orders are posted.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="source"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> BuyUnderagesAndVerify(
-    IExchange exchange, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
-      var curBalanceResult = await exchange.GetBalance();
+      var curBalanceResult = await exchange.GetBalance(credentials);
       curBalance = curBalanceResult.Value!;
     }
 
@@ -392,7 +396,7 @@ public class RebalancingService : IRebalancingService
         AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
       });
 
-    return await BuyUnderagesAndVerify(exchange, orders, source, curBalance);
+    return await BuyUnderagesAndVerify(exchange, credentials, orders, source, curBalance);
   }
 
   /// <summary>
@@ -400,16 +404,17 @@ public class RebalancingService : IRebalancingService
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
   /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
   /// <param name="orders"></param>
   /// <param name="source"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> BuyUnderagesAndVerify(
-    IExchange exchange, IEnumerable<OrderReqDto> orders, string source, Balance? curBalance = null)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<OrderReqDto> orders, string source, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
-      var curBalanceResult = await exchange.GetBalance();
+      var curBalanceResult = await exchange.GetBalance(credentials);
       curBalance = curBalanceResult.Value!;
     }
 
@@ -460,28 +465,29 @@ public class RebalancingService : IRebalancingService
       .Where(buyOrder => buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
 
       // Buy, then verify the buy order ended.
-      .Select(buyOrder => PlaceAndVerifyOrder(exchange, buyOrder, source, cancel: false)));
+      .Select(buyOrder => PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false)));
   }
 
   public async Task<OrderDto[]> Rebalance(
     IExchange exchange,
+    ExchangeCredentials credentials,
     ConfigReqDto config,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null,
     string source = "API")
   {
     // Clear the path ..
-    _ = await exchange.CancelAllOpenOrders();
+    _ = await exchange.CancelAllOpenOrders(credentials);
 
     // Make sure all market statuses of eligible assets are known.
-    var absAllocList = await GetTopRankingAllocs(exchange, newAbsAllocs, config.TopRankingCount);
+    var absAllocList = await GetTopRankingAllocs(exchange, credentials, newAbsAllocs, config.TopRankingCount);
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await SellOveragesAndVerify(exchange, absAllocList, source, config, curBalance);
+    var sellResults = await SellOveragesAndVerify(exchange, credentials, absAllocList, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await BuyUnderagesAndVerify(exchange, absAllocList, source, config);
+    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, absAllocList, source, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
@@ -494,18 +500,19 @@ public class RebalancingService : IRebalancingService
 
   public async Task<OrderDto[]> Rebalance(
     IExchange exchange,
+    ExchangeCredentials credentials,
     IEnumerable<OrderReqDto> orders,
     string source = "API")
   {
     // Clear the path ..
-    _ = await exchange.CancelAllOpenOrders();
+    _ = await exchange.CancelAllOpenOrders(credentials);
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await SellOveragesAndVerify(exchange, orders, source);
+    var sellResults = await SellOveragesAndVerify(exchange, credentials, orders, source);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await BuyUnderagesAndVerify(exchange, orders, source);
+    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, orders, source);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
