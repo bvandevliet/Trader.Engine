@@ -10,7 +10,7 @@ namespace TraderEngine.API.Tests.Exchanges;
 /// <summary>
 /// Covers <see cref="BitvavoExchange.CancelOrder"/>, which previously threw
 /// <see cref="NotImplementedException"/> unconditionally. That exception was swallowed by
-/// <c>RebalanceExtensions.VerifyOrderEnded</c>'s catch block, meaning an order that never filled
+/// <c>RebalancingService.VerifyOrderEnded</c>'s catch block, meaning an order that never filled
 /// within its polling budget could never actually be cancelled on the live exchange — a silent,
 /// live gap rather than a hypothetical one.
 /// </summary>

@@ -3,12 +3,20 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
 
-namespace TraderEngine.Common.Extensions;
+namespace TraderEngine.Common.Services;
 
-public static class RebalanceExtensions
+public class RebalancingService : IRebalancingService
 {
+  private readonly ILogger<RebalancingService> _logger;
+
+  public RebalancingService(ILogger<RebalancingService> logger)
+  {
+    _logger = logger;
+  }
+
   private class AllocDiffReqDto : AllocationDto
   {
     public decimal AmountQuoteDiff { get; set; }
@@ -27,13 +35,7 @@ public static class RebalanceExtensions
     }
   }
 
-  /// <summary>
-  /// Try update unknown market status in <paramref name="absAlloc"/>.
-  /// </summary>
-  /// <param name="exchange"></param>
-  /// <param name="absAlloc"></param>
-  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
-  public static async Task<AbsAllocReqDto> FetchMarketStatus(this IExchange exchange, AbsAllocReqDto absAlloc)
+  public async Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, AbsAllocReqDto absAlloc)
   {
     // Get market data for the asset and update market status.
     if (absAlloc.MarketStatus == MarketStatus.Unknown)
@@ -48,19 +50,13 @@ public static class RebalanceExtensions
     return absAlloc;
   }
 
-  /// <summary>
-  /// Get the top ranking assets in <paramref name="absAllocs"/> for this exchange.
-  /// </summary>
-  /// <param name="exchange"></param>
-  /// <param name="absAllocs"></param>
-  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns></returns>
-  public static async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(this IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
+  public async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
   {
     var absAllocsList = new List<AbsAllocReqDto>();
 
     foreach (var absAlloc in absAllocs)
     {
-      var absAllocUpdated = await exchange.FetchMarketStatus(absAlloc);
+      var absAllocUpdated = await FetchMarketStatus(exchange, absAlloc);
 
       if (absAlloc.MarketStatus != MarketStatus.Unknown)
       {
@@ -80,12 +76,13 @@ public static class RebalanceExtensions
   /// Get current deviation in quote currency when comparing absolute new allocations in
   /// <paramref name="newAbsAllocs"/> against current allocations in <paramref name="curBalance"/>.
   /// </summary>
+  /// <param name="exchange"></param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
   private static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance curBalance)
+    IExchange exchange, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance curBalance)
   {
     // Absolute asset allocations to be used for rebalancing.
     List<AbsAllocReqDto> newAbsAllocsList = new();
@@ -99,7 +96,7 @@ public static class RebalanceExtensions
       || null != curBalance.GetAllocation(absAlloc.Market.BaseSymbol))
 
       // Filter for quote currency.
-      .Where(absAlloc => absAlloc.Market.QuoteSymbol.Equals(@this.QuoteSymbol))
+      .Where(absAlloc => absAlloc.Market.QuoteSymbol.Equals(exchange.QuoteSymbol))
 
       // Sum of all absolute allocation values.
       .Sum(absAlloc =>
@@ -121,7 +118,7 @@ public static class RebalanceExtensions
       totalAbsAlloc /= div;
 
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
-    //newAbsAllocsList.Add(new AbsAllocReqDto(@this.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
+    //newAbsAllocsList.Add(new AbsAllocReqDto(exchange.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
 
     // Loop through current allocations and determine quote diffs.
     foreach (var curAlloc in curBalance.Allocations)
@@ -176,25 +173,25 @@ public static class RebalanceExtensions
   /// of propagating. This guarantees every order in a <see cref="Task.WhenAll{TResult}"/> batch
   /// resolves to a result, so one failing order can never discard the results of the others.
   /// </summary>
-  /// <param name="this"></param>
+  /// <param name="exchange"></param>
   /// <param name="orderReq"></param>
   /// <param name="source"></param>
   /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
   /// <returns>The placed (and, where possible, ended) order, or a synthetic failed order.</returns>
-  private static async Task<OrderDto> PlaceAndVerifyOrder(
-    this IExchange @this, OrderReqDto orderReq, string source, bool cancel)
+  private async Task<OrderDto> PlaceAndVerifyOrder(
+    IExchange exchange, OrderReqDto orderReq, string source, bool cancel)
   {
     OrderDto order;
 
     try
     {
-      var result = await @this.NewOrder(orderReq, source);
+      var result = await exchange.NewOrder(orderReq, source);
 
       if (result.Value is null)
       {
-        @this.Logger?.LogError(
-          "Failed to place order for market {Market}: exchange returned no order payload (error code {ErrorCode}).",
-          orderReq.Market, result.ErrorCode);
+        _logger.LogError(
+          "Failed to place order for market {Market} on exchange {Exchange}: exchange returned no order payload (error code {ErrorCode}).",
+          orderReq.Market, exchange.GetType().Name, result.ErrorCode);
 
         return NewFailedOrder(orderReq);
       }
@@ -203,18 +200,18 @@ public static class RebalanceExtensions
     }
     catch (Exception ex)
     {
-      @this.Logger?.LogError(ex, "Failed to place order for market {Market}.", orderReq.Market);
+      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.", orderReq.Market, exchange.GetType().Name);
 
       return NewFailedOrder(orderReq);
     }
 
     try
     {
-      return await @this.VerifyOrderEnded(order, cancel);
+      return await VerifyOrderEnded(exchange, order, cancel);
     }
     catch (Exception ex)
     {
-      @this.Logger?.LogError(ex, "Failed to verify order {OrderId} for market {Market} has ended.", order.Id, order.Market);
+      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.", order.Id, order.Market, exchange.GetType().Name);
 
       // Return the last known state rather than the placement failure,
       // since the order itself was successfully placed.
@@ -236,17 +233,7 @@ public static class RebalanceExtensions
     };
   }
 
-  /// <summary>
-  /// A task that will complete when verified that the given <paramref name="order"/> has ended.
-  /// If the given order is not completed within given amount of <paramref name="checks"/>, it will be cancelled.
-  /// Every new check is performed one second after the previous has been resolved.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="order"></param>
-  /// <param name="cancel"></param>
-  /// <param name="checks"></param>
-  /// <returns>Completes when verified that the given <paramref name="order"/> has ended.</returns>
-  public static async Task<OrderDto> VerifyOrderEnded(this IExchange @this, OrderDto order, bool cancel = true, int checks = 60)
+  public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, OrderDto order, bool cancel = true, int checks = 60)
   {
     while (
       checks > 0 &&
@@ -255,7 +242,7 @@ public static class RebalanceExtensions
     {
       await Task.Delay(1000);
 
-      order = await @this.GetOrder(order.Id, order.Market) ?? order;
+      order = await exchange.GetOrder(order.Id, order.Market) ?? order;
 
       checks--;
     }
@@ -263,11 +250,11 @@ public static class RebalanceExtensions
     if (cancel && checks == 0)
       try
       {
-        order = await @this.CancelOrder(order.Id!, order.Market) ?? order;
+        order = await exchange.CancelOrder(order.Id!, order.Market) ?? order;
       }
       catch (Exception ex)
       {
-        @this.Logger?.LogError(ex, "Failed to cancel order {OrderId} for market {Market}.", order.Id, order.Market);
+        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id, order.Market, exchange.GetType().Name);
       }
 
     return order;
@@ -277,25 +264,26 @@ public static class RebalanceExtensions
   /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
-  /// <param name="this"></param>
+  /// <param name="exchange"></param>
   /// <param name="newAbsAllocs"></param>
+  /// <param name="source"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
-  private static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
+  private async Task<OrderDto[]> SellOveragesAndVerify(
+    IExchange exchange, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
-      var curBalanceResult = await @this.GetBalance();
+      var curBalanceResult = await exchange.GetBalance();
       curBalance = curBalanceResult.Value!;
     }
 
     var orders =
-      @this.GetAllocationQuoteDiffs(newAbsAllocs, config, curBalance)
+      GetAllocationQuoteDiffs(exchange, newAbsAllocs, config, curBalance)
 
       // We can't trade quote currency for quote currency.
-      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Positive quote differences refer to oversized allocations.
       .Where(allocDiff => allocDiff.AmountQuoteDiff > 0)
@@ -311,10 +299,10 @@ public static class RebalanceExtensions
         };
 
         // Prevent dust.
-        if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < @this.MinOrderSizeInQuote)
+        if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < exchange.MinOrderSizeInQuote)
         {
           // Honor decimals precision for the amount of this asset.
-          var assetData = @this.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
+          var assetData = exchange.GetAsset(allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
           var decimals = assetData?.Decimals;
 
           order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
@@ -327,18 +315,19 @@ public static class RebalanceExtensions
         return order;
       });
 
-    return await @this.SellOveragesAndVerify(orders, source);
+    return await SellOveragesAndVerify(exchange, orders, source);
   }
 
   /// <summary>
   /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="orders"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
-  /// <param name="this"></param>
+  /// <param name="exchange"></param>
   /// <param name="orders"></param>
+  /// <param name="source"></param>
   /// <returns></returns>
-  private static async Task<OrderDto[]> SellOveragesAndVerify(
-    this IExchange @this, IEnumerable<OrderReqDto> orders, string source)
+  private async Task<OrderDto[]> SellOveragesAndVerify(
+    IExchange exchange, IEnumerable<OrderReqDto> orders, string source)
   {
     // The sell task loop ..
     return await Task.WhenAll(
@@ -348,10 +337,10 @@ public static class RebalanceExtensions
       .Where(order => order.Side == OrderSide.Sell)
 
       // We can't trade quote currency for quote currency.
-      .Where(sellOrder => !sellOrder.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+      .Where(sellOrder => !sellOrder.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Check if reached minimum order size.
-      .Where(sellOrder => sellOrder.AmountQuote >= @this.MinOrderSizeInQuote || sellOrder.Amount > 0)
+      .Where(sellOrder => sellOrder.AmountQuote >= exchange.MinOrderSizeInQuote || sellOrder.Amount > 0)
 
       // Round to avoid potentially invalid amount quote.
       .Select(sellOrder =>
@@ -363,32 +352,33 @@ public static class RebalanceExtensions
       })
 
       // Sell, then verify the sell order ended.
-      .Select(sellOrder => @this.PlaceAndVerifyOrder(sellOrder, source, cancel: true)));
+      .Select(sellOrder => PlaceAndVerifyOrder(exchange, sellOrder, source, cancel: true)));
   }
 
   /// <summary>
   /// Buy to increase undersized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
   /// Completes when all triggered buy orders are posted.
   /// </summary>
-  /// <param name="this"></param>
+  /// <param name="exchange"></param>
   /// <param name="newAbsAllocs"></param>
+  /// <param name="source"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
-  private static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
+  private async Task<OrderDto[]> BuyUnderagesAndVerify(
+    IExchange exchange, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
-      var curBalanceResult = await @this.GetBalance();
+      var curBalanceResult = await exchange.GetBalance();
       curBalance = curBalanceResult.Value!;
     }
 
     var orders =
-      @this.GetAllocationQuoteDiffs(newAbsAllocs, config, curBalance)
+      GetAllocationQuoteDiffs(exchange, newAbsAllocs, config, curBalance)
 
       // We can't trade quote currency for quote currency.
-      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Negative quote differences refer to undersized allocations.
       .Where(allocDiff => allocDiff.AmountQuoteDiff < 0)
@@ -402,23 +392,24 @@ public static class RebalanceExtensions
         AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
       });
 
-    return await @this.BuyUnderagesAndVerify(orders, source, curBalance);
+    return await BuyUnderagesAndVerify(exchange, orders, source, curBalance);
   }
 
   /// <summary>
   /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="orders"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
-  /// <param name="this"></param>
+  /// <param name="exchange"></param>
   /// <param name="orders"></param>
+  /// <param name="source"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
-  private static async Task<OrderDto[]> BuyUnderagesAndVerify(
-    this IExchange @this, IEnumerable<OrderReqDto> orders, string source, Balance? curBalance = null)
+  private async Task<OrderDto[]> BuyUnderagesAndVerify(
+    IExchange exchange, IEnumerable<OrderReqDto> orders, string source, Balance? curBalance = null)
   {
     if (null == curBalance)
     {
-      var curBalanceResult = await @this.GetBalance();
+      var curBalanceResult = await exchange.GetBalance();
       curBalance = curBalanceResult.Value!;
     }
 
@@ -433,10 +424,10 @@ public static class RebalanceExtensions
       .Where(order => order.Side == OrderSide.Buy)
 
       // We can't trade quote currency for quote currency.
-      .Where(buyOrder => !buyOrder.Market.BaseSymbol.Equals(@this.QuoteSymbol))
+      .Where(buyOrder => !buyOrder.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Check if reached minimum order size.
-      .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
+      .Where(buyOrder => buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
 
       // Sum of all negative quote differences.
       .Sum(buyOrder =>
@@ -466,39 +457,31 @@ public static class RebalanceExtensions
       })
 
       // Check if still reached minimum order size.
-      .Where(buyOrder => buyOrder.AmountQuote >= @this.MinOrderSizeInQuote)
+      .Where(buyOrder => buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
 
       // Buy, then verify the buy order ended.
-      .Select(buyOrder => @this.PlaceAndVerifyOrder(buyOrder, source, cancel: false)));
+      .Select(buyOrder => PlaceAndVerifyOrder(exchange, buyOrder, source, cancel: false)));
   }
 
-  /// <summary>
-  /// Asynchronously performs a portfolio rebalance.
-  /// Quote allocation and takeout will be handled.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="config"></param>
-  /// <param name="newAbsAllocs"></param>
-  /// <param name="curBalance"></param>
-  public static async Task<OrderDto[]> Rebalance(
-    this IExchange @this,
+  public async Task<OrderDto[]> Rebalance(
+    IExchange exchange,
     ConfigReqDto config,
     IEnumerable<AbsAllocReqDto> newAbsAllocs,
     Balance? curBalance = null,
     string source = "API")
   {
     // Clear the path ..
-    _ = await @this.CancelAllOpenOrders();
+    _ = await exchange.CancelAllOpenOrders();
 
     // Make sure all market statuses of eligible assets are known.
-    var absAllocList = await @this.GetTopRankingAllocs(newAbsAllocs, config.TopRankingCount);
+    var absAllocList = await GetTopRankingAllocs(exchange, newAbsAllocs, config.TopRankingCount);
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(absAllocList, source, config, curBalance);
+    var sellResults = await SellOveragesAndVerify(exchange, absAllocList, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(absAllocList, source, config);
+    var buyResults = await BuyUnderagesAndVerify(exchange, absAllocList, source, config);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
@@ -509,26 +492,20 @@ public static class RebalanceExtensions
     return orderResults;
   }
 
-  /// <summary>
-  /// Asynchronously performs a portfolio rebalance.
-  /// Just executes the given orders, without any checks.
-  /// </summary>
-  /// <param name="this"></param>
-  /// <param name="orders"></param>
-  public static async Task<OrderDto[]> Rebalance(
-    this IExchange @this,
+  public async Task<OrderDto[]> Rebalance(
+    IExchange exchange,
     IEnumerable<OrderReqDto> orders,
     string source = "API")
   {
     // Clear the path ..
-    _ = await @this.CancelAllOpenOrders();
+    _ = await exchange.CancelAllOpenOrders();
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await @this.SellOveragesAndVerify(orders, source);
+    var sellResults = await SellOveragesAndVerify(exchange, orders, source);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await @this.BuyUnderagesAndVerify(orders, source);
+    var buyResults = await BuyUnderagesAndVerify(exchange, orders, source);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

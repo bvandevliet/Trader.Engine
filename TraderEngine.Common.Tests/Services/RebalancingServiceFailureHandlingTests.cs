@@ -1,19 +1,23 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
-using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Services;
 using TraderEngine.Common.Tests.Exchanges;
 
-namespace TraderEngine.Common.Tests.Extensions;
+namespace TraderEngine.Common.Tests.Services;
 
 /// <summary>
-/// Covers how <c>RebalanceExtensions.Rebalance</c> behaves when placing or verifying an
-/// individual order fails — a real-money system must not let one bad order silently discard
-/// the results of every other order in the same batch, nor crash with an unhandled exception.
+/// Covers how <see cref="RebalancingService.Rebalance(Exchanges.IExchange, ConfigReqDto, IEnumerable{AbsAllocReqDto}, Balance?, string)"/>
+/// behaves when placing or verifying an individual order fails — a real-money system must not
+/// let one bad order silently discard the results of every other order in the same batch, nor
+/// crash with an unhandled exception.
 /// </summary>
 [TestClass]
-public class RebalanceExtensionsFailureHandlingTests
+public class RebalancingServiceFailureHandlingTests
 {
+  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+
   private static readonly MarketReqDto _eur = new("EUR", "EUR");
   private static readonly MarketReqDto _btc = new("EUR", "BTC");
   private static readonly MarketReqDto _eth = new("EUR", "ETH");
@@ -47,7 +51,7 @@ public class RebalanceExtensionsFailureHandlingTests
     var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert — no exception propagated (implicit: reaching this line at all), the failing BTC
     // sell is reported as Failed rather than silently vanishing, and ETH's buy still completed.
@@ -74,7 +78,7 @@ public class RebalanceExtensionsFailureHandlingTests
     var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -98,7 +102,7 @@ public class RebalanceExtensionsFailureHandlingTests
     var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -124,7 +128,7 @@ public class RebalanceExtensionsFailureHandlingTests
     var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -149,7 +153,7 @@ public class RebalanceExtensionsFailureHandlingTests
     var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);

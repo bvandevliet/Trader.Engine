@@ -1,14 +1,17 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
-using TraderEngine.Common.Extensions;
+using TraderEngine.Common.Services;
 using TraderEngine.Common.Tests.Exchanges;
 
-namespace TraderEngine.Common.Tests.Extensions;
+namespace TraderEngine.Common.Tests.Services;
 
 [TestClass]
-public class RebalanceExtensionsVerifyOrderEndedTests
+public class RebalancingServiceVerifyOrderEndedTests
 {
+  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+
   private static readonly MarketReqDto _market = new("EUR", "BTC");
 
   // ── Fast paths, no polling delay incurred ──────────────────────────────────
@@ -22,7 +25,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.Filled };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order);
+    var result = await _service.VerifyOrderEnded(exchange, order);
 
     // Assert
     Assert.AreSame(order, result);
@@ -41,7 +44,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = null, Market = _market, Status = OrderStatus.New };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order);
+    var result = await _service.VerifyOrderEnded(exchange, order);
 
     // Assert
     Assert.AreSame(order, result);
@@ -63,7 +66,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order, cancel: true, checks: 3);
+    var result = await _service.VerifyOrderEnded(exchange, order, cancel: true, checks: 3);
 
     // Assert
     Assert.AreSame(updatedOrder, result);
@@ -86,7 +89,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order, cancel: true, checks: 1);
+    var result = await _service.VerifyOrderEnded(exchange, order, cancel: true, checks: 1);
 
     // Assert
     Assert.AreEqual(1, exchange.CancelOrderCalls.Count);
@@ -105,7 +108,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order, cancel: false, checks: 1);
+    var result = await _service.VerifyOrderEnded(exchange, order, cancel: false, checks: 1);
 
     // Assert
     Assert.AreEqual(0, exchange.CancelOrderCalls.Count);
@@ -127,7 +130,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order, cancel: true, checks: 1);
+    var result = await _service.VerifyOrderEnded(exchange, order, cancel: true, checks: 1);
 
     // Assert — no exception propagates, and the last polled (still open) order is returned
     // since the failed cancellation never gets to reassign it.
@@ -148,7 +151,7 @@ public class RebalanceExtensionsVerifyOrderEndedTests
     var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
 
     // Act
-    var result = await exchange.VerifyOrderEnded(order, cancel: false, checks: 1);
+    var result = await _service.VerifyOrderEnded(exchange, order, cancel: false, checks: 1);
 
     // Assert
     Assert.AreEqual(1, exchange.GetOrderCalls.Count);

@@ -1,20 +1,23 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
-using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Services;
 
-namespace TraderEngine.Common.Tests.Extensions;
+namespace TraderEngine.Common.Tests.Services;
 
 /// <summary>
-/// Covers <see cref="RebalanceExtensions.Rebalance(IExchange, IEnumerable{OrderReqDto}, string)"/>,
+/// Covers <see cref="RebalancingService.Rebalance(IExchange, IEnumerable{OrderReqDto}, string)"/>,
 /// i.e. the overload that just executes a caller-supplied list of orders (no diff computation),
 /// used by the "execute orders" API path once a simulated rebalance has been approved.
 /// </summary>
 [TestClass]
-public class RebalanceExtensionsExecuteOrdersTests
+public class RebalancingServiceExecuteOrdersTests
 {
+  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+
   private static readonly MarketReqDto _eur = new("EUR", "EUR");
   private static readonly MarketReqDto _btc = new("EUR", "BTC");
   private static readonly MarketReqDto _eth = new("EUR", "ETH");
@@ -37,7 +40,7 @@ public class RebalanceExtensionsExecuteOrdersTests
     };
 
     // Act
-    var results = await exchange.Rebalance(orders, "Test");
+    var results = await _service.Rebalance(exchange, orders, "Test");
 
     // Assert
     Assert.AreEqual(2, results.Length);
@@ -66,7 +69,7 @@ public class RebalanceExtensionsExecuteOrdersTests
     };
 
     // Act
-    var results = await exchange.Rebalance(orders, "Test");
+    var results = await _service.Rebalance(exchange, orders, "Test");
 
     // Assert
     Assert.AreEqual(1, results.Length);
@@ -89,7 +92,7 @@ public class RebalanceExtensionsExecuteOrdersTests
     };
 
     // Act
-    var results = await exchange.Rebalance(orders, "Test");
+    var results = await _service.Rebalance(exchange, orders, "Test");
 
     // Assert
     Assert.AreEqual(1, results.Length);
@@ -115,7 +118,7 @@ public class RebalanceExtensionsExecuteOrdersTests
     };
 
     // Act
-    var results = await exchange.Rebalance(orders, "Test");
+    var results = await _service.Rebalance(exchange, orders, "Test");
 
     // Assert
     Assert.AreEqual(1, results.Length);

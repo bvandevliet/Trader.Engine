@@ -1,22 +1,25 @@
+using Microsoft.Extensions.Logging.Abstractions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
-using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Services;
 using TraderEngine.Common.Tests.Exchanges;
 
-namespace TraderEngine.Common.Tests.Extensions;
+namespace TraderEngine.Common.Tests.Services;
 
 /// <summary>
-/// Covers <see cref="RebalanceExtensions.Rebalance(IExchange, ConfigReqDto, IEnumerable{AbsAllocReqDto}, Balance?, string)"/>,
+/// Covers <see cref="RebalancingService.Rebalance(Exchanges.IExchange, ConfigReqDto, IEnumerable{AbsAllocReqDto}, Balance?, string)"/>,
 /// i.e. the core rebalance logic that computes allocation diffs against target percentages and
 /// sells overages before buying underages. Uses <see cref="MockExchange"/> so orders actually
 /// mutate the given <see cref="Balance"/>, allowing assertions on both the returned orders and
 /// the resulting balance state.
 /// </summary>
 [TestClass]
-public class RebalanceExtensionsTests
+public class RebalancingServiceTests
 {
+  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+
   private static readonly MarketReqDto _eur = new("EUR", "EUR");
   private static readonly MarketReqDto _btc = new("EUR", "BTC");
   private static readonly MarketReqDto _eth = new("EUR", "ETH");
@@ -51,7 +54,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -84,7 +87,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(0, orders.Length);
@@ -102,7 +105,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(1, orders.Length);
@@ -127,7 +130,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_eth, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -166,7 +169,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(1, orders.Length);
@@ -190,7 +193,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(config, targets, curBalance);
+    var orders = await _service.Rebalance(exchange, config, targets, curBalance);
 
     // Assert
     Assert.AreEqual(1, orders.Length);
@@ -218,7 +221,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(config, targets, curBalance);
+    var orders = await _service.Rebalance(exchange, config, targets, curBalance);
 
     // Assert
     Assert.AreEqual(1, orders.Length);
@@ -250,7 +253,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(0, orders.Length);
@@ -278,7 +281,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(0, orders.Length);
@@ -309,7 +312,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -350,7 +353,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(2, orders.Length);
@@ -390,7 +393,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(config, targets, curBalance);
+    var orders = await _service.Rebalance(exchange, config, targets, curBalance);
 
     // Assert
     Assert.AreEqual(1, orders.Length);
@@ -415,7 +418,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     Assert.AreEqual(0, orders.Length);
@@ -440,7 +443,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(config, targets, curBalance);
+    var orders = await _service.Rebalance(exchange, config, targets, curBalance);
 
     // Assert
     Assert.AreEqual(1, orders.Length);
@@ -467,7 +470,7 @@ public class RebalanceExtensionsTests
     var targets = new[] { new AbsAllocReqDto(_eth, 1m) };
 
     // Act
-    var orders = await exchange.Rebalance(new ConfigReqDto(), targets, curBalance);
+    var orders = await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance);
 
     // Assert
     var sell = orders.Single(o => o.Market.BaseSymbol == "BTC");
@@ -501,7 +504,7 @@ public class RebalanceExtensionsTests
     };
 
     // Act
-    var orders = (await exchange.Rebalance(new ConfigReqDto(), targets, curBalance)).ToList();
+    var orders = (await _service.Rebalance(exchange, new ConfigReqDto(), targets, curBalance)).ToList();
 
     // Assert
     Assert.AreEqual(4, orders.Count);

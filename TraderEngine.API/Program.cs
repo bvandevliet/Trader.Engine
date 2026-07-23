@@ -6,6 +6,7 @@ using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Factories;
 using TraderEngine.Common.Repositories;
+using TraderEngine.Common.Services;
 
 namespace TraderEngine.API;
 
@@ -35,6 +36,7 @@ public class Program
 
     builder.Services.AddScoped<IMarketCapInternalRepository, MarketCapInternalRepository>();
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
+    builder.Services.AddScoped<IRebalancingService, RebalancingService>();
 
     builder.Services.AddHttpClient<IExchange>().ApplyDefaultPoolAndPolicyConfig();
     foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
