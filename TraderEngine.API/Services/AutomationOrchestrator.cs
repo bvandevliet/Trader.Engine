@@ -1,0 +1,364 @@
+using TraderEngine.API.Factories;
+using TraderEngine.API.Repositories;
+using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
+using TraderEngine.Common.Mappers;
+using TraderEngine.Common.Services;
+
+namespace TraderEngine.API.Services;
+
+public class AutomationOrchestrator : IAutomationOrchestrator
+{
+  // TODO: Put quote symbol for market cap records in appsettings.
+  private readonly string _quoteSymbol = "EUR";
+
+  private readonly ILogger<AutomationOrchestrator> _logger;
+  private readonly IServiceScopeFactory _scopeFactory;
+  private readonly IRebalancingService _rebalancingService;
+  private readonly IMarketCapService _marketCapService;
+  private readonly IApiCredentialsRepository _keyRepo;
+  private readonly IConfigRepository _configRepo;
+  private readonly IEmailNotificationService _emailNotification;
+
+  public AutomationOrchestrator(
+    ILogger<AutomationOrchestrator> logger,
+    IServiceScopeFactory scopeFactory,
+    IRebalancingService rebalancingService,
+    IMarketCapService marketCapService,
+    IApiCredentialsRepository keyRepo,
+    IConfigRepository configRepo,
+    IEmailNotificationService emailNotification)
+  {
+    _logger = logger;
+    _scopeFactory = scopeFactory;
+    _rebalancingService = rebalancingService;
+    _marketCapService = marketCapService;
+    _keyRepo = keyRepo;
+    _configRepo = configRepo;
+    _emailNotification = emailNotification;
+  }
+
+  public async Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct)
+  {
+    _logger.LogInformation("Running automations ..");
+
+    var userConfigs = await _configRepo.GetConfigs();
+
+    await Task.WhenAll(userConfigs.Select(async userConfig =>
+    {
+      var now = DateTime.UtcNow;
+
+      try
+      {
+        var configReqDto = userConfig.Value;
+
+        // Only handle automation enabled configs.
+        if (!configReqDto.AutomationEnabled)
+        {
+          _logger.LogInformation(
+            "Automation is disabled for user '{userId}'.", userConfig.Key);
+
+          return;
+        }
+
+        // Check if rebalance interval has elapsed.
+        if (configReqDto.LastRebalance is DateTime lastRebalance &&
+          Math.Round((now - lastRebalance).TotalHours, MidpointRounding.AwayFromZero) < configReqDto.IntervalHours)
+        {
+          _logger.LogInformation(
+            "Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
+
+          return;
+        }
+
+        // TODO: Make this configurable !!
+        //       And if single exchange, directly call into "simulate",
+        //       otherwise, first call into "balanced" and then into "simulate" for each exchange.
+        var exchangeName = "Bitvavo";
+
+        // Resolve a dedicated DI scope per user: IExchange implementations are registered
+        // Scoped and carry mutable per-instance ApiKey/ApiSecret, while this method runs many
+        // users concurrently (Task.WhenAll) inside a single orchestrator-level scope. Sharing
+        // one ExchangeFactory/exchange instance across users here would let their credentials
+        // race and cross-contaminate between accounts.
+        await using var userScope = _scopeFactory.CreateAsyncScope();
+
+        var exchangeFactory = userScope.ServiceProvider.GetRequiredService<ExchangeFactory>();
+
+        var exchange = exchangeFactory.GetService(exchangeName);
+
+        if (exchange == null)
+        {
+          _logger.LogError(
+            "Exchange '{exchangeName}' not found while running automation for user '{userId}'.", exchangeName, userConfig.Key);
+
+          return;
+        }
+
+        // Get API credentials.
+        var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
+
+        exchange.ApiKey = apiCred.ApiKey;
+        exchange.ApiSecret = apiCred.ApiSecret;
+
+        // Get current balance.
+        var balanceResult = await exchange.GetBalance();
+
+        if (balanceResult.ErrorCode == ExchangeErrCodeEnum.AuthenticationError)
+        {
+          _logger.LogWarning(
+            "Invalid API credentials for user '{userId}'.", userConfig.Key);
+
+          // Send API authentication failure notification.
+          await _emailNotification.SendAutomationApiAuthFailed(userConfig.Key, now);
+
+          return;
+        }
+
+        if (balanceResult.ErrorCode != ExchangeErrCodeEnum.Ok)
+        {
+          throw new Exception("Error while requesting rebalance simulation.");
+        }
+
+        var balance = balanceResult.Value!;
+
+        var newAbsAllocs = await _marketCapService.BalancedAbsAllocs(
+          _quoteSymbol, configReqDto, balance.Allocations.Select(alloc => alloc.Market).ToList());
+
+        // If balanced allocations could not be determined, bail for safety.
+        if (null == newAbsAllocs)
+        {
+          _logger.LogWarning(
+            "Balanced allocations could not be determined for user '{userId}'.", userConfig.Key);
+
+          return;
+        }
+
+        // Filter for assets that are potentially tradable.
+        var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, newAbsAllocs, configReqDto.TopRankingCount);
+
+        // Map here to retain current balance as it will be
+        // modified by the simulation since it is passed by reference.
+        var curBalanceDto = CommonMapper.MapBalance(balance);
+
+        // Create mock exchange.
+        var simExchange = new SimExchange(exchange, balance);
+
+        // Await for the task to complete.
+        var absAllocs = await absAllocsTask;
+
+        // Simulate rebalance.
+        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, configReqDto, absAllocs, balance, "automation");
+
+        var newBalanceDto = CommonMapper.MapBalance(balance);
+
+        var simulated = new SimulationDto()
+        {
+          Config = configReqDto,
+          Orders = simulatedOrders,
+          NewAbsAllocs = absAllocs,
+          CurBalance = curBalanceDto,
+          NewBalance = newBalanceDto,
+        };
+
+        // Check if any assets are allocated, if not, bail for safety.
+        if (simulated.CurBalance.AmountQuoteAvailable == simulated.CurBalance.AmountQuoteTotal)
+        {
+          _logger.LogWarning(
+            "Skipping automation for user '{userId}' because no assets are allocated. " +
+            "Initial investments should be made manually.", userConfig.Key);
+
+          return;
+        }
+
+        // Check if any assets are trading, if not, bail for safety.
+        if (!simulated.NewAbsAllocs.Any(absAlloc => absAlloc.MarketStatus == MarketStatus.Trading))
+        {
+          _logger.LogWarning(
+            "Skipping automation for user '{userId}' because no assets would be traded or allocated. " +
+            "This may indicate an error at the API server.", userConfig.Key);
+
+          return;
+        }
+
+        // Check if the portfolio is eligible for rebalancing.
+        if (!IsEligibleForRebalance(configReqDto, simulated))
+        {
+          _logger.LogInformation(
+            "Portfolio of user '{userId}' was not eligible for rebalancing.", userConfig.Key);
+
+          return;
+        }
+
+        // Check if any of the simulated orders attempt to sell an asset that appears not to be allocated, should not happen.
+        var allocMarkets = simulated.CurBalance.Allocations.Select(alloc => alloc.Market).ToHashSet();
+        if (simulated.Orders.Any(order => order.Side == OrderSide.Sell && !allocMarkets.Contains(order.Market)))
+        {
+          _logger.LogError(
+            "Skipping automation for user '{userId}' because attempted to sell an asset that appears not to be allocated, should not happen. " +
+            "This may indicate an error at the API server.", userConfig.Key);
+
+          return;
+        }
+
+        // Bail if about to fully sell a non-contiguous larger allocation, starting from the smallest.
+        if (HasNonContiguousFullSellOrder(configReqDto, simulated))
+        {
+          _logger.LogWarning(
+            "Skipping automation for user '{userId}' because attempted to fully sell a larger non-contiguous allocation. " +
+            "This is just a precaution, if intended, it should be done manually.", userConfig.Key);
+
+          // Send simulation failure notification.
+          await _emailNotification.SendAutomationFailed(
+            userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
+            simulated.Orders, simulated, true);
+
+          return;
+        }
+
+        // Execute and return resulting rebalance DTO.
+        var ordersExecuted = await _rebalancingService.Rebalance(exchange, simulated.Orders, "automation");
+
+        // If no orders were placed, return.
+        if (ordersExecuted.Length == 0)
+        {
+          _logger.LogWarning(
+            "No orders were placed for user '{userId}'.", userConfig.Key);
+
+          return;
+        }
+
+        // If any of the orders have not been filled, return.
+        if (ordersExecuted.Any(order => order.Status != OrderStatus.Filled))
+        {
+          _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
+
+          // Send failure notification.
+          await _emailNotification.SendAutomationFailed(
+            userConfig.Key, now, "Not all orders were filled.",
+            ordersExecuted, new
+            {
+              simulated,
+              ordersExecuted,
+            });
+
+          return;
+        }
+
+        // If not the same amount of orders were executed and filled as simulated, return.
+        if (ordersExecuted.Length != simulated.Orders.Length)
+        {
+          _logger.LogError(
+            "Not all simulated orders were executed for user '{userId}'.", userConfig.Key);
+
+          // Send failure notification.
+          await _emailNotification.SendAutomationFailed(
+            userConfig.Key, now, "Not all simulated orders were executed.",
+            ordersExecuted, new
+            {
+              simulated,
+              ordersExecuted,
+            });
+
+          return;
+        }
+
+        // It could occur that no buy orders were executed if they all were below the minimum required order amount.
+        // In that case, don't update last rebalance timestamp to prevent being less exposed to the market for too long.
+        if (!ordersExecuted.Any(order => order.Side == OrderSide.Buy && order.Status == OrderStatus.Filled))
+        {
+          _logger.LogWarning(
+            "No buy orders were executed for user '{userId}', not updating last rebalance timestamp.", userConfig.Key);
+        }
+        else
+          configReqDto.LastRebalance = now;
+
+        _logger.LogInformation("Automation completed for user '{userId}'.", userConfig.Key);
+
+        // Save last rebalance timestamp.
+        _ = await _configRepo.SaveConfig(userConfig.Key, configReqDto);
+
+        // Send success notification.
+        var totalDepositedTask = exchange.TotalDeposited();
+        var totalWithdrawnTask = exchange.TotalWithdrawn();
+        _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
+        await _emailNotification.SendAutomationSucceeded(
+          userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated, ordersExecuted);
+      }
+      catch (Exception exception)
+      {
+        _logger.LogCritical(exception, "Error while processing automation for user '{userId}'.", userConfig.Key);
+
+        try
+        {
+          // Send exception notification.
+          await _emailNotification.SendAutomationException(userConfig.Key, now, exception);
+        }
+        catch (Exception exception2)
+        {
+          _logger.LogCritical(exception2, "Error while sending automation exception notification.");
+        }
+      }
+    }));
+  }
+
+  public static bool IsEligibleForRebalance(ConfigReqDto configReqDto, SimulationDto simulated)
+  {
+    // Test if any of the allocation diffs exceed the minimum order size.
+    // Ignoring quote takeout, because it's considered out of the game.
+    var quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
+    var relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
+    var quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
+
+    return !(
+      // If no orders were simulated, no need to rebalance.
+      simulated.Orders.Length == 0 ||
+      // If the total portfolio is too small, we can't rebalance.
+      relTotal < configReqDto.MinimumDiffQuote ||
+      // If quote diff doesn't exceed the minimum order size,
+      Math.Abs(quoteDiff) < configReqDto.MinimumDiffQuote &&
+      // and none of the simulated orders exceed the minimum order size and diff,
+      false == simulated.Orders.Any(order =>
+        order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
+        order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100));
+  }
+
+  public static bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
+  {
+    var skipAllowance = 1;
+
+    // Index sell orders by market for efficient lookup.
+    var sellOrdersByMarket = simulated.Orders
+      .Where(o => o.Side == OrderSide.Sell)
+      .ToLookup(o => o.Market);
+
+    // Walk allocations from smallest to largest, skipping the quote currency itself.
+    var keptAllocations = 0;
+    foreach (var allocation in simulated.CurBalance.Allocations
+      .Where(a => a.Market.BaseSymbol != a.Market.QuoteSymbol)
+      .OrderBy(a => a.AmountQuote))
+    {
+      // Skip dust allocations — too small to matter.
+      if (allocation.AmountQuote < configReqDto.MinimumDiffQuote)
+        continue;
+
+      var isKept = !sellOrdersByMarket[allocation.Market]
+        .Any(o => o.Amount == allocation.Amount);
+
+      if (isKept)
+      {
+        // This allocation is kept — any subsequent full sell would be non-contiguous.
+        keptAllocations++;
+      }
+      else if (keptAllocations > skipAllowance)
+      {
+        // A larger allocation is being fully sold while a smaller one is kept — bail out.
+        return true;
+      }
+    }
+
+    return false;
+  }
+}

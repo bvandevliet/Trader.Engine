@@ -47,7 +47,6 @@ jobs:
       matrix:
         project:
           - TraderEngine.API
-          - TraderEngine.CLI
     with:
       CSPROJ_NAME: ${{ matrix.project }}
       DOTNET_VERSION: 10
