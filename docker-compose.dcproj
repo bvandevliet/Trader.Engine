@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" Sdk="Microsoft.Docker.Sdk">
+  <PropertyGroup Label="Globals">
+    <ProjectVersion>2.1</ProjectVersion>
+    <DockerTargetOS>Linux</DockerTargetOS>
+    <ProjectGuid>7873fab0-eaa7-490d-8871-c78a606ad10b</ProjectGuid>
+    <AdditionalComposeFilePaths>docker-compose.vs.yml</AdditionalComposeFilePaths>
+    <DockerComposeEnvFilePaths>.env.example;.env</DockerComposeEnvFilePaths>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="docker-compose.debug.yml" />
+    <None Include="docker-compose.yml" />
+    <None Include="docker-compose.vs.yml" />
+  </ItemGroup>
+</Project>

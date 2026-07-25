@@ -1,0 +1,18 @@
+# Overlay consumed only by docker-compose.dcproj (via AdditionalComposeFilePaths), for
+# Visual Studio's "Docker Compose" F5 debugging. NOT loaded by a plain `docker compose`
+# invocation, so it has no effect on the --profile docker production deployment in
+# docker-compose.yml.
+#
+# Points the build at the debug-only Dockerfiles (which build from source, so Fast Mode
+# never depends on a pre-published bin/ folder) with the build context widened to the
+# repo root, since those Dockerfiles also need TraderEngine.Common/TraderEngine.Data
+# sources and the root Directory.Build.props / Directory.Packages.props.
+services:
+  traderengine.api:
+    build:
+      context: .
+      dockerfile: TraderEngine.API/Dockerfile.debug
+  traderengine.web:
+    build:
+      context: .
+      dockerfile: TraderEngine.Web/Dockerfile.debug

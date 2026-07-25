@@ -3,10 +3,18 @@
     "Docker Compose": {
       "commandName": "DockerCompose",
       "commandVersion": "1.0",
-      "serviceActions": {
-        "traderengine.api": "StartDebugging",
-        "traderengine.web": "StartDebugging"
-      }
+      "composeProfile": {
+        "includes": [
+          "docker"
+        ],
+        "serviceActions": {
+          "traderengine.api": "StartDebugging",
+          "traderengine.web": "StartDebugging"
+        }
+      },
+      "composeLaunchAction": "LaunchBrowser",
+      "composeLaunchServiceName": "traderengine.web",
+      "composeLaunchUrl": "{Scheme}://{ServiceIPAddress}:{ServicePort}"
     }
   }
 }

@@ -1416,6 +1416,7 @@
           "AnyClone": "[1.1.6, )",
           "MailKit": "[4.17.0, )",
           "Microsoft.AspNetCore.Authentication.JwtBearer": "[10.0.10, )",
+          "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": "[1.23.0, )",
           "Riok.Mapperly": "[4.3.1, )",
           "TraderEngine.Common": "[1.0.0, )",
           "TraderEngine.Data": "[1.0.0, )"
@@ -1548,6 +1549,12 @@
         "dependencies": {
           "Microsoft.IdentityModel.Tokens": "8.21.0"
         }
+      },
+      "Microsoft.VisualStudio.Azure.Containers.Tools.Targets": {
+        "type": "CentralTransitive",
+        "requested": "[1.23.0, )",
+        "resolved": "1.23.0",
+        "contentHash": "2wDnb4umupJZ/1ikgWozFVpggH1mlHQFc0odXVv2ZagL3RYwXgW9zmC15fiqIBzmaC0vLZUnLGwDY+p8ZR7Syw=="
       },
       "Microsoft.VisualStudio.Web.CodeGeneration.Design": {
         "type": "CentralTransitive",
