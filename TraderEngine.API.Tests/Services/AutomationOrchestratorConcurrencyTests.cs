@@ -69,38 +69,96 @@ public class AutomationOrchestratorConcurrencyTests
       return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
     }
 
-    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials) => throw new NotSupportedException();
-    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials) => throw new NotSupportedException();
-    public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market) => throw new NotSupportedException();
-    public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol) => throw new NotSupportedException();
-    public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market) => throw new NotSupportedException();
-    public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API") => throw new NotSupportedException();
-    public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market) => throw new NotSupportedException();
-    public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API") => throw new NotSupportedException();
-    public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null) => throw new NotSupportedException();
-    public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API") => throw new NotSupportedException();
-    public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API") => throw new NotSupportedException();
+    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
+    {
+      throw new NotSupportedException();
+    }
+
+    public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API")
+    {
+      throw new NotSupportedException();
+    }
   }
 
   private sealed class FakeApiCredentialsRepository(IReadOnlyDictionary<Guid, string> apiKeysByUser) : IApiCredentialsRepository
   {
-    public Task<ApiCredReqDto> GetApiCred(Guid userId, string exchangeName) =>
-      Task.FromResult(new ApiCredReqDto { ApiKey = apiKeysByUser[userId], ApiSecret = apiKeysByUser[userId] });
+    public Task<ApiCredReqDto> GetApiCred(Guid userId, string exchangeName)
+    {
+      return Task.FromResult(new ApiCredReqDto { ApiKey = apiKeysByUser[userId], ApiSecret = apiKeysByUser[userId] });
+    }
 
-    public Task<ApiCredentialStatus?> GetApiCredStatus(Guid userId, string exchangeName) =>
-      Task.FromResult<ApiCredentialStatus?>(new ApiCredentialStatus(DateTimeOffset.UtcNow));
+    public Task<ApiCredentialStatus?> GetApiCredStatus(Guid userId, string exchangeName)
+    {
+      return Task.FromResult<ApiCredentialStatus?>(new ApiCredentialStatus(DateTimeOffset.UtcNow));
+    }
 
-    public Task SaveApiCred(Guid userId, string exchangeName, ApiCredReqDto apiCred) => Task.CompletedTask;
+    public Task SaveApiCred(Guid userId, string exchangeName, ApiCredReqDto apiCred)
+    {
+      return Task.CompletedTask;
+    }
   }
 
   private sealed class FakeConfigRepository(IReadOnlyDictionary<Guid, ConfigReqDto> configs) : IConfigRepository
   {
-    public Task<ConfigReqDto> GetConfig(Guid userId) => Task.FromResult(configs[userId]);
+    public Task<ConfigReqDto> GetConfig(Guid userId)
+    {
+      return Task.FromResult(configs[userId]);
+    }
 
-    public Task<IEnumerable<KeyValuePair<Guid, ConfigReqDto>>> GetConfigs() =>
-      Task.FromResult<IEnumerable<KeyValuePair<Guid, ConfigReqDto>>>(configs.ToList());
+    public Task<IEnumerable<KeyValuePair<Guid, ConfigReqDto>>> GetConfigs()
+    {
+      return Task.FromResult<IEnumerable<KeyValuePair<Guid, ConfigReqDto>>>(configs.ToList());
+    }
 
-    public Task<int> SaveConfig(Guid userId, ConfigReqDto configReqDto) => Task.FromResult(1);
+    public Task<int> SaveConfig(Guid userId, ConfigReqDto configReqDto)
+    {
+      return Task.FromResult(1);
+    }
   }
 
   [TestMethod]

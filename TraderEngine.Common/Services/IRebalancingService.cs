@@ -14,7 +14,7 @@ public interface IRebalancingService
   /// <param name="credentials"></param>
   /// <param name="absAlloc"></param>
   /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns>
-  Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, AbsAllocReqDto absAlloc);
+  public Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, AbsAllocReqDto absAlloc);
 
   /// <summary>
   /// Get the top ranking assets in <paramref name="absAllocs"/> for this exchange.
@@ -24,7 +24,7 @@ public interface IRebalancingService
   /// <param name="absAllocs"></param>
   /// <param name="topRankingCount"></param>
   /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns>
-  Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount);
+  public Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount);
 
   /// <summary>
   /// A task that will complete when verified that the given <paramref name="order"/> has ended.
@@ -37,7 +37,7 @@ public interface IRebalancingService
   /// <param name="cancel"></param>
   /// <param name="checks"></param>
   /// <returns>Completes when verified that the given <paramref name="order"/> has ended.</returns>
-  Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60);
+  public Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60);
 
   /// <summary>
   /// Asynchronously performs a portfolio rebalance.
@@ -49,7 +49,7 @@ public interface IRebalancingService
   /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
   /// <param name="source"></param>
-  Task<OrderDto[]> Rebalance(
+  public Task<OrderDto[]> Rebalance(
     IExchange exchange,
     ExchangeCredentials credentials,
     ConfigReqDto config,
@@ -65,7 +65,7 @@ public interface IRebalancingService
   /// <param name="credentials"></param>
   /// <param name="orders"></param>
   /// <param name="source"></param>
-  Task<OrderDto[]> Rebalance(
+  public Task<OrderDto[]> Rebalance(
     IExchange exchange,
     ExchangeCredentials credentials,
     IEnumerable<OrderReqDto> orders,

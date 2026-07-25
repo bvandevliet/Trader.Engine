@@ -16,14 +16,20 @@ public class IdentityEmailSender : IEmailSender<AppUser>
     _emailSettings = emailOptions.Value;
   }
 
-  public Task SendConfirmationLinkAsync(AppUser user, string email, string confirmationLink) =>
-    SendEmail(email, "Confirm your email", $"Confirm your account by <a href='{confirmationLink}'>clicking here</a>.");
+  public Task SendConfirmationLinkAsync(AppUser user, string email, string confirmationLink)
+  {
+    return SendEmail(email, "Confirm your email", $"Confirm your account by <a href='{confirmationLink}'>clicking here</a>.");
+  }
 
-  public Task SendPasswordResetLinkAsync(AppUser user, string email, string resetLink) =>
-    SendEmail(email, "Reset your password", $"Reset your password by <a href='{resetLink}'>clicking here</a>.");
+  public Task SendPasswordResetLinkAsync(AppUser user, string email, string resetLink)
+  {
+    return SendEmail(email, "Reset your password", $"Reset your password by <a href='{resetLink}'>clicking here</a>.");
+  }
 
-  public Task SendPasswordResetCodeAsync(AppUser user, string email, string resetCode) =>
-    SendEmail(email, "Reset your password", $"Your password reset code is: {resetCode}");
+  public Task SendPasswordResetCodeAsync(AppUser user, string email, string resetCode)
+  {
+    return SendEmail(email, "Reset your password", $"Your password reset code is: {resetCode}");
+  }
 
   private async Task SendEmail(string toAddress, string subject, string htmlBody)
   {

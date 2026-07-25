@@ -9,7 +9,6 @@ services:
   traderengine.postgres:
     ports:
       - "5432:5432"
-
   traderengine.api:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development

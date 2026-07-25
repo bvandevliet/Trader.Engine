@@ -13,7 +13,9 @@ public abstract class TraderEnginePageModelBase : PageModel
     UserManager = userManager;
   }
 
-  protected async Task<AppUser> GetCurrentUserAsync() =>
-    await UserManager.GetUserAsync(User)
+  protected async Task<AppUser> GetCurrentUserAsync()
+  {
+    return await UserManager.GetUserAsync(User)
       ?? throw new InvalidOperationException("No authenticated user found for a handler requiring one.");
+  }
 }

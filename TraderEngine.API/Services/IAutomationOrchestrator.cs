@@ -7,5 +7,5 @@ public interface IAutomationOrchestrator
   /// </summary>
   /// <param name="dataTimestamp">Timestamp of the market cap data this cycle should act on.</param>
   /// <param name="ct"></param>
-  Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct);
+  public Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct);
 }

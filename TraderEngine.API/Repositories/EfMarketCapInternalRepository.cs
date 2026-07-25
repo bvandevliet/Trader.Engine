@@ -5,7 +5,6 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Repositories;
 using TraderEngine.Data;
-using TraderEngine.Data.Entities;
 
 namespace TraderEngine.API.Repositories;
 

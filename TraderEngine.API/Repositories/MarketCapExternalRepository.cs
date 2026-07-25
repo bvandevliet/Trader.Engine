@@ -1,4 +1,3 @@
-using System.Net.Http.Json;
 using TraderEngine.API.DTOs.CMC;
 using TraderEngine.API.Mappers;
 using TraderEngine.Common.DTOs.API.Request;
