@@ -1,0 +1,46 @@
+@page "{handler?}"
+@model TraderEngine.Web.Pages.DashboardModel
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<h1>Dashboard</h1>
+
+<table class="table table-bordered w-auto" id="balance-summary">
+    <tbody>
+        <tr>
+            <td>Deposited (i)</td>
+            <td>@Model.QuoteCurrencySign</td>
+            <td class="text-end" data-field="deposited">@Model.TotalDeposited.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td>Withdrawn (o)</td>
+            <td>@Model.QuoteCurrencySign</td>
+            <td class="text-end" data-field="withdrawn">@Model.TotalWithdrawn.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td>Balance (v)</td>
+            <td>@Model.QuoteCurrencySign</td>
+            <td class="text-end" data-field="balance">@Model.CurrentBalance.AmountQuoteTotal.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td>Cumulative (V=o+v)</td>
+            <td>@Model.QuoteCurrencySign</td>
+            <td class="text-end" data-field="cumulative">@Model.CumulativeValue.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td>Total gain (V-i)</td>
+            <td>@Model.QuoteCurrencySign</td>
+            <td class="text-end" data-field="gain">@Model.TotalGain.ToString("N2")</td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>%</td>
+            <td class="text-end" data-field="gain-percent">@Model.TotalGainPercent.ToString("N2")</td>
+        </tr>
+    </tbody>
+</table>
+
+@section Scripts {
+    <script src="~/js/dashboard.js" asp-append-version="true" defer></script>
+}

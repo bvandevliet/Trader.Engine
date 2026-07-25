@@ -1,10 +1,9 @@
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
@@ -20,7 +19,11 @@ using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Repositories;
 using TraderEngine.Common.Services;
 using TraderEngine.Data;
+using TraderEngine.Data.AppSettings;
 using TraderEngine.Data.Entities;
+using TraderEngine.Data.Extensions;
+using TraderEngine.Data.Repositories;
+using TraderEngine.Data.Services;
 
 namespace TraderEngine.API;
 
@@ -31,7 +34,7 @@ public class Program
     typeof(BitvavoExchange),
   ];
 
-  public static void Main(string[] args)
+  public static async Task Main(string[] args)
   {
     var builder = WebApplication.CreateBuilder(args);
 #if DEBUG
@@ -43,14 +46,22 @@ public class Program
     builder.Logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
 #endif
 
-    builder.Services.AddRouting(options => options.LowercaseUrls = true);
+    builder.Services.AddRouting(options =>
+    {
+      options.LowercaseUrls = true;
+      options.LowercaseQueryStrings = true;
+    });
+
+    // Fails fast if the shared signing key is missing/too short, rather than only surfacing as
+    // a hard-to-trace failure the first time a page tries to mint a token to call the API.
+    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
+    (builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings()).ValidateSigningKey();
 
     // Every endpoint requires authentication by default (interim, API-only JWT auth backed by
     // AppUser — see AuthController); actions must opt out explicitly via [AllowAnonymous] rather
     // than opt in via [Authorize], so a newly added controller can't accidentally end up
     // reachable without a valid token.
-    builder.Services.AddControllers(options =>
-      options.Filters.Add(new AuthorizeFilter()));
+    builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()));
 
     builder.Services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -67,41 +78,59 @@ public class Program
       .UseSnakeCaseNamingConvention());
 
     builder.Services
-      .AddIdentityCore<AppUser>()
+      .AddIdentityCore<AppUser>(options => options.ConfigureTraderEngineIdentityPolicy())
       .AddRoles<IdentityRole<Guid>>()
-      .AddSignInManager()
-      .AddEntityFrameworkStores<TraderEngineDbContext>();
-
-    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
+      .AddEntityFrameworkStores<TraderEngineDbContext>()
+      .AddSignInManager();
 
     builder.Services
       .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-      .AddJwtBearer(options =>
+      .AddJwtBearer(options => options.TokenValidationParameters = new TokenValidationParameters
       {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-          ValidateIssuer = true,
-          ValidIssuer = jwtSettings.Issuer,
-          ValidateAudience = true,
-          ValidAudience = jwtSettings.Audience,
-          ValidateLifetime = true,
-          ValidateIssuerSigningKey = true,
-          IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SigningKey)),
-        };
+        ValidateIssuer = true,
+        ValidIssuer = jwtSettings.Issuer,
+        ValidateAudience = true,
+        ValidAudience = jwtSettings.Audience,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SigningKey)),
       });
 
     builder.Services.AddAuthorization();
+
+    builder.Services.AddRateLimiter(options =>
+    {
+      options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+      // Throttles login attempts per client IP — a second layer of brute-force protection
+      // alongside Identity's per-account lockout (ConfigureTraderEngineIdentityPolicy), which
+      // only kicks in once a specific account has already failed enough times.
+      options.AddFixedWindowLimiter("login", limiterOptions =>
+      {
+        limiterOptions.PermitLimit = 5;
+        limiterOptions.Window = TimeSpan.FromMinutes(1);
+        limiterOptions.QueueLimit = 0;
+      });
+    });
+
+    builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
     // Keys are persisted to a dedicated volume rather than TraderEngineDbContext's own database
     // deliberately: the key ring must live in a different failure/compromise domain than the
     // ExchangeApiCredential ciphertext it protects, otherwise a single database compromise
     // defeats the encryption entirely. Mirrors the volume the previous cryptography microservice
-    // used for the same purpose (see docker-compose.yml).
-    builder.Services
-      .AddDataProtection()
-      .PersistKeysToFileSystem(new DirectoryInfo(
-        builder.Configuration["DataProtection:KeyRingPath"] ?? Path.Combine(AppContext.BaseDirectory, "secrets")))
-      .SetApplicationName("TraderEngine");
+    // used for the same purpose (see docker-compose.yml). Shared identically with
+    // TraderEngine.Web via AddSharedDataProtection — both hosts must decrypt values the other
+    // encrypted, so the key ring path, application name and optional protecting certificate must
+    // all match exactly between the two.
+    var configuredKeyRingPath = builder.Configuration["DataProtection:KeyRingPath"];
+    var resolvedKeyRingPath = string.IsNullOrWhiteSpace(configuredKeyRingPath)
+      ? Path.Combine(AppContext.BaseDirectory, "secrets")
+      : Path.IsPathRooted(configuredKeyRingPath)
+        ? configuredKeyRingPath
+        : Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", configuredKeyRingPath));
+
+    builder.Services.AddSharedDataProtection(builder.Configuration, resolvedKeyRingPath);
 
     builder.Services.AddScoped<IMarketCapInternalRepository, EfMarketCapInternalRepository>();
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
@@ -145,13 +174,14 @@ public class Program
 
     using (var scope = app.Services.CreateScope())
     {
-      scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>().Database.Migrate();
-
+      await scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>().Database.MigrateAsync();
       SeedAdminUser(scope.ServiceProvider).GetAwaiter().GetResult();
     }
 
     app.UseAuthentication();
     app.UseAuthorization();
+
+    app.UseRateLimiter();
 
     app.MapControllers();
 

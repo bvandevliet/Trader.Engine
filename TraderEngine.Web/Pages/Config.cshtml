@@ -1,0 +1,75 @@
+@page
+@model TraderEngine.Web.Pages.ConfigModel
+@{
+    ViewData["Title"] = "Advanced Allocation Config";
+}
+
+<h1>Advanced Allocation Config</h1>
+
+<form method="post" id="allocation-config-form">
+    <fieldset class="mb-4">
+        <legend class="h5">Tags to include</legend>
+        <p class="text-muted">
+            Tag regex patterns to explicitly include.<br />
+            Only assets that have one or more tags matching any of these patterns will be included in your portfolio, unless an alternative weighting is set for an asset.<br />
+            If empty, all assets are included.
+        </p>
+        <div id="tags-to-include-rows">
+            @foreach (var tag in Model.TagsToInclude)
+            {
+                <div class="input-group mb-2 tag-row">
+                    <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
+                    <input type="text" name="TagsToInclude" value="@tag" class="form-control font-monospace" />
+                    <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
+                    <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+                </div>
+            }
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-include-rows" data-template="tag">+ Add pattern</button>
+    </fieldset>
+
+    <fieldset class="mb-4">
+        <legend class="h5">Tags to ignore</legend>
+        <p class="text-muted">
+            Tag regex patterns to explicitly exclude.<br />
+            Assets that have one or more tags matching any of these patterns will never be included in your portfolio, unless an alternative weighting is set for an asset.
+        </p>
+        <div id="tags-to-ignore-rows">
+            @foreach (var tag in Model.TagsToIgnore)
+            {
+                <div class="input-group mb-2 tag-row">
+                    <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
+                    <input type="text" name="TagsToIgnore" value="@tag" class="form-control font-monospace" />
+                    <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
+                    <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+                </div>
+            }
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-ignore-rows" data-template="tag">+ Add pattern</button>
+    </fieldset>
+
+    <fieldset class="mb-4">
+        <legend class="h5">Alternative asset allocation weighting factors</legend>
+        <p class="text-muted">
+            To configure, specify the asset symbol in the left field (e.g. BTC) and its weighting factor in the right field.<br />
+            Default is 1, set to 0 to exclude the asset (e.g. shitcoins).
+        </p>
+        <div id="weighting-rows">
+            @for (var i = 0; i < Model.WeightingAssets.Count; i++)
+            {
+                <div class="input-group mb-2 weighting-row">
+                    <input type="text" name="WeightingAssets" value="@Model.WeightingAssets[i]" class="form-control" placeholder="Asset symbol" />
+                    <input type="number" name="WeightingValues" value="@Model.WeightingValues[i]" class="form-control" min="0" step="0.01" placeholder="Weighting" />
+                    <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+                </div>
+            }
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="weighting-rows" data-template="weighting">+ Add weighting</button>
+    </fieldset>
+
+    <button type="submit" class="btn btn-primary">Save changes</button>
+</form>
+
+@section Scripts {
+    <script src="~/js/config.js" asp-append-version="true" defer></script>
+}

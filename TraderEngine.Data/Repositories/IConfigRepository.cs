@@ -1,6 +1,6 @@
 using TraderEngine.Common.DTOs.API.Request;
 
-namespace TraderEngine.API.Repositories;
+namespace TraderEngine.Data.Repositories;
 
 public interface IConfigRepository
 {

@@ -1,11 +1,11 @@
 using TraderEngine.API.Factories;
-using TraderEngine.API.Repositories;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Mappers;
 using TraderEngine.Common.Services;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Services;
 

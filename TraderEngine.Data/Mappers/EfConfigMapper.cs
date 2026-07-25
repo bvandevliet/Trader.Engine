@@ -2,7 +2,7 @@ using Riok.Mapperly.Abstractions;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Data.Entities;
 
-namespace TraderEngine.API.Mappers;
+namespace TraderEngine.Data.Mappers;
 
 [Mapper]
 public static partial class EfConfigMapper

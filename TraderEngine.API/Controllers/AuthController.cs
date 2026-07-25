@@ -1,15 +1,11 @@
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using TraderEngine.API.AppSettings;
+using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Data.Entities;
+using TraderEngine.Data.Services;
 
 namespace TraderEngine.API.Controllers;
 
@@ -26,21 +22,22 @@ public class AuthController : ControllerBase
   private readonly ILogger<AuthController> _logger;
   private readonly UserManager<AppUser> _userManager;
   private readonly SignInManager<AppUser> _signInManager;
-  private readonly JwtSettings _jwtSettings;
+  private readonly IJwtTokenService _jwtTokenService;
 
   public AuthController(
     ILogger<AuthController> logger,
     UserManager<AppUser> userManager,
     SignInManager<AppUser> signInManager,
-    IOptions<JwtSettings> jwtOptions)
+    IJwtTokenService jwtTokenService)
   {
     _logger = logger;
     _userManager = userManager;
     _signInManager = signInManager;
-    _jwtSettings = jwtOptions.Value;
+    _jwtTokenService = jwtTokenService;
   }
 
   [AllowAnonymous]
+  [EnableRateLimiting("login")]
   [HttpPost("login")]
   public async Task<ActionResult<LoginResponseDto>> Login(LoginReqDto request)
   {
@@ -56,27 +53,11 @@ public class AuthController : ControllerBase
     if (!result.Succeeded)
       return Unauthorized();
 
-    var expiresAt = DateTimeOffset.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
-
-    var claims = new List<Claim>
-    {
-      new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-      new(ClaimTypes.Name, user.UserName ?? user.Id.ToString()),
-    };
-
-    var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SigningKey));
-    var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
-
-    var token = new JwtSecurityToken(
-      issuer: _jwtSettings.Issuer,
-      audience: _jwtSettings.Audience,
-      claims: claims,
-      expires: expiresAt.UtcDateTime,
-      signingCredentials: credentials);
+    var (token, expiresAt) = _jwtTokenService.GenerateToken(user);
 
     return Ok(new LoginResponseDto
     {
-      Token = new JwtSecurityTokenHandler().WriteToken(token),
+      Token = token,
       ExpiresAt = expiresAt,
     });
   }

@@ -11,3 +11,13 @@ This flow chart is a result of the learnings from the [trader-plugin](https://gi
 The platform is a collection of components that work together. Each component is responsible for specific tasks. The colors correspond to the actions in the flow chart for which the component is responsible. A GUI is added to the architecture for completeness, but is outside of the scope of this project. In this approach, the GUI handles users, authentication and authorization. TraderEngine is intended to be an non-exposed internal API that is purely focussed on doing the hard trader work.
 
 ![Architecture](./Wiki/Diagrams/Architecture-MacroLevel.drawio.png)
+
+## Debugging from Visual Studio
+
+TraderEngine.API and TraderEngine.Web are normally run directly from Visual Studio (F5) rather than containerized, while Postgres still runs in Docker. To reach it on `localhost:5432`, start it with the debug overlay so its port is published to the host:
+
+```
+docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d traderengine.postgres
+```
+
+Plain `docker compose up` (e.g. in production) only reads `docker-compose.yml`, so the port stays closed there.

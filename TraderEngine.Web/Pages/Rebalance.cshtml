@@ -1,0 +1,106 @@
+@page "{handler?}"
+@model TraderEngine.Web.Pages.RebalanceModel
+@{
+    ViewData["Title"] = "Portfolio & Rebalance";
+}
+
+<h1>Portfolio &amp; Rebalance</h1>
+
+<h2 class="h4">Current vs. balanced allocation</h2>
+<div id="rebalance-error" class="alert alert-danger d-none" role="alert"></div>
+<div class="table-responsive">
+    <table class="table table-hover align-middle" id="portfolio-table">
+        <thead>
+            <tr>
+                <th rowspan="2">Asset</th>
+                <th colspan="2" class="text-center">Current allocation</th>
+                <th colspan="2" class="text-center">Balanced allocation</th>
+                <th colspan="2" class="text-center">Difference</th>
+            </tr>
+            <tr>
+                <th class="text-end quote-symbol">&nbsp;</th>
+                <th class="text-end">%</th>
+                <th class="text-end quote-symbol">&nbsp;</th>
+                <th class="text-end">%</th>
+                <th class="text-end quote-symbol">&nbsp;</th>
+                <th class="text-end">%</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr id="portfolio-table-loading">
+                <td colspan="7" class="text-center text-muted">Loading portfolio data&hellip;</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<h2 class="h4">Rebalance parameters</h2>
+<form method="post" asp-page-handler="Save" id="rebalance-form">
+    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label asp-for="Config.TopRankingCount" class="form-label" title="Max amount of assets from CoinMarketCap listing. Excluding assets that contain ignored tags, i.e. they are not counted."></label>
+            <input asp-for="Config.TopRankingCount" class="form-control config-input" data-config-field="topRankingCount" min="0" max="100" step="1" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Config.Smoothing" class="form-label" title="Exponential Moving Average period of Market Cap, to smooth out volatility."></label>
+            <input asp-for="Config.Smoothing" class="form-control config-input" data-config-field="smoothing" min="1" max="72" step="1" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Config.NthRoot" class="form-label" title="Nth root of Market Cap EMA, to dampen the effect an individual asset has on the portfolio."></label>
+            <input asp-for="Config.NthRoot" class="form-control config-input" data-config-field="nthRoot" min="1" max="25" step="0.1" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label asp-for="Config.QuoteTakeout" class="form-label" title="Takeout a given amount of quote currency.">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span class="quote-symbol"></span>]</label>
+            <input asp-for="Config.QuoteTakeout" class="form-control config-input" data-config-field="quoteTakeout" min="0" step="1" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Config.QuoteAllocation" class="form-label" title="Allocate a given percentage to quote currency."></label>
+            <input asp-for="Config.QuoteAllocation" class="form-control config-input" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Config.CurrentAllocWeightingMult" class="form-label" title="Multiply weighting of current allocations by this factor. To prevent frequent swaps when two or more assets are on the edge of the balanced portfolio."></label>
+            <input asp-for="Config.CurrentAllocWeightingMult" class="form-control config-input" data-config-field="currentAllocWeightingMult" min="1" step="0.01" />
+        </div>
+    </div>
+
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <label asp-for="Config.MinimumDiffQuote" class="form-label" title="The minimum order size in quote required to trigger an automated rebalance.">@Html.DisplayNameFor(m => m.Config.MinimumDiffQuote) [<span class="quote-symbol"></span>]</label>
+            <input asp-for="Config.MinimumDiffQuote" class="form-control config-input" data-config-field="minimumDiffQuote" data-no-resim min="0" step="1" />
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Config.MinimumDiffAllocation" class="form-label" title="Minimum allocation difference in quote required to trigger an automated rebalance."></label>
+            <input asp-for="Config.MinimumDiffAllocation" class="form-control config-input" data-config-field="minimumDiffAllocation" data-no-resim min="0" max="100" step="0.1" />
+            <div class="form-text" id="tracking-error-quote"></div>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Config.IntervalHours" class="form-label" title="Allow an automated rebalance only once within this interval."></label>
+            <input asp-for="Config.IntervalHours" class="form-control config-input" data-config-field="intervalHours" data-no-resim min="1" step="1" />
+        </div>
+    </div>
+
+    <div class="form-check mb-3">
+        <input asp-for="Config.AutomationEnabled" class="form-check-input config-input" data-config-field="automationEnabled" data-no-resim />
+        <label asp-for="Config.AutomationEnabled" class="form-check-label" title="Automatically perform portfolio rebalance when conditions are met."></label>
+    </div>
+
+    <p class="text-muted">Last rebalance: <span id="last-rebalance">@Model.LastRebalanceDisplay</span></p>
+
+    <button type="submit" class="btn btn-secondary">Save changes</button>
+    <button type="button" class="btn btn-primary" id="rebalance-now-btn" disabled>
+        Rebalance now (fee ~<span class="quote-symbol"></span><span id="expected-fee">0.00</span>)
+    </button>
+</form>
+
+<script id="config-init" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Config, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+</script>
+
+@section Scripts {
+    <script src="~/js/rebalance.js" asp-append-version="true" defer></script>
+}

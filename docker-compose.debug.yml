@@ -1,0 +1,22 @@
+# Opt-in overlay, NOT auto-loaded by `docker compose up` (unlike
+# docker-compose.override.yml, this filename has no special meaning to Compose).
+# Exposes Postgres on the host so TraderEngine.API / TraderEngine.Web can be
+# debugged directly from Visual Studio (localhost:5432) instead of running
+# inside the compose network.
+#
+# Usage:  docker compose --env-file .env.example --env-file .env -f docker-compose.yml -f docker-compose.debug.yml up -d
+services:
+  traderengine.postgres:
+    ports:
+      - "5432:5432"
+
+  traderengine.api:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "5000:80"
+  traderengine.web:
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+    ports:
+      - "8081:80"

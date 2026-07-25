@@ -1,10 +1,9 @@
 using Microsoft.EntityFrameworkCore;
-using TraderEngine.API.Mappers;
 using TraderEngine.Common.DTOs.API.Request;
-using TraderEngine.Data;
 using TraderEngine.Data.Entities;
+using TraderEngine.Data.Mappers;
 
-namespace TraderEngine.API.Repositories;
+namespace TraderEngine.Data.Repositories;
 
 public class EfConfigRepository : IConfigRepository
 {

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 using TraderEngine.API.Factories;
-using TraderEngine.API.Repositories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -13,6 +12,7 @@ using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Models;
 using TraderEngine.Common.Results;
 using TraderEngine.Common.Services;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Tests.Services;
 
@@ -86,6 +86,9 @@ public class AutomationOrchestratorConcurrencyTests
   {
     public Task<ApiCredReqDto> GetApiCred(Guid userId, string exchangeName) =>
       Task.FromResult(new ApiCredReqDto { ApiKey = apiKeysByUser[userId], ApiSecret = apiKeysByUser[userId] });
+
+    public Task<ApiCredentialStatus?> GetApiCredStatus(Guid userId, string exchangeName) =>
+      Task.FromResult<ApiCredentialStatus?>(new ApiCredentialStatus(DateTimeOffset.UtcNow));
 
     public Task SaveApiCred(Guid userId, string exchangeName, ApiCredReqDto apiCred) => Task.CompletedTask;
   }

@@ -1,4 +1,4 @@
-namespace TraderEngine.API.AppSettings;
+namespace TraderEngine.Data.AppSettings;
 
 public class JwtSettings
 {

@@ -12,5 +12,5 @@ public class EmailSettings
 
   public string FromAddress { get; set; } = "your-from-address@email.com";
 
-  public string WebsiteUrl { get; set; } = "http://localhost:5000";
+  public string WebsiteUrl { get; set; } = "https://trader.engine";
 }

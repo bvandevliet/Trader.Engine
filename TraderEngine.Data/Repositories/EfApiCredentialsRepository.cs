@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using TraderEngine.Common.DTOs.API.Request;
-using TraderEngine.Data;
 using TraderEngine.Data.Entities;
 
-namespace TraderEngine.API.Repositories;
+namespace TraderEngine.Data.Repositories;
 
 public class EfApiCredentialsRepository : IApiCredentialsRepository
 {
@@ -37,6 +36,17 @@ public class EfApiCredentialsRepository : IApiCredentialsRepository
       ApiKey = _protector.Unprotect(entity.ProtectedApiKey),
       ApiSecret = _protector.Unprotect(entity.ProtectedApiSecret),
     };
+  }
+
+  public async Task<ApiCredentialStatus?> GetApiCredStatus(Guid userId, string exchangeName)
+  {
+    var updatedAt = await _db.ExchangeApiCredentials
+      .AsNoTracking()
+      .Where(c => c.UserId == userId && c.ExchangeName == exchangeName)
+      .Select(c => (DateTimeOffset?)c.UpdatedAt)
+      .FirstOrDefaultAsync();
+
+    return updatedAt == null ? null : new ApiCredentialStatus(updatedAt.Value);
   }
 
   public async Task SaveApiCred(Guid userId, string exchangeName, ApiCredReqDto apiCred)

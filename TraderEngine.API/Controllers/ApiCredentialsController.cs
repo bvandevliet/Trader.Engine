@@ -1,8 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using TraderEngine.API.Repositories;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Controllers;
 
