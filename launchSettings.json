@@ -5,7 +5,7 @@
       "commandVersion": "1.0",
       "serviceActions": {
         "traderengine.api": "StartDebugging",
-        "traderengine.cli": "StartDebugging"
+        "traderengine.web": "StartDebugging"
       }
     }
   }

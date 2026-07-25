@@ -1,7 +1,7 @@
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using TraderEngine.Data.AppSettings;
 using TraderEngine.Data.Entities;
@@ -9,7 +9,7 @@ using TraderEngine.Data.Entities;
 namespace TraderEngine.Data.Services;
 
 /// <summary>
-/// Mints the same JWT shape <see cref="Entities.AppUser"/>-authenticated callers present to
+/// Mints the same JWT shape <see cref="AppUser"/>-authenticated callers present to
 /// TraderEngine.API, shared by the API's own login endpoint and by TraderEngine.Web (which
 /// already holds an authenticated Identity cookie principal and mints a matching token itself
 /// rather than round-tripping through a second login call).
@@ -17,6 +17,7 @@ namespace TraderEngine.Data.Services;
 public class JwtTokenService : IJwtTokenService
 {
   private readonly JwtSettings _jwtSettings;
+  private readonly JsonWebTokenHandler _tokenHandler = new();
 
   public JwtTokenService(IOptions<JwtSettings> jwtOptions)
   {
@@ -36,13 +37,15 @@ public class JwtTokenService : IJwtTokenService
     var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SigningKey));
     var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
 
-    var token = new JwtSecurityToken(
-      issuer: _jwtSettings.Issuer,
-      audience: _jwtSettings.Audience,
-      claims: claims,
-      expires: expiresAt.UtcDateTime,
-      signingCredentials: credentials);
+    var descriptor = new SecurityTokenDescriptor
+    {
+      Issuer = _jwtSettings.Issuer,
+      Audience = _jwtSettings.Audience,
+      Subject = new ClaimsIdentity(claims),
+      Expires = expiresAt.UtcDateTime,
+      SigningCredentials = credentials,
+    };
 
-    return (new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
+    return (_tokenHandler.CreateToken(descriptor), expiresAt);
   }
 }
