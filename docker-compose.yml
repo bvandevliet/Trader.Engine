@@ -26,9 +26,9 @@ services:
     depends_on:
       traderengine.postgres:
         condition: service_healthy
-    tty: true
     volumes:
       - ./.volumes/secrets:/app/secrets
+    tty: true
     environment:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
@@ -45,6 +45,7 @@ services:
       - EmailSettings__SmtpUsername=${SMTP_USERNAME}
       - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
       - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
+      - EmailSettings__WebsiteUrl=${WEBSITE_URL}
   traderengine.web:
     container_name: traderengine.web
     image: ${DOCKER_REGISTRY-}traderengine.web:${TAG:-latest}
@@ -63,6 +64,7 @@ services:
       # Shares the API's key ring: this host decrypts exchange credentials the API encrypted
       # (and vice versa), so both must read/write the same Data Protection key files.
       - ./.volumes/secrets:/app/secrets
+    tty: true
     environment:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}

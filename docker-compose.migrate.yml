@@ -1,29 +1,29 @@
 # Deliberately NOT referenced by docker-compose.dcproj (neither as the base file nor via
 # AdditionalComposeFilePaths) — Visual Studio's F5 flow expects a running container for every
 # service in whatever compose files it loads, regardless of that service's `profiles:` gate (see
-# CLAUDE.md). Keeping traderengine.migrate out of VS's loaded set entirely is the only way to
+# CLAUDE.md). Keeping traderengine.migration out of VS's loaded set entirely is the only way to
 # both keep it profile-gated (opt-in only, never auto-started) and not break F5 debugging.
 #
 # Usage (one-shot, on demand):
-#   docker compose --env-file .env.example --env-file .env -f docker-compose.yml -f docker-compose.migrate.yml run --rm traderengine.migrate
+#   docker compose --env-file .env.example --env-file .env -f docker-compose.yml -f docker-compose.migrate.yml run --rm traderengine.migration
 #
 # `profiles: [migrate]` below isn't needed for the `run` command above — explicitly naming a
 # service bypasses profile filtering. It's kept anyway so a broader `up` across these two files
 # (with no service named) can't accidentally start this one-shot job, which decrypts and moves
 # real production exchange credentials.
 services:
-  traderengine.migrate:
-    container_name: traderengine.migrate
-    image: ${DOCKER_REGISTRY-}traderengine.migrate:${TAG:-latest}
+  traderengine.migration:
+    container_name: traderengine.migration
+    image: ${DOCKER_REGISTRY-}traderengine.migration:${TAG:-latest}
     build:
       context: ./TraderEngine.Migration
       dockerfile: Dockerfile
     depends_on:
       - traderengine.postgres
-    tty: true
     volumes:
       # Shares the API/Web key ring so credentials re-encrypted here are decryptable by both.
       - ./.volumes/secrets:/app/secrets
+    tty: true
     environment:
       - TZ=Europe/Amsterdam
       - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD}
