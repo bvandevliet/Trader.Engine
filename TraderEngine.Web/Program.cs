@@ -25,6 +25,10 @@ public class Program
 
     builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
+    builder.Services.ConfigureTraderEngineForwardedHeaders();
+
+    builder.Services.AddHealthChecks();
+
     // Fails fast if the shared signing key is missing/too short, rather than only surfacing as
     // a hard-to-trace failure the first time a page tries to mint a token to call the API.
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
@@ -125,6 +129,10 @@ public class Program
       await scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>().Database.MigrateAsync();
     }
 
+    // Must run before anything that inspects scheme/remote IP (secure-cookie policy, HSTS,
+    // logging, the CSP branch below).
+    app.UseForwardedHeaders();
+
     // Security headers — applied in all environments. This app can trigger real exchange trades,
     // so it gets the same defense-in-depth headers as SimplePlanner.Net's reference pattern.
     app.Use(async (context, next) =>
@@ -157,6 +165,7 @@ public class Program
     app.UseAuthentication();
     app.UseAuthorization();
 
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapStaticAssets().AllowAnonymous();
     app.MapRazorPages().WithStaticAssets();
 

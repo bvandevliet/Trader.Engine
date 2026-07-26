@@ -1,5 +1,7 @@
+using System.Security.Claims;
 using System.Text;
 using System.Threading.Channels;
+using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
@@ -7,8 +9,6 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using Polly;
-using Polly.Contrib.WaitAndRetry;
 using TraderEngine.API.AppSettings;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
@@ -47,6 +47,10 @@ public class Program
 #endif
 
     builder.Services.AddRouting(options => options.LowercaseUrls = true);
+
+    builder.Services.ConfigureTraderEngineForwardedHeaders();
+
+    builder.Services.AddHealthChecks();
 
     // Fails fast if the shared signing key is missing/too short, rather than only surfacing as
     // a hard-to-trace failure the first time a page tries to mint a token to call the API.
@@ -108,6 +112,23 @@ public class Program
         limiterOptions.Window = TimeSpan.FromMinutes(1);
         limiterOptions.QueueLimit = 0;
       });
+
+      // Throttles the trade-triggering endpoints (Rebalance/Allocations controllers) per
+      // authenticated user, so a leaked/hijacked JWT can't be used to fire off rapid-repeat
+      // exchange orders. Keyed on the user id claim rather than IP: this app is reached only via
+      // TraderEngine.Web's internal call, so every request already carries a real user identity.
+      options.AddPolicy("trading", httpContext =>
+      {
+        var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
+
+        return RateLimitPartition.GetSlidingWindowLimiter(userId, _ => new SlidingWindowRateLimiterOptions
+        {
+          PermitLimit = 20,
+          Window = TimeSpan.FromMinutes(1),
+          SegmentsPerWindow = 4,
+          QueueLimit = 0,
+        });
+      });
     });
 
     builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -141,9 +162,7 @@ public class Program
       httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
       httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
     })
-      .ApplyDefaultPoolAndPolicyConfig()
-      .AddTransientHttpErrorPolicy(policy =>
-        policy.WaitAndRetryAsync(Backoff.DecorrelatedJitterBackoffV2(TimeSpan.FromSeconds(1), 4)));
+      .ApplyDefaultPoolAndPolicyConfig();
 
     builder.Services.AddScoped<IConfigRepository, EfConfigRepository>();
     builder.Services.AddScoped<IApiCredentialsRepository, EfApiCredentialsRepository>();
@@ -175,11 +194,20 @@ public class Program
       SeedAdminUser(scope.ServiceProvider).GetAwaiter().GetResult();
     }
 
+    // Must run before anything that inspects scheme/remote IP (rate limiter, auth, logging).
+    app.UseForwardedHeaders();
+
+    if (!app.Environment.IsDevelopment())
+    {
+      app.UseHsts();
+    }
+
     app.UseAuthentication();
     app.UseAuthorization();
 
     app.UseRateLimiter();
 
+    app.MapHealthChecks("/health").AllowAnonymous();
     app.MapControllers();
 
     app.Run();

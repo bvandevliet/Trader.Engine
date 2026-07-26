@@ -14,25 +14,20 @@ namespace TraderEngine.Data.Services;
 /// already holds an authenticated Identity cookie principal and mints a matching token itself
 /// rather than round-tripping through a second login call).
 /// </summary>
-public class JwtTokenService : IJwtTokenService
+public class JwtTokenService(IOptions<JwtSettings> jwtOptions) : IJwtTokenService
 {
-  private readonly JwtSettings _jwtSettings;
+  private readonly JwtSettings _jwtSettings = jwtOptions.Value;
   private readonly JsonWebTokenHandler _tokenHandler = new();
-
-  public JwtTokenService(IOptions<JwtSettings> jwtOptions)
-  {
-    _jwtSettings = jwtOptions.Value;
-  }
 
   public (string Token, DateTimeOffset ExpiresAt) GenerateToken(AppUser user)
   {
     var expiresAt = DateTimeOffset.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
 
-    var claims = new List<Claim>
-    {
+    List<Claim> claims =
+    [
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? user.Id.ToString()),
-    };
+    ];
 
     var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SigningKey));
     var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);

@@ -5,7 +5,6 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app
 COPY bin/Release/net10.0/publish .
-
 USER appuser
 
 ENV DOTNET_ENVIRONMENT=Production

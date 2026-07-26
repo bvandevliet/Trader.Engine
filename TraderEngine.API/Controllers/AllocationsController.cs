@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
@@ -9,7 +10,7 @@ using TraderEngine.Common.Mappers;
 
 namespace TraderEngine.API.Controllers;
 
-[ApiController, Route("api/[controller]")]
+[ApiController, Route("api/[controller]"), EnableRateLimiting("trading")]
 public class AllocationsController : ControllerBase
 {
   // TODO: Put quote symbol for market cap records in appsettings.

@@ -8,7 +8,7 @@
 FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS base
 EXPOSE 80
 
-RUN apk add -U --no-cache tzdata
+RUN apk add -U --no-cache tzdata wget
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 WORKDIR /app

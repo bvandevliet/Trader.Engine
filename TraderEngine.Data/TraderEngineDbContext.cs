@@ -65,6 +65,9 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
       entity.Property(c => c.TagsToIgnore)
         .HasConversion(stringListConverter, stringListComparer)
         .HasColumnType("jsonb");
+
+      entity.HasIndex(c => c.LastRebalance)
+        .IsDescending();
     });
 
     builder.Entity<ExchangeApiCredential>(entity =>
@@ -81,6 +84,9 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
     {
       // The time column (Updated) must be part of the key on a TimescaleDB hypertable.
       entity.HasKey(m => new { m.QuoteSymbol, m.BaseSymbol, m.Updated });
+
+      entity.HasIndex(m => m.Updated)
+        .IsDescending();
 
       entity.Property(m => m.Tags)
         .HasConversion(stringListConverter, stringListComparer)

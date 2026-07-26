@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using TraderEngine.Data;
@@ -11,9 +12,11 @@ using TraderEngine.Data;
 namespace TraderEngine.Data.Migrations
 {
     [DbContext(typeof(TraderEngineDbContext))]
-    partial class TraderEngineDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260727094847_AddSchemaOptimizations")]
+    partial class AddSchemaOptimizations
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -418,8 +421,6 @@ namespace TraderEngine.Data.Migrations
                     b.HasIndex("LastRebalance")
                         .IsDescending()
                         .HasDatabaseName("ix_rebalancing_configurations_last_rebalance");
-
-                    b.ToTable("rebalancing_configurations", (string)null);
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<System.Guid>", b =>

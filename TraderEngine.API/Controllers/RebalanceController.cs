@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
@@ -10,7 +11,7 @@ using TraderEngine.Common.Services;
 
 namespace TraderEngine.API.Controllers;
 
-[ApiController, Route("api/[controller]")]
+[ApiController, Route("api/[controller]"), EnableRateLimiting("trading")]
 public class RebalanceController : ControllerBase
 {
   // TODO: Put quote symbol for market cap records in appsettings.

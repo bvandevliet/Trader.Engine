@@ -3,32 +3,37 @@ services:
   traderengine.postgres:
     container_name: traderengine.postgres
     image: timescale/timescaledb:latest-pg18
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
     volumes:
       - ./.volumes/postgres-data:/var/lib/postgresql
-    restart: unless-stopped
     environment:
       - POSTGRES_DB=${POSTGRES_DATABASE}
       - POSTGRES_USER=${POSTGRES_USERNAME}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
-      interval: 5s
-      timeout: 10s
-      retries: 15
-      start_period: 5s
   traderengine.api:
     container_name: traderengine.api
     image: ${DOCKER_REGISTRY-}traderengine.api:${TAG:-latest}
-    restart: unless-stopped
     build:
       context: ./TraderEngine.API
       dockerfile: Dockerfile
     depends_on:
       traderengine.postgres:
         condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 25
+      start_period: 5s
     volumes:
       - ./.volumes/secrets:/app/secrets
-    tty: true
     environment:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
@@ -49,7 +54,6 @@ services:
   traderengine.web:
     container_name: traderengine.web
     image: ${DOCKER_REGISTRY-}traderengine.web:${TAG:-latest}
-    restart: unless-stopped
     build:
       context: ./TraderEngine.Web
       dockerfile: Dockerfile
@@ -57,14 +61,16 @@ services:
       traderengine.postgres:
         condition: service_healthy
       traderengine.api:
-        condition: service_started
-    ports:
-      - "8081:80"
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 25
+      start_period: 5s
     volumes:
-      # Shares the API's key ring: this host decrypts exchange credentials the API encrypted
-      # (and vice versa), so both must read/write the same Data Protection key files.
       - ./.volumes/secrets:/app/secrets
-    tty: true
     environment:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
@@ -78,3 +84,5 @@ services:
       - EmailSettings__SmtpUsername=${SMTP_USERNAME}
       - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
       - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
+    ports:
+      - "8081:80"
