@@ -12,6 +12,7 @@
     <File Path=".gitignore" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Packages.props" />
+    <File Path="docker-compose.migrate.yml" />
     <File Path="README.md" />
   </Folder>
   <Project Path="docker-compose.dcproj">
@@ -23,5 +24,6 @@
   <Project Path="TraderEngine.Common.Tests/TraderEngine.Common.Tests.csproj" />
   <Project Path="TraderEngine.Common/TraderEngine.Common.csproj" />
   <Project Path="TraderEngine.Data/TraderEngine.Data.csproj" />
+  <Project Path="TraderEngine.Migration/TraderEngine.Migration.csproj" />
   <Project Path="TraderEngine.Web/TraderEngine.Web.csproj" />
 </Solution>
