@@ -1,4 +1,4 @@
-# Usage:  docker compose --profile docker --env-file .env.example up -d
+# Usage:  docker compose --env-file .env.example up -d
 services:
   traderengine.postgres:
     container_name: traderengine.postgres
@@ -38,8 +38,6 @@ services:
       - EmailSettings__SmtpUsername=${SMTP_USERNAME}
       - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
       - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
-    profiles:
-      - docker
   traderengine.web:
     container_name: traderengine.web
     image: ${DOCKER_REGISTRY-}traderengine.web:${TAG:-latest}
@@ -69,5 +67,3 @@ services:
       - EmailSettings__SmtpUsername=${SMTP_USERNAME}
       - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
       - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
-    profiles:
-      - docker

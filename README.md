@@ -27,7 +27,7 @@ docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d tradereng
 **Production / manual full stack:**
 
 ```
-docker compose --profile docker --env-file .env.example --env-file .env up -d
+docker compose --env-file .env.example --env-file .env up -d
 ```
 
 Uses each project's production `Dockerfile`, which expects a prior `dotnet publish -c Release` (this is what CI does before building the image).
@@ -37,10 +37,10 @@ Uses each project's production `Dockerfile`, which expects a prior `dotnet publi
 | File | Purpose | Used by |
 |---|---|---|
 | `docker-compose.yml` | Base service definitions (Postgres, API, Web) — source of truth for production. | All scenarios |
-| `docker-compose.debug.yml` | Exposes ports to the host, sets dev env vars. Not auto-loaded by `docker compose up`. | Manual `docker compose` only (native debugging, or manual full-stack testing) |
+| `docker-compose.debug.yml` | Exposes Postgres on `localhost:5432`; redirects the API/Web build to `Dockerfile.debug` with the build context widened to the repo root. Not auto-loaded by a plain `docker compose` invocation. | Manually via `-f`, or by `docker-compose.dcproj` via `AdditionalComposeFilePaths` |
 | `docker-compose.vs.yml` | Redirects the API/Web build to `Dockerfile.debug` with the build context widened to the repo root. VS-only, not auto-loaded. | `docker-compose.dcproj` only, via `AdditionalComposeFilePaths` |
-| `docker-compose.dcproj` | Visual Studio's Docker Compose project — wires up `docker-compose.yml` + `docker-compose.vs.yml` + env files for one-click F5. | Visual Studio only |
+| `docker-compose.dcproj` | Visual Studio's Docker Compose project — wires up `docker-compose.yml` + `docker-compose.debug.yml` + env files for one-click F5. | Visual Studio only |
 | `TraderEngine.API/Dockerfile`, `TraderEngine.Web/Dockerfile` | Production images: thin, expect a prebuilt `bin/Release/.../publish`. | Production deploys, CI |
-| `TraderEngine.API/Dockerfile.debug`, `TraderEngine.Web/Dockerfile.debug` | Self-contained: build from source inside the image. VS Fast Mode only. | `docker-compose.vs.yml` only |
+| `TraderEngine.API/Dockerfile.debug`, `TraderEngine.Web/Dockerfile.debug` | Self-contained: build from source inside the image. VS Fast Mode only. | `docker-compose.debug.yml` only |
 
 `.env.example` (committed) holds default values; `.env` (gitignored) holds your private overrides and wins on any conflicting key. Pass both `--env-file` flags in that order for manual commands; Visual Studio does this automatically via `DockerComposeEnvFilePaths` in the `.dcproj`.
