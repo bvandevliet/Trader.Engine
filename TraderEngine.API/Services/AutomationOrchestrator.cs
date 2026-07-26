@@ -15,6 +15,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
   private readonly string _quoteSymbol = "EUR";
 
   private readonly ILogger<AutomationOrchestrator> _logger;
+  private readonly IHostEnvironment _environment;
   private readonly IServiceScopeFactory _scopeFactory;
   private readonly IRebalancingService _rebalancingService;
   private readonly IMarketCapService _marketCapService;
@@ -24,6 +25,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
   public AutomationOrchestrator(
     ILogger<AutomationOrchestrator> logger,
+    IHostEnvironment environment,
     IServiceScopeFactory scopeFactory,
     IRebalancingService rebalancingService,
     IMarketCapService marketCapService,
@@ -32,6 +34,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     IEmailNotificationService emailNotification)
   {
     _logger = logger;
+    _environment = environment;
     _scopeFactory = scopeFactory;
     _rebalancingService = rebalancingService;
     _marketCapService = marketCapService;
@@ -42,6 +45,17 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
   public async Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct)
   {
+    // Safeguard: this method places real exchange orders. Never let it run against the
+    // Development environment — e.g. a local dev database seeded with real, migrated production
+    // credentials (see TraderEngine.Migration) must never be able to trigger a real trade just
+    // because someone happened to be running/debugging the app locally.
+    if (_environment.IsDevelopment())
+    {
+      _logger.LogWarning("Automation is globally disabled in the Development environment, skipping.");
+
+      return;
+    }
+
     _logger.LogInformation("Running automations ..");
 
     var userConfigs = await _configRepo.GetConfigs();

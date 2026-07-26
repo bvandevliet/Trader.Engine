@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
@@ -189,8 +190,12 @@ public class AutomationOrchestratorConcurrencyTests
     var emailNotification = Substitute.For<IEmailNotificationService>();
     emailNotification.SendAutomationApiAuthFailed(Arg.Any<Guid>(), Arg.Any<DateTime>()).Returns(Task.CompletedTask);
 
+    var environment = Substitute.For<IHostEnvironment>();
+    environment.EnvironmentName.Returns(Environments.Production);
+
     var orchestrator = new AutomationOrchestrator(
       NullLogger<AutomationOrchestrator>.Instance,
+      environment,
       provider.GetRequiredService<IServiceScopeFactory>(),
       Substitute.For<IRebalancingService>(),
       Substitute.For<IMarketCapService>(),
@@ -214,5 +219,55 @@ public class AutomationOrchestratorConcurrencyTests
       apiKeysByUser.Values.ToList(),
       recorder.ObservedApiKeys.ToList(),
       "An exchange call observed another user's API key — credentials are leaking across concurrent automation cycles, which can execute one user's orders against another user's exchange account.");
+  }
+
+  /// <summary>
+  /// Safeguards against a local Development environment (e.g. a dev database seeded with real,
+  /// migrated production credentials — see TraderEngine.Migration) ever placing a real exchange
+  /// order, regardless of how many users have automation enabled.
+  /// </summary>
+  [TestMethod]
+  public async Task RunAsync_InDevelopmentEnvironment_NeverContactsAnyExchange()
+  {
+    // Arrange
+    var userIds = Enumerable.Range(1, 3).Select(_ => Guid.NewGuid()).ToList();
+
+    var apiKeysByUser = userIds.ToDictionary(userId => userId, userId => $"user-{userId}-api-key");
+
+    var configs = userIds.ToDictionary(userId => userId, _ => new ConfigReqDto
+    {
+      AutomationEnabled = true,
+      LastRebalance = null,
+    });
+
+    var services = new ServiceCollection();
+    services.AddSingleton<CredentialObservationRecorder>();
+    services.AddScoped<BitvavoExchange>();
+    services.AddScoped(sp => new ExchangeFactory(sp, [typeof(BitvavoExchange)]));
+
+    await using var provider = services.BuildServiceProvider();
+
+    var recorder = provider.GetRequiredService<CredentialObservationRecorder>();
+
+    var environment = Substitute.For<IHostEnvironment>();
+    environment.EnvironmentName.Returns(Environments.Development);
+
+    var orchestrator = new AutomationOrchestrator(
+      NullLogger<AutomationOrchestrator>.Instance,
+      environment,
+      provider.GetRequiredService<IServiceScopeFactory>(),
+      Substitute.For<IRebalancingService>(),
+      Substitute.For<IMarketCapService>(),
+      new FakeApiCredentialsRepository(apiKeysByUser),
+      new FakeConfigRepository(configs),
+      Substitute.For<IEmailNotificationService>());
+
+    // Act
+    await orchestrator.RunAsync(DateTimeOffset.UtcNow, CancellationToken.None);
+
+    // Assert
+    Assert.IsEmpty(recorder.ObservedApiKeys,
+      "Automation must not contact any exchange while running in the Development environment, " +
+      "regardless of how many users have automation enabled.");
   }
 }
