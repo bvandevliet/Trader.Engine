@@ -46,11 +46,7 @@ public class Program
     builder.Logging.AddFilter("System.Net.Http.HttpClient.", LogLevel.Warning);
 #endif
 
-    builder.Services.AddRouting(options =>
-    {
-      options.LowercaseUrls = true;
-      options.LowercaseQueryStrings = true;
-    });
+    builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
     // Fails fast if the shared signing key is missing/too short, rather than only surfacing as
     // a hard-to-trace failure the first time a page tries to mint a token to call the API.
@@ -81,7 +77,8 @@ public class Program
       .AddIdentityCore<AppUser>(options => options.ConfigureTraderEngineIdentityPolicy())
       .AddRoles<IdentityRole<Guid>>()
       .AddEntityFrameworkStores<TraderEngineDbContext>()
-      .AddSignInManager();
+      .AddSignInManager()
+      .AddDefaultTokenProviders();
 
     builder.Services
       .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)

@@ -23,11 +23,7 @@ public class Program
     builder.Configuration.AddJsonFile("appsettings.Private.json", optional: true, reloadOnChange: true);
 #endif
 
-    builder.Services.AddRouting(options =>
-    {
-      options.LowercaseUrls = true;
-      options.LowercaseQueryStrings = true;
-    });
+    builder.Services.AddRouting(options => options.LowercaseUrls = true);
 
     // Fails fast if the shared signing key is missing/too short, rather than only surfacing as
     // a hard-to-trace failure the first time a page tries to mint a token to call the API.
@@ -46,7 +42,8 @@ public class Program
     builder.Services
       .AddIdentity<AppUser, IdentityRole<Guid>>(options => options.ConfigureTraderEngineIdentityPolicy())
       .AddDefaultUI()
-      .AddEntityFrameworkStores<TraderEngineDbContext>();
+      .AddEntityFrameworkStores<TraderEngineDbContext>()
+      .AddDefaultTokenProviders();
 
     builder.Services.AddScoped<IEmailSender<AppUser>, IdentityEmailSender>();
 
