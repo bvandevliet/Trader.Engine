@@ -9,6 +9,7 @@ using TraderEngine.Data.Extensions;
 using TraderEngine.Data.Repositories;
 using TraderEngine.Data.Services;
 using TraderEngine.Web.AppSettings;
+using TraderEngine.Web.Middleware;
 using TraderEngine.Web.Services;
 
 namespace TraderEngine.Web;
@@ -81,6 +82,10 @@ public class Program
     // MVC's AutoValidateAntiforgeryTokenAttribute filter registration is needed.
     builder.Services.AddRazorPages(options =>
     {
+      // Kebab-cases page routes (e.g. AccessDenied -> access-denied) to match the hyphenated
+      // paths configured below in ConfigureApplicationCookie.
+      options.Conventions.Add(new PageRouteTransformerConvention(new SlugifyParameterTransformer()));
+
       // Preserves the pre-migration default route ("/" showed the dashboard, matching MVC's
       // {controller=Dashboard}/{action=Index} convention route).
       options.Conventions.AddPageRoute("/Dashboard", "");
