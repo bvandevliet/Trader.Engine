@@ -1,4 +1,5 @@
 import { csrfHeaders } from './shared/csrf';
+import { numberFormat, quoteSymbolFor } from './shared/format';
 
 interface MarketDto {
   quoteSymbol: string;
@@ -101,7 +102,8 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): 
 {
   const curByAsset = new Map(curBalance.allocations.map(alloc => [alloc.market.baseSymbol, alloc]));
   const balByAsset = new Map(newBalance.allocations.map(alloc => [alloc.market.baseSymbol, alloc]));
-  const baseSymbols = Array.from(new Set([...curByAsset.keys(), ...balByAsset.keys()])).sort();
+  // Without sorting, preserve API order.
+  const baseSymbols = Array.from(new Set([...curByAsset.keys(), ...balByAsset.keys()]));
 
   portfolioTableBody.replaceChildren(
     ...baseSymbols.map(baseSymbol =>
@@ -120,12 +122,12 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): 
       const row = document.createElement('tr');
 
       addCell(row, baseSymbol);
-      addCell(row, curValue.toFixed(2), 'text-end');
-      addCell(row, curAlloc.toFixed(2), 'text-end');
-      addCell(row, balValue.toFixed(2), 'text-end');
-      addCell(row, balAlloc.toFixed(2), 'text-end');
-      addCell(row, `${sign(quoteDiff)}${quoteDiff.toFixed(2)}`, diffClass(quoteDiff));
-      addCell(row, `${sign(allocDiff)}${allocDiff.toFixed(2)}`, diffClass(allocDiff));
+      addCell(row, numberFormat(curValue), 'text-end');
+      addCell(row, numberFormat(curAlloc), 'text-end');
+      addCell(row, numberFormat(balValue), 'text-end');
+      addCell(row, numberFormat(balAlloc), 'text-end');
+      addCell(row, `${sign(quoteDiff)}${numberFormat(quoteDiff)}`, diffClass(quoteDiff));
+      addCell(row, `${sign(allocDiff)}${numberFormat(allocDiff)}`, diffClass(allocDiff));
 
       return row;
     }),
@@ -140,7 +142,7 @@ function updateTrackingErrorQuote (): void
   const minimumDiffAllocation = parseFloat(minimumDiffAllocationInput.value || '0');
   const quote = (minimumDiffAllocation / 100) * lastSimulation.curBalance.amountQuoteTotal;
 
-  trackingErrorEl.textContent = `(~${quote.toFixed(2)})`;
+  trackingErrorEl.textContent = numberFormat(quote);
 }
 
 async function simulate (): Promise<void>
@@ -170,9 +172,9 @@ async function simulate (): Promise<void>
 
   lastSimulation = await response.json();
 
-  quoteSymbolEls.forEach(el => (el.textContent = lastSimulation!.curBalance.quoteSymbol));
+  quoteSymbolEls.forEach(el => (el.textContent = quoteSymbolFor(lastSimulation!.curBalance.quoteSymbol)));
   renderPortfolioTable(lastSimulation!.curBalance, lastSimulation!.newBalance);
-  expectedFeeEl.textContent = lastSimulation!.totalFee.toFixed(2);
+  expectedFeeEl.textContent = numberFormat(lastSimulation!.totalFee);
   updateTrackingErrorQuote();
 
   rebalanceNowBtn.disabled = false;
@@ -231,7 +233,7 @@ rebalanceNowBtn.addEventListener('click', () =>
 
       renderPortfolioTable(curBalance, lastSimulation.newBalance);
       lastRebalanceEl.textContent = 'Just now';
-      expectedFeeEl.textContent = '0.00';
+      expectedFeeEl.textContent = numberFormat(0);
     }
     finally
     {

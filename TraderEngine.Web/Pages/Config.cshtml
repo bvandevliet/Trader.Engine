@@ -7,6 +7,8 @@
 <h1>Advanced Allocation Config</h1>
 
 <form method="post" id="allocation-config-form">
+    <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+
     <fieldset class="mb-4">
         <legend class="h5">Tags to include</legend>
         <p class="text-muted">
@@ -19,7 +21,7 @@
             {
                 <div class="input-group mb-2 tag-row">
                     <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
-                    <input type="text" name="TagsToInclude" value="@tag" class="form-control font-monospace" />
+                    <input type="text" name="TagsToInclude" value="@tag" class="form-control font-monospace type-regex" />
                     <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
                     <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
                 </div>
@@ -39,7 +41,7 @@
             {
                 <div class="input-group mb-2 tag-row">
                     <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
-                    <input type="text" name="TagsToIgnore" value="@tag" class="form-control font-monospace" />
+                    <input type="text" name="TagsToIgnore" value="@tag" class="form-control font-monospace type-regex" />
                     <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
                     <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
                 </div>

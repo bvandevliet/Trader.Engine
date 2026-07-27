@@ -9,8 +9,7 @@ using TraderEngine.Web.AppSettings;
 namespace TraderEngine.Web.Pages;
 
 /// <summary>
-/// Exchange API key management. Unlike the old WordPress block (which redisplayed the decrypted
-/// key/secret on every page load), this form is write-only — the stored credentials are never
+/// Exchange API key management. This form is write-only — the stored credentials are never
 /// read back into the browser once saved, only ever overwritten. That's a deliberate hardening,
 /// not a faithfulness gap: the plaintext-in-browser-history/autofill risk the old block carried
 /// was flagged as worth fixing during the migration, not preserved as-is.

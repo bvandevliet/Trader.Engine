@@ -138,13 +138,13 @@ public class Program
     app.Use(async (context, next) =>
     {
       context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
-      context.Response.Headers.Append("X-Frame-Options", "DENY");
+      context.Response.Headers.Append("X-Frame-Options", "SAMEORIGIN");
       context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
       context.Response.Headers.Append("Referrer-Policy", "strict-origin-when-cross-origin");
       context.Response.Headers.Append("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=()");
       var csp = app.Environment.IsDevelopment()
-        ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:*; frame-ancestors 'none'; form-action 'self';"
-        : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'none'; form-action 'self';";
+        ? "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:*; frame-ancestors 'self'; form-action 'self';"
+        : "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; frame-ancestors 'self'; form-action 'self';";
       context.Response.Headers.Append("Content-Security-Policy", csp);
       await next();
     });

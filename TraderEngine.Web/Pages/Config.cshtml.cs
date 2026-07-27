@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.Common.DTOs.API.Request;
@@ -8,8 +9,7 @@ namespace TraderEngine.Web.Pages;
 
 /// <summary>
 /// Advanced allocation config: tag include/exclude rules and per-asset weighting overrides — a
-/// dedicated page for the three <see cref="ConfigReqDto"/> fields the Rebalance page's form never
-/// touches, matching the old WordPress "Trader Configuration" block.
+/// dedicated page for the three <see cref="ConfigReqDto"/> fields the Rebalance page's form never touches.
 /// </summary>
 public class ConfigModel : TraderEnginePageModelBase
 {
@@ -46,6 +46,9 @@ public class ConfigModel : TraderEnginePageModelBase
 
   public async Task<IActionResult> OnPostAsync()
   {
+    if (!ValidateTagPatterns())
+      return Page();
+
     var user = await GetCurrentUserAsync();
     var config = await _configRepository.GetConfig(user.Id);
 
@@ -59,8 +62,46 @@ public class ConfigModel : TraderEnginePageModelBase
   }
 
   /// <summary>
-  /// Applies the same normalization the previous WordPress block enforced server-side on save:
-  /// tag patterns lowercased, trimmed, emptied entries dropped, then sorted alphabetically;
+  /// These patterns are compiled into a live <see cref="Regex"/> by
+  /// <c>MarketCapService</c> when ranking assets for a rebalance — not evaluated by the browser's
+  /// JS regex engine, which uses different syntax rules. An invalid pattern saved here would
+  /// otherwise only surface as an unhandled error later, during a Rebalance simulation, far from
+  /// where the mistake was actually made. The client-side check in config.ts is a UX nicety only;
+  /// this is the authoritative check against the regex flavor that actually matters.
+  /// </summary>
+  private bool ValidateTagPatterns()
+  {
+    var isValid = true;
+
+    void ValidateList(List<string> tags, string fieldKey)
+    {
+      for (var i = 0; i < tags.Count; i++)
+      {
+        var tag = tags[i].Trim();
+
+        if (tag.Length == 0)
+          continue;
+
+        try
+        {
+          _ = new Regex(tag);
+        }
+        catch (ArgumentException)
+        {
+          ModelState.AddModelError($"{fieldKey}[{i}]", $"\"{tag}\" is not a valid regex pattern.");
+          isValid = false;
+        }
+      }
+    }
+
+    ValidateList(TagsToInclude, nameof(TagsToInclude));
+    ValidateList(TagsToIgnore, nameof(TagsToIgnore));
+
+    return isValid;
+  }
+
+  /// <summary>
+  /// Tag patterns lowercased, trimmed, emptied entries dropped, then sorted alphabetically;
   /// weighting asset symbols uppercased, non-numeric/empty rows dropped, weights clamped to a
   /// minimum of 0, final map ordered by weight descending.
   /// </summary>

@@ -41,6 +41,10 @@
     </tbody>
 </table>
 
+<script id="balance-init" type="application/json">
+    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { totalDeposited = Model.TotalDeposited, totalWithdrawn = Model.TotalWithdrawn }))
+</script>
+
 @section Scripts {
     <script src="~/js/dashboard.js" asp-append-version="true" defer></script>
 }

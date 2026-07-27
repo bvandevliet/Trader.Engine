@@ -1,6 +1,103 @@
+@import "../../node_modules/bootstrap/scss/functions";
+@import "../../node_modules/bootstrap/scss/variables";
+@import "../../node_modules/bootstrap/scss/variables-dark";
+
+$h1-font-size: $font-size-base * 1.5;
+$h2-font-size: $font-size-base * 1.4;
+$h3-font-size: $font-size-base * 1.3;
+$h4-font-size: $font-size-base * 1.2;
+$h5-font-size: $font-size-base * 1.1;
+$h6-font-size: $font-size-base;
+
+$input-btn-padding-x-sm: .35em;
+$input-btn-padding-y-sm: .10em;
+
+$input-btn-padding-x: .50em;
+$input-btn-padding-y: .20em;
+
+$input-btn-padding-x-lg: .60em;
+$input-btn-padding-y-lg: .35em;
+
 @import "../../node_modules/bootstrap/scss/bootstrap";
 @import "../../node_modules/bootstrap-icons/font/bootstrap-icons";
 
-.font-monospace {
-  font-size: 0.9rem;
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+body {
+  margin-bottom: 60px;
+}
+
+footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  white-space: nowrap;
+  line-height: 60px;
+}
+
+a {
+  text-decoration: none;
+  text-decoration-line: none;
+
+  &[target="_blank"] {
+    display: inline-flex;
+    @extend .align-items-center;
+    @extend .gap-1;
+
+    &::after {
+      @extend .small;
+      display: inline-block;
+      font-family: "bootstrap-icons" !important;
+      font-style: normal;
+      font-weight: normal !important;
+      font-variant: normal;
+      text-transform: none;
+      line-height: 1;
+      vertical-align: -0.125em;
+      content: "\f1c5";
+    }
+  }
+}
+
+.bi {
+  margin-right: .2em;
+}
+
+.navbar-brand-logo {
+  display: inline-block;
+  height: 32px;
+  width: 32px;
+  vertical-align: middle;
+  pointer-events: none;
+  // Without this, the page's [data-bs-theme=dark] { color-scheme: dark; }
+  // propagates into the embedded SVG document and corrupts its own white
+  // fill rendering. The SVG already manages its own light/dark presentation
+  // internally (its two icon groups) — it doesn't need or want the browser's
+  // dark-mode-aware color adjustment applied on top.
+  color-scheme: light;
+}
+
+// === Form styling ===
+
+.validation-summary-valid,
+.field-validation-valid {
+  display: none;
+}
+
+.alert ul {
+  margin-bottom: 0;
+}
+
+.form-floating>.form-control-plaintext::placeholder,
+.form-floating>.form-control::placeholder {
+  color: var(--bs-secondary-color);
+  text-align: end;
+}
+
+.form-floating>.form-control-plaintext:focus::placeholder,
+.form-floating>.form-control:focus::placeholder {
+  text-align: start;
 }

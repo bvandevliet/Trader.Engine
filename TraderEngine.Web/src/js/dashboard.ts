@@ -1,10 +1,25 @@
+import { numberFormat } from './shared/format';
+
 interface BalanceDto {
   quoteSymbol: string;
   amountQuoteAvailable: number;
   amountQuoteTotal: number;
 }
 
+interface BalanceInit {
+  totalDeposited: number;
+  totalWithdrawn: number;
+}
+
 const POLL_INTERVAL_MS = 5000;
+
+const balanceInitEl = document.getElementById('balance-init');
+
+// Kept as real numbers from the server-rendered initial state —
+// never re-derived by parsing the (locale-formatted) rendered table text back out.
+const { totalDeposited, totalWithdrawn }: BalanceInit = balanceInitEl?.textContent
+  ? JSON.parse(balanceInitEl.textContent)
+  : { totalDeposited: 0, totalWithdrawn: 0 };
 
 function setField (field: string, value: string): void
 {
@@ -21,18 +36,14 @@ async function refreshBalance (): Promise<void>
 
   const balance: BalanceDto = await response.json();
 
-  const depositedText = document.querySelector<HTMLTableCellElement>('[data-field=\'deposited\']')?.textContent ?? '0';
-  const withdrawnText = document.querySelector<HTMLTableCellElement>('[data-field=\'withdrawn\']')?.textContent ?? '0';
-  const deposited = parseFloat(depositedText.replace(/,/gu, ''));
-  const withdrawn = parseFloat(withdrawnText.replace(/,/gu, ''));
-  const cumulative = balance.amountQuoteTotal + withdrawn;
-  const gain = cumulative - deposited;
-  const gainPercent = deposited === 0 ? 0 : 100 * (cumulative / deposited - 1);
+  const cumulative = balance.amountQuoteTotal + totalWithdrawn;
+  const gain = cumulative - totalDeposited;
+  const gainPercent = totalDeposited === 0 ? 0 : 100 * (cumulative / totalDeposited - 1);
 
-  setField('balance', balance.amountQuoteTotal.toFixed(2));
-  setField('cumulative', cumulative.toFixed(2));
-  setField('gain', gain.toFixed(2));
-  setField('gain-percent', gainPercent.toFixed(2));
+  setField('balance', numberFormat(balance.amountQuoteTotal));
+  setField('cumulative', numberFormat(cumulative));
+  setField('gain', numberFormat(gain));
+  setField('gain-percent', numberFormat(gainPercent));
 }
 
 setInterval(refreshBalance, POLL_INTERVAL_MS);
