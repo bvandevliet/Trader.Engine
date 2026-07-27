@@ -19,9 +19,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
   private readonly IServiceScopeFactory _scopeFactory;
   private readonly IRebalancingService _rebalancingService;
   private readonly IMarketCapService _marketCapService;
-  private readonly IApiCredentialsRepository _keyRepo;
   private readonly IConfigRepository _configRepo;
-  private readonly IEmailNotificationService _emailNotification;
 
   public AutomationOrchestrator(
     ILogger<AutomationOrchestrator> logger,
@@ -29,18 +27,14 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     IServiceScopeFactory scopeFactory,
     IRebalancingService rebalancingService,
     IMarketCapService marketCapService,
-    IApiCredentialsRepository keyRepo,
-    IConfigRepository configRepo,
-    IEmailNotificationService emailNotification)
+    IConfigRepository configRepo)
   {
     _logger = logger;
     _environment = environment;
     _scopeFactory = scopeFactory;
     _rebalancingService = rebalancingService;
     _marketCapService = marketCapService;
-    _keyRepo = keyRepo;
     _configRepo = configRepo;
-    _emailNotification = emailNotification;
   }
 
   public async Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct)
@@ -63,6 +57,22 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     await Task.WhenAll(userConfigs.Select(async userConfig =>
     {
       var now = DateTime.UtcNow;
+
+      // Resolve a dedicated DI scope per user, created up-front so it also covers the catch
+      // block below: IExchange implementations are registered Scoped and carry mutable
+      // per-instance ApiKey/ApiSecret, while this method runs many users concurrently
+      // (Task.WhenAll) inside a single orchestrator-level scope. Sharing one
+      // ExchangeFactory/exchange instance across users here would let their credentials race
+      // and cross-contaminate between accounts. IApiCredentialsRepository/IConfigRepository/
+      // IEmailNotificationService must likewise be resolved from this per-user scope rather than
+      // orchestrator-level fields: EfApiCredentialsRepository/EfConfigRepository wrap a scoped
+      // TraderEngineDbContext directly, and IEmailNotificationService depends on
+      // UserManager<AppUser>, whose EF Core-backed user store does too — EF Core's DbContext is
+      // not thread-safe, so concurrent users calling into a shared instance throws
+      // "A second operation was started on this context instance ..."
+      await using var userScope = _scopeFactory.CreateAsyncScope();
+
+      var emailNotification = userScope.ServiceProvider.GetRequiredService<IEmailNotificationService>();
 
       try
       {
@@ -92,13 +102,6 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         //       otherwise, first call into "balanced" and then into "simulate" for each exchange.
         var exchangeName = "Bitvavo";
 
-        // Resolve a dedicated DI scope per user: IExchange implementations are registered
-        // Scoped and carry mutable per-instance ApiKey/ApiSecret, while this method runs many
-        // users concurrently (Task.WhenAll) inside a single orchestrator-level scope. Sharing
-        // one ExchangeFactory/exchange instance across users here would let their credentials
-        // race and cross-contaminate between accounts.
-        await using var userScope = _scopeFactory.CreateAsyncScope();
-
         var exchangeFactory = userScope.ServiceProvider.GetRequiredService<ExchangeFactory>();
 
         var exchange = exchangeFactory.GetService(exchangeName);
@@ -111,8 +114,11 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           return;
         }
 
+        var keyRepo = userScope.ServiceProvider.GetRequiredService<IApiCredentialsRepository>();
+        var configRepo = userScope.ServiceProvider.GetRequiredService<IConfigRepository>();
+
         // Get API credentials.
-        var apiCred = await _keyRepo.GetApiCred(userConfig.Key, exchangeName);
+        var apiCred = await keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
         var credentials = new ExchangeCredentials(apiCred.ApiKey, apiCred.ApiSecret);
 
@@ -125,7 +131,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
             "Invalid API credentials for user '{userId}'.", userConfig.Key);
 
           // Send API authentication failure notification.
-          await _emailNotification.SendAutomationApiAuthFailed(userConfig.Key, now);
+          await emailNotification.SendAutomationApiAuthFailed(userConfig.Key, now);
 
           return;
         }
@@ -224,7 +230,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
             "This is just a precaution, if intended, it should be done manually.", userConfig.Key);
 
           // Send simulation failure notification.
-          await _emailNotification.SendAutomationFailed(
+          await emailNotification.SendAutomationFailed(
             userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
             simulated.Orders, simulated, true);
 
@@ -249,7 +255,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
           // Send failure notification.
-          await _emailNotification.SendAutomationFailed(
+          await emailNotification.SendAutomationFailed(
             userConfig.Key, now, "Not all orders were filled.",
             ordersExecuted, new
             {
@@ -267,7 +273,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
             "Not all simulated orders were executed for user '{userId}'.", userConfig.Key);
 
           // Send failure notification.
-          await _emailNotification.SendAutomationFailed(
+          await emailNotification.SendAutomationFailed(
             userConfig.Key, now, "Not all simulated orders were executed.",
             ordersExecuted, new
             {
@@ -291,13 +297,13 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         _logger.LogInformation("Automation completed for user '{userId}'.", userConfig.Key);
 
         // Save last rebalance timestamp.
-        _ = await _configRepo.SaveConfig(userConfig.Key, configReqDto);
+        _ = await configRepo.SaveConfig(userConfig.Key, configReqDto);
 
         // Send success notification.
         var totalDepositedTask = exchange.TotalDeposited(credentials);
         var totalWithdrawnTask = exchange.TotalWithdrawn(credentials);
         _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
-        await _emailNotification.SendAutomationSucceeded(
+        await emailNotification.SendAutomationSucceeded(
           userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated, ordersExecuted);
       }
       catch (Exception exception)
@@ -307,7 +313,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         try
         {
           // Send exception notification.
-          await _emailNotification.SendAutomationException(userConfig.Key, now, exception);
+          await emailNotification.SendAutomationException(userConfig.Key, now, exception);
         }
         catch (Exception exception2)
         {

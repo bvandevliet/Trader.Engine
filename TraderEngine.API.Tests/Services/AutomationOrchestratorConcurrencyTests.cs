@@ -182,13 +182,21 @@ public class AutomationOrchestratorConcurrencyTests
     services.AddSingleton<CredentialObservationRecorder>();
     services.AddScoped<BitvavoExchange>();
     services.AddScoped(sp => new ExchangeFactory(sp, [typeof(BitvavoExchange)]));
+    // Registered Scoped (not passed directly to the orchestrator's constructor) to mirror
+    // production DI: AutomationOrchestrator resolves IApiCredentialsRepository/IConfigRepository
+    // from the same per-user scope as the exchange, so a fresh instance is created for each
+    // concurrently-running user — exactly like EfApiCredentialsRepository/EfConfigRepository do
+    // with their shared, non-thread-safe TraderEngineDbContext in production.
+    services.AddScoped<IApiCredentialsRepository>(_ => new FakeApiCredentialsRepository(apiKeysByUser));
+    services.AddScoped<IConfigRepository>(_ => new FakeConfigRepository(configs));
+
+    var emailNotification = Substitute.For<IEmailNotificationService>();
+    emailNotification.SendAutomationApiAuthFailed(Arg.Any<Guid>(), Arg.Any<DateTime>()).Returns(Task.CompletedTask);
+    services.AddScoped(_ => emailNotification);
 
     await using var provider = services.BuildServiceProvider();
 
     var recorder = provider.GetRequiredService<CredentialObservationRecorder>();
-
-    var emailNotification = Substitute.For<IEmailNotificationService>();
-    emailNotification.SendAutomationApiAuthFailed(Arg.Any<Guid>(), Arg.Any<DateTime>()).Returns(Task.CompletedTask);
 
     var environment = Substitute.For<IHostEnvironment>();
     environment.EnvironmentName.Returns(Environments.Production);
@@ -199,9 +207,7 @@ public class AutomationOrchestratorConcurrencyTests
       provider.GetRequiredService<IServiceScopeFactory>(),
       Substitute.For<IRebalancingService>(),
       Substitute.For<IMarketCapService>(),
-      new FakeApiCredentialsRepository(apiKeysByUser),
-      new FakeConfigRepository(configs),
-      emailNotification);
+      new FakeConfigRepository(configs));
 
     // Act
     await orchestrator.RunAsync(DateTimeOffset.UtcNow, CancellationToken.None);
@@ -244,6 +250,9 @@ public class AutomationOrchestratorConcurrencyTests
     services.AddSingleton<CredentialObservationRecorder>();
     services.AddScoped<BitvavoExchange>();
     services.AddScoped(sp => new ExchangeFactory(sp, [typeof(BitvavoExchange)]));
+    services.AddScoped<IApiCredentialsRepository>(_ => new FakeApiCredentialsRepository(apiKeysByUser));
+    services.AddScoped<IConfigRepository>(_ => new FakeConfigRepository(configs));
+    services.AddScoped(_ => Substitute.For<IEmailNotificationService>());
 
     await using var provider = services.BuildServiceProvider();
 
@@ -258,9 +267,7 @@ public class AutomationOrchestratorConcurrencyTests
       provider.GetRequiredService<IServiceScopeFactory>(),
       Substitute.For<IRebalancingService>(),
       Substitute.For<IMarketCapService>(),
-      new FakeApiCredentialsRepository(apiKeysByUser),
-      new FakeConfigRepository(configs),
-      Substitute.For<IEmailNotificationService>());
+      new FakeConfigRepository(configs));
 
     // Act
     await orchestrator.RunAsync(DateTimeOffset.UtcNow, CancellationToken.None);
