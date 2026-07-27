@@ -16,7 +16,6 @@ using TraderEngine.API.Repositories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
-using TraderEngine.Common.Repositories;
 using TraderEngine.Common.Services;
 using TraderEngine.Data;
 using TraderEngine.Data.AppSettings;

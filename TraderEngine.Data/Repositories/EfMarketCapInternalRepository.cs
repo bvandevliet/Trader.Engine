@@ -1,12 +1,11 @@
 using Microsoft.EntityFrameworkCore;
-using TraderEngine.API.Mappers;
+using Microsoft.Extensions.Logging;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
-using TraderEngine.Common.Repositories;
-using TraderEngine.Data;
+using TraderEngine.Data.Mappers;
 
-namespace TraderEngine.API.Repositories;
+namespace TraderEngine.Data.Repositories;
 
 /// <summary>
 /// Uses <see cref="IDbContextFactory{TContext}"/> rather than a directly injected, DI-scoped

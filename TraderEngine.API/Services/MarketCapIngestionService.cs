@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 using TraderEngine.API.Repositories;
-using TraderEngine.Common.Repositories;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Services;
 

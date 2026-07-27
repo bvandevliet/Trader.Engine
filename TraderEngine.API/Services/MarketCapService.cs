@@ -4,7 +4,7 @@ using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Extensions;
-using TraderEngine.Common.Repositories;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Services;
 

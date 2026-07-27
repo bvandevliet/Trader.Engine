@@ -10,6 +10,9 @@ public static partial class CliMapper
 {
   // ── CMCAssetDto → MarketCapDataDto ───────────────────────────────────────────
 
+  // Hand-written: picks an arbitrary single entry out of the Quote dictionary (business logic, not
+  // structural mapping) and constructs the nested Market via MarketReqDto's constructor, which
+  // Mapperly's property-mapping attributes can't express.
   public static MarketCapDataDto MapCMCAsset(CMCAssetDto source)
   {
     var firstQuote = source.Quote.FirstOrDefault();
@@ -23,8 +26,5 @@ public static partial class CliMapper
     };
   }
 
-  public static IEnumerable<MarketCapDataDto> MapCMCAssets(IEnumerable<CMCAssetDto> source)
-  {
-    return source.Select(MapCMCAsset);
-  }
+  public static partial IEnumerable<MarketCapDataDto> MapCMCAssets(IEnumerable<CMCAssetDto> source);
 }

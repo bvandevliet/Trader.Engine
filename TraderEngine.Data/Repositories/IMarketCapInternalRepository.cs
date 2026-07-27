@@ -1,7 +1,7 @@
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 
-namespace TraderEngine.Common.Repositories;
+namespace TraderEngine.Data.Repositories;
 
 /// <summary>
 /// Interacts with the internal market cap database.
