@@ -15,7 +15,7 @@ services:
     environment:
       - POSTGRES_DB=${POSTGRES_DATABASE}
       - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
   traderengine.api:
     container_name: traderengine.api
     image: ${DOCKER_REGISTRY-}traderengine.api:${TAG:-latest}
@@ -38,9 +38,9 @@ services:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
       - Kestrel__Endpoints__Http__Url=http://*:80
-      - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD:?}
       - DataProtection__KeyRingPath=/app/secrets
-      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:?}
       - AdminSeed__UserName=${ADMIN_USERNAME}
       - AdminSeed__Email=${ADMIN_EMAIL}
       - AdminSeed__Password=${ADMIN_PASSWORD}
@@ -75,9 +75,9 @@ services:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
       - Kestrel__Endpoints__Http__Url=http://*:80
-      - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD:?}
       - DataProtection__KeyRingPath=/app/secrets
-      - Jwt__SigningKey=${JWT_SIGNING_KEY}
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:?}
       - TraderEngineApi__BaseUrl=http://traderengine.api/
       - EmailSettings__SmtpServer=${SMTP_SERVER}
       - EmailSettings__SmtpPort=${SMTP_PORT}
