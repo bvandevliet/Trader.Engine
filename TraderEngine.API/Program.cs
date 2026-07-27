@@ -10,6 +10,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TraderEngine.API.AppSettings;
+using TraderEngine.API.Data;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Repositories;
@@ -190,7 +191,7 @@ public class Program
     using (var scope = app.Services.CreateScope())
     {
       await scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>().Database.MigrateAsync();
-      SeedAdminUser(scope.ServiceProvider).GetAwaiter().GetResult();
+      await DbInitializer.InitializeAsync(scope.ServiceProvider);
     }
 
     // Must run before anything that inspects scheme/remote IP (rate limiter, auth, logging).
@@ -210,42 +211,5 @@ public class Program
     app.MapControllers();
 
     app.Run();
-  }
-
-  /// <summary>
-  /// Idempotently creates the single operator account from <see cref="AdminSeedSettings"/>, if
-  /// configured and not already present. No-op (and never overwrites an existing user) otherwise.
-  /// </summary>
-  private static async Task SeedAdminUser(IServiceProvider services)
-  {
-    var seedSettings = services.GetRequiredService<IOptions<AdminSeedSettings>>().Value;
-
-    if (string.IsNullOrEmpty(seedSettings.UserName) ||
-      string.IsNullOrEmpty(seedSettings.Email) ||
-      string.IsNullOrEmpty(seedSettings.Password))
-    {
-      return;
-    }
-
-    var userManager = services.GetRequiredService<UserManager<AppUser>>();
-
-    if (await userManager.FindByNameAsync(seedSettings.UserName) != null)
-      return;
-
-    var user = new AppUser
-    {
-      UserName = seedSettings.UserName,
-      Email = seedSettings.Email,
-      DisplayName = seedSettings.UserName,
-      EmailConfirmed = true,
-    };
-
-    var result = await userManager.CreateAsync(user, seedSettings.Password);
-
-    if (!result.Succeeded)
-    {
-      var logger = services.GetRequiredService<ILogger<Program>>();
-      logger.LogCritical("Failed to seed admin user: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
-    }
   }
 }

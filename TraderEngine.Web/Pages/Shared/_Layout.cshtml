@@ -1,4 +1,5 @@
 @using System.Reflection
+@using TraderEngine.Data.Constants
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 <!DOCTYPE html>
 <html lang="en">
@@ -41,6 +42,12 @@
                         <li class="nav-item">
                             <a class="nav-link" asp-area="" asp-page="/ExchangeApiKeys">Exchange API Keys</a>
                         </li>
+                        @if (User.IsInRole(Roles.Admin))
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-page="/Admin/Users">Users</a>
+                            </li>
+                        }
                     </ul>
                     <ul class="navbar-nav">
                         <li class="nav-item">

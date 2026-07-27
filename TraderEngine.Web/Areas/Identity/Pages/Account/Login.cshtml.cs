@@ -123,11 +123,26 @@ public class LoginModel : PageModel
       if (result.Succeeded)
       {
         _logger.LogInformation("User logged in.");
+
+        user.LoginCount++;
+        user.LastLoginAt = DateTimeOffset.UtcNow;
+        var updateResult = await _userManager.UpdateAsync(user);
+        if (!updateResult.Succeeded)
+        {
+          _logger.LogWarning("Failed to update login tracking for user {UserName}. Errors: {Errors}",
+            user.UserName, string.Join(", ", updateResult.Errors.Select(e => e.Description)));
+        }
+
+        if (user.MustChangePassword)
+        {
+          return RedirectToPage("/Account/Manage/ChangePassword", new { area = "Identity" });
+        }
+
         return LocalRedirect(returnUrl);
       }
       if (result.RequiresTwoFactor)
       {
-        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, RememberMe = Input.RememberMe });
+        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, Input.RememberMe });
       }
       if (result.IsLockedOut)
       {

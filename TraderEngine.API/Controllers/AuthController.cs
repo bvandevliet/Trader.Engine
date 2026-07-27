@@ -53,6 +53,14 @@ public class AuthController : ControllerBase
     if (!result.Succeeded)
       return Unauthorized();
 
+    // Credentials are valid but a forced password change is pending (set when an admin creates
+    // or resets this account) — refuse to mint a token rather than silently letting this
+    // interim, API-only login path bypass the same gate TraderEngine.Web enforces via
+    // MustChangePasswordMiddleware. 403 rather than 401: the caller *is* who they say they are,
+    // they're just not allowed a token yet.
+    if (user.MustChangePassword)
+      return StatusCode(StatusCodes.Status403Forbidden, "Password change required. Log in via the web application to set a new password.");
+
     var (token, expiresAt) = _jwtTokenService.GenerateToken(user);
 
     return Ok(new LoginResponseDto

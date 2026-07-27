@@ -1,14 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Mvc.ApplicationModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using TraderEngine.Data;
 using TraderEngine.Data.AppSettings;
+using TraderEngine.Data.Constants;
 using TraderEngine.Data.Entities;
 using TraderEngine.Data.Extensions;
 using TraderEngine.Data.Repositories;
 using TraderEngine.Data.Services;
 using TraderEngine.Web.AppSettings;
+using TraderEngine.Web.Identity;
 using TraderEngine.Web.Middleware;
 using TraderEngine.Web.Services;
 
@@ -48,7 +51,8 @@ public class Program
       .AddIdentity<AppUser, IdentityRole<Guid>>(options => options.ConfigureTraderEngineIdentityPolicy())
       .AddDefaultUI()
       .AddEntityFrameworkStores<TraderEngineDbContext>()
-      .AddDefaultTokenProviders();
+      .AddDefaultTokenProviders()
+      .AddClaimsPrincipalFactory<UserClaimsPrincipalFactory>();
 
     builder.Services.AddScoped<IEmailSender<AppUser>, IdentityEmailSender>();
 
@@ -72,11 +76,15 @@ public class Program
     });
 
     // Every page requires authentication by default; self-registration is therefore only
-    // reachable by an already-authenticated (admin-seeded) user — there is no anonymous sign-up
-    // convention for this single-operator-style app, matching how AdminSeed provisions the one
-    // operator account on TraderEngine.API's side.
+    // reachable by an already-authenticated user, and further restricted below to Admins only —
+    // there is no anonymous sign-up convention for this app, matching how AdminSeed provisions
+    // the one operator account on TraderEngine.API's side.
     builder.Services.AddAuthorization(options =>
-      options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+    {
+      options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
+
+      options.AddPolicy(Policies.AdminOnly, policy => policy.RequireRole(Roles.Admin));
+    });
 
     // Razor Pages validate antiforgery tokens on unsafe verbs automatically — no equivalent of
     // MVC's AutoValidateAntiforgeryTokenAttribute filter registration is needed.
@@ -98,6 +106,10 @@ public class Program
       options.Conventions.AllowAnonymousToAreaPage("Identity", "/Account/ForgotPasswordConfirmation");
       options.Conventions.AllowAnonymousToAreaPage("Identity", "/Account/ResetPassword");
       options.Conventions.AllowAnonymousToAreaPage("Identity", "/Account/ResetPasswordConfirmation");
+
+      // Explicitly require admin authorization for the Register page — user creation is an
+      // admin-only action, not a general sign-up flow.
+      options.Conventions.AuthorizeAreaPage("Identity", "/Account/Register", Policies.AdminOnly);
     });
 
     builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
@@ -169,6 +181,7 @@ public class Program
 
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseMiddleware<MustChangePasswordMiddleware>();
 
     app.MapHealthChecks("/health").AllowAnonymous();
     app.MapStaticAssets().AllowAnonymous();
