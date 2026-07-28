@@ -107,8 +107,8 @@ public class Program
       options.Conventions.AllowAnonymousToAreaPage("Identity", "/Account/ResetPassword");
       options.Conventions.AllowAnonymousToAreaPage("Identity", "/Account/ResetPasswordConfirmation");
 
-      // Explicitly require admin authorization for the Register page — user creation is an
-      // admin-only action, not a general sign-up flow.
+      // Explicitly require admin authorization for the Register page —
+      // user creation is an admin-only action, not a general sign-up flow.
       options.Conventions.AuthorizeAreaPage("Identity", "/Account/Register", Policies.AdminOnly);
     });
 

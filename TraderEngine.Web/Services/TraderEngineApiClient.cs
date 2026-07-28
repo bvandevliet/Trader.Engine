@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Text.Json;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Data.Entities;
@@ -56,9 +57,9 @@ public class TraderEngineApiClient : ITraderEngineApiClient
 
     try
     {
-      return System.Text.Json.JsonSerializer.Deserialize<string>(rawBody) ?? rawBody;
+      return JsonSerializer.Deserialize<string>(rawBody) ?? rawBody;
     }
-    catch (System.Text.Json.JsonException)
+    catch (JsonException)
     {
       return rawBody;
     }
