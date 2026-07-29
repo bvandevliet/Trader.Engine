@@ -5,42 +5,48 @@
     ViewData["Title"] = "Dashboard";
 }
 
-<h1>Dashboard</h1>
+<h1>@ViewData["Title"]</h1>
 
-<table class="table table-bordered w-auto" id="balance-summary">
-    <tbody>
-        <tr>
-            <td>Deposited (i)</td>
-            <td>@Model.QuoteCurrencySign</td>
-            <td class="text-end" data-field="deposited">@Model.TotalDeposited.ToString("N2")</td>
-        </tr>
-        <tr>
-            <td>Withdrawn (o)</td>
-            <td>@Model.QuoteCurrencySign</td>
-            <td class="text-end" data-field="withdrawn">@Model.TotalWithdrawn.ToString("N2")</td>
-        </tr>
-        <tr>
-            <td>Balance (v)</td>
-            <td>@Model.QuoteCurrencySign</td>
-            <td class="text-end" data-field="balance">@Model.CurrentBalance.AmountQuoteTotal.ToString("N2")</td>
-        </tr>
-        <tr>
-            <td>Cumulative (V=o+v)</td>
-            <td>@Model.QuoteCurrencySign</td>
-            <td class="text-end" data-field="cumulative">@Model.CumulativeValue.ToString("N2")</td>
-        </tr>
-        <tr>
-            <td>Total gain (V-i)</td>
-            <td>@Model.QuoteCurrencySign</td>
-            <td class="text-end" data-field="gain">@Model.TotalGain.ToString("N2")</td>
-        </tr>
-        <tr>
-            <td></td>
-            <td>%</td>
-            <td class="text-end" data-field="gain-percent">@Model.TotalGainPercent.ToString("N2")</td>
-        </tr>
-    </tbody>
-</table>
+<div class="card" style="width: fit-content;">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-borderless w-auto mb-0" id="balance-summary">
+                <tbody>
+                    <tr>
+                        <td>Deposited (i)</td>
+                        <td>@Model.QuoteCurrencySign</td>
+                        <td class="text-end" data-field="deposited">@Model.TotalDeposited.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>Withdrawn (o)</td>
+                        <td>@Model.QuoteCurrencySign</td>
+                        <td class="text-end" data-field="withdrawn">@Model.TotalWithdrawn.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-primary">Balance (v)</td>
+                        <td class="bg-primary">@Model.QuoteCurrencySign</td>
+                        <td class="bg-primary text-end" data-field="balance">@Model.CurrentBalance.AmountQuoteTotal.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>Cumulative (V=o+v)</td>
+                        <td>@Model.QuoteCurrencySign</td>
+                        <td class="text-end" data-field="cumulative">@Model.CumulativeValue.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td>Total gain (V-i)</td>
+                        <td>@Model.QuoteCurrencySign</td>
+                        <td class="text-end" data-field="gain">@Model.TotalGain.ToString("N2")</td>
+                    </tr>
+                    <tr>
+                        <td></td>
+                        <td>%</td>
+                        <td class="text-end" data-field="gain-percent">@Model.TotalGainPercent.ToString("N2")</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 <script id="balance-init" type="application/json">
     @Html.Raw(AppJsonSerializer.Serialize(new { totalDeposited = Model.TotalDeposited, totalWithdrawn = Model.TotalWithdrawn }))

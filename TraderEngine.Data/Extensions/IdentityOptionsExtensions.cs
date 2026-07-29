@@ -15,6 +15,9 @@ public static class IdentityOptionsExtensions
   {
     options.SignIn.RequireConfirmedAccount = false;
 
+    // Email must be unique per account, same as username.
+    options.User.RequireUniqueEmail = true;
+
     // Password requirements — an operator account here can trigger real exchange trades, so
     // this is deliberately stricter than ASP.NET Core Identity's own defaults (6/5min).
     options.Password.RequireDigit = true;

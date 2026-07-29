@@ -6,41 +6,42 @@
     var status = ViewData["CredentialStatus"] as ApiCredentialStatus;
 }
 
-<h1>Exchange API Keys</h1>
+<h1>@ViewData["Title"]</h1>
 
 <p>
     This is where to configure API keys to communicate with your exchange (@ViewData["ExchangeName"]).<br />
     These API keys are stored encrypted and will never be revealed publicly.
 </p>
-@if (status is not null)
-{
-    <p class="text-success">
-        <strong>Configured</strong> — last updated @status.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
-    </p>
-}
-else
-{
-    <p class="text-danger">
-        <strong>Not configured</strong> — the dashboard and rebalance pages won't work until you save a key and secret below.
-    </p>
-}
 <p>
     In case a service requires whitelisting your IP address, use: <code>@ViewData["OutboundIp"]</code>
 </p>
 
-<form method="post">
-    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+<div class="card">
+    <form method="post" class="card-body">
+        <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+        @if (status is not null)
+        {
+            <p class="text-success">
+                <strong>Configured</strong> — last updated @status.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            </p>
+        }
+        else
+        {
+            <p class="text-danger">
+                <strong>Not configured</strong> — the dashboard and rebalance pages won't work until you save a key and secret below.
+            </p>
+        }
+        <div class="mb-3">
+            <label asp-for="Input.ApiKey" class="form-label">@ViewData["ExchangeName"] API key</label>
+            <input asp-for="Input.ApiKey" class="form-control" autocomplete="off" />
+            <span asp-validation-for="Input.ApiKey" class="text-danger"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Input.ApiSecret" class="form-label">@ViewData["ExchangeName"] API secret</label>
+            <input asp-for="Input.ApiSecret" type="password" class="form-control" autocomplete="off" />
+            <span asp-validation-for="Input.ApiSecret" class="text-danger"></span>
+        </div>
 
-    <div class="mb-3">
-        <label asp-for="Input.ApiKey" class="form-label">@ViewData["ExchangeName"] API key</label>
-        <input asp-for="Input.ApiKey" class="form-control" autocomplete="off" />
-        <span asp-validation-for="Input.ApiKey" class="text-danger"></span>
-    </div>
-    <div class="mb-3">
-        <label asp-for="Input.ApiSecret" class="form-label">@ViewData["ExchangeName"] API secret</label>
-        <input asp-for="Input.ApiSecret" type="password" class="form-control" autocomplete="off" />
-        <span asp-validation-for="Input.ApiSecret" class="text-danger"></span>
-    </div>
-
-    <button type="submit" class="btn btn-primary">Save changes</button>
-</form>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+    </form>
+</div>

@@ -20,6 +20,12 @@
             </div>
 
             <div class="form-floating mb-3">
+                <input asp-for="Input.Email" class="form-control" placeholder="" />
+                <label asp-for="Input.Email" class="form-label"></label>
+                <span asp-validation-for="Input.Email" class="text-danger"></span>
+            </div>
+
+            <div class="form-floating mb-3">
                 <input asp-for="Input.DisplayName" class="form-control" placeholder="" />
                 <label asp-for="Input.DisplayName" class="form-label"></label>
                 <span asp-validation-for="Input.DisplayName" class="text-danger"></span>

@@ -126,8 +126,8 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): 
       addCell(row, numberFormat(curAlloc), 'text-end');
       addCell(row, numberFormat(balValue), 'text-end');
       addCell(row, numberFormat(balAlloc), 'text-end');
-      addCell(row, `${sign(quoteDiff)}${numberFormat(quoteDiff)}`, diffClass(quoteDiff));
-      addCell(row, `${sign(allocDiff)}${numberFormat(allocDiff)}`, diffClass(allocDiff));
+      addCell(row, quoteDiff === 0 ? '' : `${sign(quoteDiff)}${numberFormat(quoteDiff)}`, diffClass(quoteDiff));
+      addCell(row, quoteDiff === 0 ? '' : `${sign(allocDiff)}${numberFormat(allocDiff)}`, diffClass(allocDiff));
 
       return row;
     }),

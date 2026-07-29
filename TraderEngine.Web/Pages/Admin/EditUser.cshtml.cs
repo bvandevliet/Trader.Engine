@@ -43,6 +43,7 @@ public class EditUserModel : TraderEnginePageModelBase
 
     Id = user.Id;
     Input.UserName = user.UserName ?? string.Empty;
+    Input.Email = user.Email ?? string.Empty;
     Input.DisplayName = user.DisplayName;
     Input.AssignedRoles = (await UserManager.GetRolesAsync(user)).ToList();
     CurrentFilter = currentFilter;
@@ -84,6 +85,22 @@ public class EditUserModel : TraderEnginePageModelBase
         {
           ModelState.AddModelError(error.Code == "DuplicateUserName" ? $"{nameof(Input)}.{nameof(Input.UserName)}" : string.Empty,
             error.Code == "DuplicateUserName" ? "This username is already in use." : error.Description);
+        }
+
+        return Page();
+      }
+    }
+
+    // Update email.
+    if (!string.Equals(user.Email, Input.Email, StringComparison.OrdinalIgnoreCase))
+    {
+      var setEmailResult = await UserManager.SetEmailAsync(user, Input.Email);
+      if (!setEmailResult.Succeeded)
+      {
+        foreach (var error in setEmailResult.Errors)
+        {
+          ModelState.AddModelError(error.Code == "DuplicateEmail" ? $"{nameof(Input)}.{nameof(Input.Email)}" : string.Empty,
+            error.Code == "DuplicateEmail" ? "This email is already in use." : error.Description);
         }
 
         return Page();

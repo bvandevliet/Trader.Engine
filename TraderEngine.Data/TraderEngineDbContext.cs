@@ -27,6 +27,17 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
   {
     base.OnModelCreating(builder);
 
+    // Phone number is not used anywhere in this app; drop the inherited IdentityUser columns.
+    builder.Entity<AppUser>(entity =>
+    {
+      entity.Ignore(u => u.PhoneNumber);
+      entity.Ignore(u => u.PhoneNumberConfirmed);
+
+      // Enforce email uniqueness at the DB level too, not just via IdentityOptions.User.RequireUniqueEmail
+      // (app-level check only) — matches the unique constraint Identity already puts on NormalizedUserName.
+      entity.HasIndex(u => u.NormalizedEmail).IsUnique();
+    });
+
     var stringListConverter = new ValueConverter<List<string>, string>(
       list => AppJsonSerializer.Serialize(list),
       json => AppJsonSerializer.Deserialize<List<string>>(json) ?? new());
