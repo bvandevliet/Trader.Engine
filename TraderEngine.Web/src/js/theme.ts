@@ -38,15 +38,19 @@ function getPreferredTheme (): Theme
 // see "Web frontend theming" in CLAUDE.md for why this is needed at all.
 function syncBrandLogo (resolvedTheme: 'light' | 'dark'): void
 {
-  const logoObject = document.getElementById('navbar-brand-logo') as HTMLObjectElement | null;
-  const svgDoc = logoObject?.contentDocument;
-  const lightGroup = svgDoc?.getElementById('light-icon');
-  const darkGroup = svgDoc?.getElementById('dark-icon');
+  const logoObjects = document.getElementsByClassName('brand-logo') as HTMLCollectionOf<HTMLObjectElement>;
 
-  if (!svgDoc?.documentElement || !lightGroup || !darkGroup) { return; }
+  for (const logoObject of logoObjects)
+  {
+    const svgDoc = logoObject?.contentDocument;
+    const lightGroup = svgDoc?.getElementById('light-icon');
+    const darkGroup = svgDoc?.getElementById('dark-icon');
 
-  lightGroup.style.display = resolvedTheme === 'light' ? 'inline' : 'none';
-  darkGroup.style.display = resolvedTheme === 'dark' ? 'inline' : 'none';
+    if (!svgDoc?.documentElement || !lightGroup || !darkGroup) { return; }
+
+    lightGroup.style.display = resolvedTheme === 'light' ? 'inline' : 'none';
+    darkGroup.style.display = resolvedTheme === 'dark' ? 'inline' : 'none';
+  }
 }
 
 function setTheme (theme: Theme): void
@@ -94,24 +98,27 @@ function currentResolvedTheme (): 'light' | 'dark'
 window.addEventListener('DOMContentLoaded', () =>
 {
   const button = document.querySelector<HTMLButtonElement>('#bd-theme');
-  const logoObject = document.getElementById('navbar-brand-logo') as HTMLObjectElement | null;
+  const logoObjects = document.getElementsByClassName('brand-logo') as HTMLCollectionOf<HTMLObjectElement>;
 
-  updateToggleButton(getPreferredTheme());
-
-  // The <object> loads asynchronously and likely isn't ready yet when
-  // setTheme() first ran above, so re-apply once its contentDocument exists.
-  logoObject?.addEventListener('load', () => syncBrandLogo(currentResolvedTheme()));
-
-  // ...but it may ALSO have already finished loading before this listener was
-  // attached — its own fetch can start (and finish) before DOMContentLoaded
-  // fires, since the <object> begins loading as soon as its tag is parsed,
-  // well before the rest of the document. In that case the 'load' event
-  // already happened and won't fire again, silently leaving the logo stuck
-  // on whatever favicon.svg's own prefers-color-scheme rule picked. Apply
-  // directly using whatever's already there as a fallback for that race.
-  if (logoObject?.contentDocument)
+  for (const logoObject of logoObjects)
   {
-    syncBrandLogo(currentResolvedTheme());
+    updateToggleButton(getPreferredTheme());
+
+    // The <object> loads asynchronously and likely isn't ready yet when
+    // setTheme() first ran above, so re-apply once its contentDocument exists.
+    logoObject?.addEventListener('load', () => syncBrandLogo(currentResolvedTheme()));
+
+    // ...but it may ALSO have already finished loading before this listener was
+    // attached — its own fetch can start (and finish) before DOMContentLoaded
+    // fires, since the <object> begins loading as soon as its tag is parsed,
+    // well before the rest of the document. In that case the 'load' event
+    // already happened and won't fire again, silently leaving the logo stuck
+    // on whatever favicon.svg's own prefers-color-scheme rule picked. Apply
+    // directly using whatever's already there as a fallback for that race.
+    if (logoObject?.contentDocument)
+    {
+      syncBrandLogo(currentResolvedTheme());
+    }
   }
 
   button?.addEventListener('click', () =>

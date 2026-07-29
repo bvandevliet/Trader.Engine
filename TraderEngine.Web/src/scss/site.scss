@@ -66,10 +66,8 @@ a {
   margin-right: .2em;
 }
 
-.navbar-brand-logo {
+.brand-logo {
   display: inline-block;
-  height: 32px;
-  width: 32px;
   vertical-align: middle;
   pointer-events: none;
   // Without this, the page's [data-bs-theme=dark] { color-scheme: dark; }

@@ -19,10 +19,10 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm border-bottom box-shadow mb-3">
+        <nav class="navbar navbar-expand-sm mb-3">
             <div class="container">
                 <a class="navbar-brand" asp-area="" asp-page="/Dashboard">
-                    <object id="navbar-brand-logo" class="navbar-brand-logo" type="image/svg+xml" data="~/images/favicon.svg" asp-append-version="true" width="32" height="32" aria-label="Trader"></object>
+                    <object class="brand-logo" type="image/svg+xml" data="~/images/favicon.svg" asp-append-version="true" width="32" height="32" aria-label="Trader"></object>
                 </a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
@@ -30,18 +30,21 @@
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-page="/Dashboard">Dashboard</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-page="/Rebalance">Portfolio &amp; Rebalance</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-page="/Config">Allocation Config</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" asp-area="" asp-page="/ExchangeApiKeys">Exchange API Keys</a>
-                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-page="/Dashboard">Dashboard</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-page="/Rebalance">Portfolio &amp; Rebalance</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-page="/Config">Allocation Config</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-page="/ExchangeApiKeys">Exchange API Keys</a>
+                            </li>
+                        }
                         @if (User.IsInRole(Roles.Admin))
                         {
                             <li class="nav-item">
@@ -64,14 +67,14 @@
     <div class="container">
         @if (TempData["Notice"] is string notice)
         {
-            <div class="alert alert-success alert-dismissible fade show mt-3" role="alert">
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
                 @notice
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         }
         @if (TempData["Error"] is string error)
         {
-            <div class="alert alert-danger alert-dismissible fade show mt-3" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 @error
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
