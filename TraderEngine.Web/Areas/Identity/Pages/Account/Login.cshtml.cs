@@ -7,10 +7,16 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.Data.Entities;
+using TraderEngine.Data.Extensions;
 
 namespace TraderEngine.Web.Areas.Identity.Pages.Account;
 
+// Throttles login attempts per client IP as a second layer of brute-force protection alongside
+// Identity's per-account lockout (see PasswordSignInAsync below) — matches the "login" policy
+// TraderEngine.API's AuthController applies to its own login endpoint.
+[EnableRateLimiting(TraderEngineRateLimiterExtensions.LoginPolicy)]
 public class LoginModel : PageModel
 {
   private readonly SignInManager<AppUser> _signInManager;

@@ -44,9 +44,10 @@ public class Program
       .AddEntityFrameworkStores<TraderEngineDbContext>();
 
     // Same key ring TraderEngine.API/.Web share, so credentials re-encrypted here are decryptable
-    // by both going forward.
-    var keyRingPath = builder.Configuration["DataProtection:KeyRingPath"]
-      ?? throw new InvalidOperationException("DataProtection:KeyRingPath must be configured.");
+    // by both going forward. Resolved identically to how those two hosts resolve it, so this
+    // one-shot tool can't silently point at a different "secrets" folder than the long-running
+    // hosts do.
+    var keyRingPath = builder.Configuration.ResolveDataProtectionKeyRingPath(builder.Environment.ContentRootPath);
     builder.Services.AddSharedDataProtection(builder.Configuration, keyRingPath);
 
     builder.Services.AddScoped<IConfigRepository, EfConfigRepository>();

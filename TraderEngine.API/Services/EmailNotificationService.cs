@@ -18,6 +18,10 @@ public class EmailNotificationService : IEmailNotificationService
   private readonly EmailSettings _emailSettings;
   private readonly UserManager<AppUser> _userManager;
 
+  // Copy-construct — WriteIndented differs here
+  // (pretty-printed for human readability)
+  private static readonly JsonSerializerOptions _jsonOptions = new(AppJsonSerializer.Options) { WriteIndented = true };
+
   public EmailNotificationService(
     IOptions<EmailSettings> emailOptions,
     UserManager<AppUser> userManager)
@@ -173,7 +177,7 @@ td+td {
     $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>Debug data:</p>" +
-    $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), new JsonSerializerOptions() { WriteIndented = true })}</pre>" +
+    $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), _jsonOptions)}</pre>" +
     $"<p>This email was automatically generated. Happy trading!<br>" +
     $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 

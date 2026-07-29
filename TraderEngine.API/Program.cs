@@ -1,17 +1,15 @@
-using System.Security.Claims;
 using System.Text;
 using System.Threading.Channels;
-using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using TraderEngine.API.AppSettings;
 using TraderEngine.API.Data;
 using TraderEngine.API.Exchanges;
+using TraderEngine.API.Extensions;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Repositories;
 using TraderEngine.API.Services;
@@ -19,11 +17,9 @@ using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Services;
 using TraderEngine.Data;
-using TraderEngine.Data.AppSettings;
 using TraderEngine.Data.Entities;
 using TraderEngine.Data.Extensions;
 using TraderEngine.Data.Repositories;
-using TraderEngine.Data.Services;
 
 namespace TraderEngine.API;
 
@@ -52,20 +48,12 @@ public class Program
 
     builder.Services.AddHealthChecks();
 
-    // Fails fast if the shared signing key is missing/too short, rather than only surfacing as
-    // a hard-to-trace failure the first time a page tries to mint a token to call the API.
-    var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
-    (builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings()).ValidateSigningKey();
+    var jwtSettings = builder.Services.AddTraderEngineJwtSettings(builder.Configuration);
 
-    // Every endpoint requires authentication by default (interim, API-only JWT auth backed by
-    // AppUser — see AuthController); actions must opt out explicitly via [AllowAnonymous] rather
-    // than opt in via [Authorize], so a newly added controller can't accidentally end up
-    // reachable without a valid token.
-    builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()));
+    builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ConfigureDefaultJsonSerializerOptions());
 
     builder.Services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
-    builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
     builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
 
     // A factory (rather than a plain scoped AddDbContext) so repositories that fan out
@@ -99,39 +87,18 @@ public class Program
 
     builder.Services.AddAuthorization();
 
-    builder.Services.AddRateLimiter(options =>
-    {
-      options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    builder.Services.AddTraderEngineApiRateLimiting();
 
-      // Throttles login attempts per client IP — a second layer of brute-force protection
-      // alongside Identity's per-account lockout (ConfigureTraderEngineIdentityPolicy), which
-      // only kicks in once a specific account has already failed enough times.
-      options.AddFixedWindowLimiter("login", limiterOptions =>
-      {
-        limiterOptions.PermitLimit = 5;
-        limiterOptions.Window = TimeSpan.FromMinutes(1);
-        limiterOptions.QueueLimit = 0;
-      });
+    // Every endpoint requires authentication by default (interim, API-only JWT auth backed by
+    // AppUser — see AuthController); actions must opt out explicitly via [AllowAnonymous] rather
+    // than opt in via [Authorize], so a newly added controller can't accidentally end up
+    // reachable without a valid token.
+    builder.Services.AddControllers(options => options.Filters.Add(new AuthorizeFilter()))
+      .AddJsonOptions(options => options.JsonSerializerOptions.ConfigureDefaultJsonSerializerOptions());
 
-      // Throttles the trade-triggering endpoints (Rebalance/Allocations controllers) per
-      // authenticated user, so a leaked/hijacked JWT can't be used to fire off rapid-repeat
-      // exchange orders. Keyed on the user id claim rather than IP: this app is reached only via
-      // TraderEngine.Web's internal call, so every request already carries a real user identity.
-      options.AddPolicy("trading", httpContext =>
-      {
-        var userId = httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "anonymous";
-
-        return RateLimitPartition.GetSlidingWindowLimiter(userId, _ => new SlidingWindowRateLimiterOptions
-        {
-          PermitLimit = 20,
-          Window = TimeSpan.FromMinutes(1),
-          SegmentsPerWindow = 4,
-          QueueLimit = 0,
-        });
-      });
-    });
-
-    builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+    // Ensures unhandled exceptions and error-status responses come back as
+    // application/problem+json instead of an empty body — see UseExceptionHandler() below.
+    builder.Services.AddProblemDetails();
 
     // Keys are persisted to a dedicated volume rather than TraderEngineDbContext's own database
     // deliberately: the key ring must live in a different failure/compromise domain than the
@@ -141,14 +108,10 @@ public class Program
     // TraderEngine.Web via AddSharedDataProtection — both hosts must decrypt values the other
     // encrypted, so the key ring path, application name and optional protecting certificate must
     // all match exactly between the two.
-    var configuredKeyRingPath = builder.Configuration["DataProtection:KeyRingPath"];
-    var resolvedKeyRingPath = string.IsNullOrWhiteSpace(configuredKeyRingPath)
-      ? Path.Combine(AppContext.BaseDirectory, "secrets")
-      : Path.IsPathRooted(configuredKeyRingPath)
-        ? configuredKeyRingPath
-        : Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", configuredKeyRingPath));
-
+    var resolvedKeyRingPath = builder.Configuration.ResolveDataProtectionKeyRingPath(builder.Environment.ContentRootPath);
     builder.Services.AddSharedDataProtection(builder.Configuration, resolvedKeyRingPath);
+
+    builder.Services.AddTraderEngineSharedServices();
 
     builder.Services.AddScoped<IMarketCapInternalRepository, EfMarketCapInternalRepository>();
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
@@ -163,9 +126,6 @@ public class Program
       httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
     })
       .ApplyDefaultPoolAndPolicyConfig();
-
-    builder.Services.AddScoped<IConfigRepository, EfConfigRepository>();
-    builder.Services.AddScoped<IApiCredentialsRepository, EfApiCredentialsRepository>();
 
     builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
 
@@ -197,10 +157,16 @@ public class Program
     // Must run before anything that inspects scheme/remote IP (rate limiter, auth, logging).
     app.UseForwardedHeaders();
 
+    // In Development, unhandled exceptions surface via the framework's own developer exception
+    // page; in other environments they're converted to an application/problem+json response by
+    // the AddProblemDetails() registration above instead of leaking as an empty 500.
     if (!app.Environment.IsDevelopment())
     {
+      app.UseExceptionHandler();
       app.UseHsts();
     }
+
+    app.UseRouting();
 
     app.UseAuthentication();
     app.UseAuthorization();

@@ -1,9 +1,9 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Data.Entities;
 
 namespace TraderEngine.Data;
@@ -28,8 +28,8 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
     base.OnModelCreating(builder);
 
     var stringListConverter = new ValueConverter<List<string>, string>(
-      list => JsonSerializer.Serialize(list, (JsonSerializerOptions?)null),
-      json => JsonSerializer.Deserialize<List<string>>(json, (JsonSerializerOptions?)null) ?? new());
+      list => AppJsonSerializer.Serialize(list),
+      json => AppJsonSerializer.Deserialize<List<string>>(json) ?? new());
 
     var stringListComparer = new ValueComparer<List<string>>(
       (a, b) => (a ?? new()).SequenceEqual(b ?? new()),
@@ -37,8 +37,8 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
       list => list.ToList());
 
     var doubleDictionaryConverter = new ValueConverter<Dictionary<string, double>, string>(
-      dict => JsonSerializer.Serialize(dict, (JsonSerializerOptions?)null),
-      json => JsonSerializer.Deserialize<Dictionary<string, double>>(json, (JsonSerializerOptions?)null) ?? new());
+      dict => AppJsonSerializer.Serialize(dict),
+      json => AppJsonSerializer.Deserialize<Dictionary<string, double>>(json) ?? new());
 
     var doubleDictionaryComparer = new ValueComparer<Dictionary<string, double>>(
       (a, b) => (a ?? new()).OrderBy(kv => kv.Key).SequenceEqual((b ?? new()).OrderBy(kv => kv.Key)),

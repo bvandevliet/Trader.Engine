@@ -1,4 +1,5 @@
 @page "{handler?}"
+@using TraderEngine.Common.Extensions
 @model TraderEngine.Web.Pages.RebalanceModel
 @{
     ViewData["Title"] = "Portfolio & Rebalance";
@@ -101,7 +102,7 @@
 </form>
 
 <script id="config-init" type="application/json">
-    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Config, new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase }))
+    @Html.Raw(AppJsonSerializer.Serialize(Model.Config))
 </script>
 
 @section Scripts {

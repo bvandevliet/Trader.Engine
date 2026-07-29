@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Text.Json;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Data.Entities;
 using TraderEngine.Data.Services;
 
@@ -25,7 +26,7 @@ public class TraderEngineApiClient : ITraderEngineApiClient
 
     using var request = new HttpRequestMessage(HttpMethod.Post, requestUri)
     {
-      Content = JsonContent.Create(body),
+      Content = AppJsonSerializer.CreateContent(body),
       Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
     };
 
@@ -57,7 +58,7 @@ public class TraderEngineApiClient : ITraderEngineApiClient
 
     try
     {
-      return JsonSerializer.Deserialize<string>(rawBody) ?? rawBody;
+      return AppJsonSerializer.Deserialize<string>(rawBody) ?? rawBody;
     }
     catch (JsonException)
     {
@@ -69,34 +70,34 @@ public class TraderEngineApiClient : ITraderEngineApiClient
   {
     var response = await PostAuthenticated(user, $"api/account/totals/deposited/{exchangeName}", credentials, ct);
 
-    return await response.Content.ReadFromJsonAsync<decimal>(ct);
+    return await response.Content.DeserializeAsync<decimal>(ct);
   }
 
   public async Task<decimal> GetTotalWithdrawn(AppUser user, string exchangeName, ApiCredReqDto credentials, CancellationToken ct = default)
   {
     var response = await PostAuthenticated(user, $"api/account/totals/withdrawn/{exchangeName}", credentials, ct);
 
-    return await response.Content.ReadFromJsonAsync<decimal>(ct);
+    return await response.Content.DeserializeAsync<decimal>(ct);
   }
 
   public async Task<BalanceDto> GetCurrentBalance(AppUser user, string exchangeName, ApiCredReqDto credentials, CancellationToken ct = default)
   {
     var response = await PostAuthenticated(user, $"api/allocations/current/{exchangeName}", credentials, ct);
 
-    return (await response.Content.ReadFromJsonAsync<BalanceDto>(ct))!;
+    return (await response.Content.DeserializeAsync<BalanceDto>(ct))!;
   }
 
   public async Task<SimulationDto> SimulateRebalance(AppUser user, string exchangeName, string source, SimulationReqDto request, CancellationToken ct = default)
   {
     var response = await PostAuthenticated(user, $"api/rebalance/simulate/{exchangeName}?source={Uri.EscapeDataString(source)}", request, ct);
 
-    return (await response.Content.ReadFromJsonAsync<SimulationDto>(ct))!;
+    return (await response.Content.DeserializeAsync<SimulationDto>(ct))!;
   }
 
   public async Task<OrderDto[]> Rebalance(AppUser user, string exchangeName, string source, RebalanceReqDto request, CancellationToken ct = default)
   {
     var response = await PostAuthenticated(user, $"api/rebalance/{exchangeName}?source={Uri.EscapeDataString(source)}", request, ct);
 
-    return (await response.Content.ReadFromJsonAsync<OrderDto[]>(ct))!;
+    return (await response.Content.DeserializeAsync<OrderDto[]>(ct))!;
   }
 }

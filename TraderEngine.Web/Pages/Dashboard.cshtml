@@ -1,4 +1,5 @@
 @page "{handler?}"
+@using TraderEngine.Common.Extensions
 @model TraderEngine.Web.Pages.DashboardModel
 @{
     ViewData["Title"] = "Dashboard";
@@ -42,7 +43,7 @@
 </table>
 
 <script id="balance-init" type="application/json">
-    @Html.Raw(System.Text.Json.JsonSerializer.Serialize(new { totalDeposited = Model.TotalDeposited, totalWithdrawn = Model.TotalWithdrawn }))
+    @Html.Raw(AppJsonSerializer.Serialize(new { totalDeposited = Model.TotalDeposited, totalWithdrawn = Model.TotalWithdrawn }))
 </script>
 
 @section Scripts {
