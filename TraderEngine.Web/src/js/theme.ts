@@ -34,6 +34,22 @@ function getPreferredTheme (): Theme
   return getStoredTheme() ?? 'auto';
 }
 
+const faviconHrefs: Record<'light' | 'dark', string> = {
+  light: '/images/favicon-light.svg',
+  dark: '/images/favicon-dark.svg',
+};
+
+// The tab favicon <link> normally switches via its own `media` query, which
+// only ever tracks the OS preference — it never sees an explicit light/dark
+// override made via the in-app toggle. Swapping its href here in lockstep
+// with data-bs-theme keeps it in sync with the resolved app theme instead.
+function syncFavicon (resolvedTheme: 'light' | 'dark'): void
+{
+  const favicon = document.querySelector<HTMLLinkElement>('#favicon-svg');
+
+  if (favicon) { favicon.href = faviconHrefs[resolvedTheme]; }
+}
+
 // Syncs the navbar's <object>-embedded favicon.svg to the resolved theme —
 // see "Web frontend theming" in CLAUDE.md for why this is needed at all.
 function syncBrandLogo (resolvedTheme: 'light' | 'dark'): void
@@ -60,6 +76,7 @@ function setTheme (theme: Theme): void
     : theme;
 
   document.documentElement.setAttribute('data-bs-theme', resolved);
+  syncFavicon(resolved);
   syncBrandLogo(resolved);
 }
 
