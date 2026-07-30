@@ -89,6 +89,14 @@ a,
   color-scheme: light;
 }
 
+.row {
+  @extend .g-3;
+}
+
+.vstack {
+  @extend .gap-3;
+}
+
 // === Loading overlay (see shared/loading-overlay.ts) ===
 
 .loading-overlay {

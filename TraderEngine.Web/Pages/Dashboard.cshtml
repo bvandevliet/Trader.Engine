@@ -1,4 +1,5 @@
 @page "{handler?}"
+@using TraderEngine.Common.Extensions
 @model TraderEngine.Web.Pages.DashboardModel
 @{
     ViewData["Title"] = "Dashboard";
@@ -6,46 +7,156 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<div class="card" style="width: fit-content;">
-    <div class="card-body">
-        <div class="table-responsive" id="balance-summary-wrapper">
-            <table class="table table-borderless w-auto mb-0" id="balance-summary">
-                <tbody>
-                    <tr>
-                        <td>Deposited (i)</td>
-                        <td class="quote-symbol"></td>
-                        <td class="text-end" data-field="deposited">&ndash;</td>
-                    </tr>
-                    <tr>
-                        <td>Withdrawn (o)</td>
-                        <td class="quote-symbol"></td>
-                        <td class="text-end" data-field="withdrawn">&ndash;</td>
-                    </tr>
-                    <tr>
-                        <td class="bg-primary">Balance (v)</td>
-                        <td class="bg-primary quote-symbol"></td>
-                        <td class="bg-primary text-end" data-field="balance">&ndash;</td>
-                    </tr>
-                    <tr>
-                        <td>Cumulative (V=o+v)</td>
-                        <td class="quote-symbol"></td>
-                        <td class="text-end" data-field="cumulative">&ndash;</td>
-                    </tr>
-                    <tr>
-                        <td>Total gain (V-i)</td>
-                        <td class="quote-symbol"></td>
-                        <td class="text-end" data-field="gain">&ndash;</td>
-                    </tr>
-                    <tr>
-                        <td></td>
-                        <td>%</td>
-                        <td class="text-end" data-field="gain-percent">&ndash;</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+<div id="rebalance-error" class="alert alert-danger d-none" role="alert"></div>
+
+<div class="row">
+    <div class="col-lg-6 vstack">
+        <section class="card">
+            <div class="card-body">
+                <h2 class="card-title h4">Balance overview</h2>
+                <div class="table-responsive" id="balance-summary-wrapper">
+                    <table class="table table-borderless w-auto mb-0" id="balance-summary">
+                        <tbody>
+                            <tr>
+                                <td>Deposited (i)</td>
+                                <td class="quote-symbol"></td>
+                                <td class="text-end" data-field="deposited">&ndash;</td>
+                            </tr>
+                            <tr>
+                                <td>Withdrawn (o)</td>
+                                <td class="quote-symbol"></td>
+                                <td class="text-end" data-field="withdrawn">&ndash;</td>
+                            </tr>
+                            <tr>
+                                <td class="bg-primary">Balance (v)</td>
+                                <td class="bg-primary quote-symbol"></td>
+                                <td class="bg-primary text-end" data-field="balance">&ndash;</td>
+                            </tr>
+                            <tr>
+                                <td>Cumulative (V=o+v)</td>
+                                <td class="quote-symbol"></td>
+                                <td class="text-end" data-field="cumulative">&ndash;</td>
+                            </tr>
+                            <tr>
+                                <td>Total gain (V-i)</td>
+                                <td class="quote-symbol"></td>
+                                <td class="text-end" data-field="gain">&ndash;</td>
+                            </tr>
+                            <tr>
+                                <td></td>
+                                <td>%</td>
+                                <td class="text-end" data-field="gain-percent">&ndash;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section class="card">
+            <form method="post" asp-page-handler="Save" id="rebalance-form" class="card-body">
+                <h2 class="card-title h4">Rebalance parameters</h2>
+                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label asp-for="Config.TopRankingCount" class="form-label" title="Max amount of assets from CoinMarketCap listing. Excluding assets that contain ignored tags, i.e. they are not counted."></label>
+                        <input asp-for="Config.TopRankingCount" class="form-control config-input" data-config-field="topRankingCount" min="0" max="100" step="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Config.Smoothing" class="form-label" title="Exponential Moving Average period of Market Cap, to smooth out volatility."></label>
+                        <input asp-for="Config.Smoothing" class="form-control config-input" data-config-field="smoothing" min="1" max="72" step="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Config.NthRoot" class="form-label" title="Nth root of Market Cap EMA, to dampen the effect an individual asset has on the portfolio."></label>
+                        <input asp-for="Config.NthRoot" type="number" class="form-control config-input" data-config-field="nthRoot" min="1" max="25" step="0.1" />
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label asp-for="Config.QuoteTakeout" class="form-label" title="Takeout a given amount of quote currency.">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span class="quote-symbol"></span>]</label>
+                        <input asp-for="Config.QuoteTakeout" type="number" class="form-control config-input" data-config-field="quoteTakeout" min="0" step="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Config.QuoteAllocation" class="form-label" title="Allocate a given percentage to quote currency."></label>
+                        <input asp-for="Config.QuoteAllocation" type="number" class="form-control config-input" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Config.CurrentAllocWeightingMult" class="form-label" title="Multiply weighting of current allocations by this factor. To prevent frequent swaps when two or more assets are on the edge of the balanced portfolio."></label>
+                        <input asp-for="Config.CurrentAllocWeightingMult" type="number" class="form-control config-input" data-config-field="currentAllocWeightingMult" min="1" step="0.01" />
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <label asp-for="Config.MinimumDiffQuote" class="form-label" title="The minimum order size in quote required to trigger an automated rebalance.">@Html.DisplayNameFor(m => m.Config.MinimumDiffQuote) [<span class="quote-symbol"></span>]</label>
+                        <input asp-for="Config.MinimumDiffQuote" class="form-control config-input" data-config-field="minimumDiffQuote" data-no-resim min="0" step="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label asp-for="Config.MinimumDiffAllocation" class="form-label d-flex justify-content-between" title="Minimum allocation difference in quote required to trigger an automated rebalance.">
+                            <span>@Html.DisplayNameFor(m => m.Config.MinimumDiffAllocation)</span>
+                            <span class="text-muted">(<span class="quote-symbol"></span>~<span id="tracking-error-quote"></span>)</span>
+                        </label>
+                        <input asp-for="Config.MinimumDiffAllocation" type="number" class="form-control config-input" data-config-field="minimumDiffAllocation" data-no-resim min="0" max="100" step="0.1" />
+                    </div>
+                    <div class="col-md-4">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label asp-for="Config.IntervalHours" class="form-label mb-0" title="Allow an automated rebalance only once within this interval.">@Html.DisplayNameFor(m => m.Config.IntervalHours)</label>
+                            <div class="form-check mb-0">
+                                <input asp-for="Config.AutomationEnabled" class="form-check-input config-input" data-config-field="automationEnabled" data-no-resim />
+                                <label asp-for="Config.AutomationEnabled" class="form-check-label" title="Automatically perform portfolio rebalance when conditions are met.">@Html.DisplayNameFor(m => m.Config.AutomationEnabled)</label>
+                            </div>
+                        </div>
+                        <input asp-for="Config.IntervalHours" class="form-control config-input" data-config-field="intervalHours" data-no-resim min="1" max="672" step="1" />
+                    </div>
+                </div>
+
+                <p class="text-muted">Last rebalance: <time id="last-rebalance" datetime="@Model.LastRebalanceUtc" data-utc-seconds="true">@Model.LastRebalanceDisplay</time></p>
+
+                <button type="submit" class="btn btn-secondary">Save changes</button>
+                <button type="button" class="btn btn-primary" id="rebalance-now-btn" disabled>
+                    Rebalance now (fee ~<span class="quote-symbol"></span><span id="expected-fee">0.00</span>)
+                </button>
+            </form>
+        </section>
+    </div>
+    <div class="col-lg-6">
+        <section class="card">
+            <div class="card-body">
+                <h2 class="card-title h4">Current vs. balanced allocation</h2>
+                <div class="table-responsive" id="portfolio-table-wrapper">
+                    <table class="table table-hover mb-0" id="portfolio-table">
+                        <thead>
+                            <tr>
+                                <th rowspan="2">Asset</th>
+                                <th colspan="2" class="text-center">Current allocation</th>
+                                <th colspan="2" class="text-center">Balanced allocation</th>
+                                <th colspan="2" class="text-center">Difference</th>
+                            </tr>
+                            <tr>
+                                <th class="text-end quote-symbol">&nbsp;</th>
+                                <th class="text-end">%</th>
+                                <th class="text-end quote-symbol">&nbsp;</th>
+                                <th class="text-end">%</th>
+                                <th class="text-end quote-symbol">&nbsp;</th>
+                                <th class="text-end">%</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr id="portfolio-table-loading">
+                                <td colspan="7" class="text-center text-muted">Loading portfolio data&hellip;</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </div>
 </div>
+
+<script id="config-init" type="application/json">
+    @Html.Raw(AppJsonSerializer.Serialize(Model.Config))
+</script>
 
 @section Scripts {
     <script src="~/js/dashboard.js" asp-append-version="true" defer></script>

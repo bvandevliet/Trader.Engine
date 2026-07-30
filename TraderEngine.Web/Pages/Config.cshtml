@@ -9,7 +9,7 @@
 <form method="post" id="allocation-config-form">
     <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
 
-    <div class="card mb-4">
+    <section class="card mb-3">
         <fieldset class="card-body">
             <legend class="card-title h5">Tags to include</legend>
             <p class="text-muted small">
@@ -30,9 +30,9 @@
             </div>
             <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-include-rows" data-template="tag">+ Add pattern</button>
         </fieldset>
-    </div>
+    </section>
 
-    <div class="card mb-4">
+    <section class="card mb-3">
         <fieldset class="card-body">
             <legend class="card-title h5">Tags to ignore</legend>
             <p class="text-muted small">
@@ -52,9 +52,9 @@
             </div>
             <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-ignore-rows" data-template="tag">+ Add pattern</button>
         </fieldset>
-    </div>
+    </section>
 
-    <div class="card mb-4">
+    <section class="card mb-3">
         <fieldset class="card-body">
             <legend class="card-title h5">Alternative asset allocation weighting factors</legend>
             <p class="text-muted small">
@@ -73,7 +73,7 @@
             </div>
             <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="weighting-rows" data-template="weighting">+ Add weighting</button>
         </fieldset>
-    </div>
+    </section>
 
     <button type="submit" class="btn btn-primary">Save changes</button>
 </form>
