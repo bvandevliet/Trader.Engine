@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Npgsql;
 using TraderEngine.API.AppSettings;
 using TraderEngine.API.Data;
 using TraderEngine.API.Exchanges;
@@ -150,7 +151,7 @@ public class Program
 
     using (var scope = app.Services.CreateScope())
     {
-      await scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>().Database.MigrateAsync();
+      await MigrateWithRetryAsync(scope.ServiceProvider.GetRequiredService<TraderEngineDbContext>());
       await DbInitializer.InitializeAsync(scope.ServiceProvider);
     }
 
@@ -177,5 +178,31 @@ public class Program
     app.MapControllers();
 
     app.Run();
+  }
+
+  // A second instance racing to migrate the same database (e.g. two debug sessions, or a stale
+  // container not yet torn down before a new one starts) can lose a lock-wait on
+  // __EFMigrationsHistory and then fail its own INSERT with a duplicate-key error once the other
+  // instance commits first — the schema and history end up consistent either way, so retrying
+  // (which re-reads history fresh and applies only whatever's still pending) recovers cleanly
+  // instead of crashing the whole app on what's actually a transient race, not a real migration
+  // failure.
+  private static async Task MigrateWithRetryAsync(TraderEngineDbContext dbContext, int maxAttempts = 3)
+  {
+    for (var attempt = 1; ; attempt++)
+    {
+      try
+      {
+        await dbContext.Database.MigrateAsync();
+        return;
+      }
+      catch (PostgresException ex) when (
+        ex.SqlState == PostgresErrorCodes.UniqueViolation &&
+        ex.TableName == "__EFMigrationsHistory" &&
+        attempt < maxAttempts)
+      {
+        await Task.Delay(TimeSpan.FromSeconds(2 * attempt));
+      }
+    }
   }
 }
