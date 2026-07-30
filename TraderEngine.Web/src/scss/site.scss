@@ -21,18 +21,28 @@ $input-btn-padding-y-lg: .35em;
 @import "../../node_modules/bootstrap/scss/bootstrap";
 @import "../../node_modules/bootstrap-icons/font/bootstrap-icons";
 
-html {
-  position: relative;
-  min-height: 100%;
+html,
+body {
+  @extend .min-vh-100;
 }
 
 body {
-  margin-bottom: 60px;
+  @extend .d-flex;
+  @extend .flex-column;
+}
+
+// The layout's <div class="container"> wraps <main> only (not header/footer),
+// so growing it (and main) to fill remaining body height is what lets a page's
+// content flex-grow and vertically center within "whatever space is available".
+.container:has(>main),
+main {
+  @extend .d-flex;
+  @extend .flex-column;
+  @extend .flex-grow-1;
 }
 
 footer {
-  position: absolute;
-  bottom: 0;
+  flex-shrink: 0;
   width: 100%;
   white-space: nowrap;
   line-height: 60px;
