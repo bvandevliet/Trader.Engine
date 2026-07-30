@@ -1,4 +1,7 @@
 import 'bootstrap';
+import { localizeTimestamps } from './shared/format';
+
+localizeTimestamps();
 
 // Custom JavaScript for confirmation dialogs on elements with the data-confirm attribute.
 document.querySelectorAll<HTMLElement>('[data-confirm]').forEach(btn =>

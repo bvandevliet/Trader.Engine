@@ -22,7 +22,7 @@
         @if (status is not null)
         {
             <p class="text-success">
-                <strong>Configured</strong> — last updated @status.UpdatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                <strong>Configured</strong> — last updated <time datetime="@status.UpdatedAt.ToString("o")">@status.UpdatedAt.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC</time>
             </p>
         }
         else

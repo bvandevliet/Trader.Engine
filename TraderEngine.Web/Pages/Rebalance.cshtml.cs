@@ -35,7 +35,15 @@ public class RebalanceModel : TraderEnginePageModelBase
   [BindProperty]
   public ConfigReqDto Config { get; set; } = null!;
 
-  public string LastRebalanceDisplay => Config.LastRebalance?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never";
+  public string LastRebalanceDisplay => Config.LastRebalance is { } lastRebalance
+    ? DateTime.SpecifyKind(lastRebalance, DateTimeKind.Utc).ToString("yyyy-MM-dd HH:mm:ss") + " UTC"
+    : "Never";
+
+  // JS overwrites this with the viewer's local timezone (see localizeTimestamps in format.ts);
+  // the server-rendered UTC text above is the fallback for clients with JS disabled.
+  public string? LastRebalanceUtc => Config.LastRebalance is { } lastRebalance
+    ? DateTime.SpecifyKind(lastRebalance, DateTimeKind.Utc).ToString("o")
+    : null;
 
   private async Task<ApiCredReqDto> GetCredentialsOrThrow(Guid userId)
   {

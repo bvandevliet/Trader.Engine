@@ -69,7 +69,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} and executed successfully!</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC and executed successfully!</p>" +
     $"<p>Your current balance summary:<br>" +
     $"<table class=\"monospace\">" +
     $"<tr>" +
@@ -162,7 +162,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!<br>" +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed!<br>" +
     $"We will try again within an hour.</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
@@ -174,7 +174,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
-    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed!</p>" +
+    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed!</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>Debug data:</p>" +
     $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), _jsonOptions)}</pre>" +
@@ -214,7 +214,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} " +
+    $"<p>An automatic portfolio rebalance was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC " +
     $"but failed because exchange API authentication failed!</p>" +
     $"<p>Please update your exchange API key or disable automation.<br>" +
     $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
@@ -243,7 +243,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
-    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss} but failed with an exception:</p>" +
+    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed with an exception:</p>" +
     $"<p>{exception.Message}:</p>" +
     $"<pre>{exception.StackTrace}</pre>";
 
@@ -269,7 +269,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi Admin,</p>" +
-    $"<p>A Worker exception has occurred at {timestamp.ToLocalTime():yyyy-MM-dd HH:mm:ss}:</p>" +
+    $"<p>A Worker exception has occurred at {timestamp:yyyy-MM-dd HH:mm:ss} UTC:</p>" +
     $"<p>{exception.Message}:</p>" +
     $"<pre>{exception.StackTrace}</pre>";
 

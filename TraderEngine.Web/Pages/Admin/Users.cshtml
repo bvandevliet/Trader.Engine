@@ -58,7 +58,7 @@
                     <td class="text-nowrap">
                         @if (user.LastLoginAt.HasValue)
                         {
-                            <span title="@user.LastLoginAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm")">@user.LastLoginAt.Value.ToLocalTime().ToString("yyyy-MM-dd")</span>
+                            <time datetime="@user.LastLoginAt.Value.ToString("o")" data-utc-date-only="true" data-utc-title="true" title="@user.LastLoginAt.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC">@user.LastLoginAt.Value.UtcDateTime.ToString("yyyy-MM-dd")</time>
                         }
                         else
                         {
