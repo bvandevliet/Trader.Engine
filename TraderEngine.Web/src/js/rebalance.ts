@@ -1,5 +1,6 @@
 import { csrfHeaders } from './shared/csrf';
 import { numberFormat, quoteSymbolFor } from './shared/format';
+import { attachLoadingOverlay } from './shared/loading-overlay';
 
 interface MarketDto {
   quoteSymbol: string;
@@ -59,6 +60,7 @@ const expectedFeeEl = document.getElementById('expected-fee')!;
 const lastRebalanceEl = document.getElementById('last-rebalance')!;
 const trackingErrorEl = document.getElementById('tracking-error-quote')!;
 const portfolioTableBody = document.querySelector('#portfolio-table tbody')!;
+const portfolioTableOverlay = attachLoadingOverlay(document.getElementById('portfolio-table-wrapper')!);
 const quoteSymbolEls = document.querySelectorAll<HTMLElement>('.quote-symbol');
 const errorEl = document.getElementById('rebalance-error')!;
 
@@ -149,6 +151,7 @@ async function simulate (): Promise<void>
 {
   rebalanceNowBtn.disabled = true;
   rebalanceNowBtn.classList.add('loading');
+  portfolioTableOverlay.show();
   errorEl.classList.add('d-none');
 
   const response = await fetch('/rebalance/simulate', {
@@ -164,6 +167,7 @@ async function simulate (): Promise<void>
     errorEl.textContent = body?.error ?? 'Could not simulate a rebalance.';
     errorEl.classList.remove('d-none');
     rebalanceNowBtn.classList.remove('loading');
+    portfolioTableOverlay.hide();
 
     if (!lastSimulation) { portfolioTableBody.replaceChildren(); }
 
@@ -179,6 +183,7 @@ async function simulate (): Promise<void>
 
   rebalanceNowBtn.disabled = false;
   rebalanceNowBtn.classList.remove('loading');
+  portfolioTableOverlay.hide();
 }
 
 let debounceHandle: ReturnType<typeof setTimeout> | undefined;
@@ -190,6 +195,8 @@ form.querySelectorAll<HTMLInputElement>('.config-input').forEach(input =>
     updateTrackingErrorQuote();
 
     if (input.dataset.noResim !== undefined) { return; }
+
+    portfolioTableOverlay.show();
 
     clearTimeout(debounceHandle);
     debounceHandle = setTimeout(simulate, 1000);
@@ -214,6 +221,7 @@ rebalanceNowBtn.addEventListener('click', () =>
 
     rebalanceNowBtn.disabled = true;
     rebalanceNowBtn.classList.add('loading');
+    portfolioTableOverlay.show();
 
     try
     {
@@ -239,6 +247,7 @@ rebalanceNowBtn.addEventListener('click', () =>
     {
       rebalanceNowBtn.classList.remove('loading');
       rebalanceNowBtn.disabled = false;
+      portfolioTableOverlay.hide();
     }
   })();
 });

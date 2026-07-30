@@ -89,6 +89,33 @@ a,
   color-scheme: light;
 }
 
+// === Loading overlay (see shared/loading-overlay.ts) ===
+
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bs-body-bg);
+  opacity: .75;
+}
+
+@keyframes loading-overlay-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-overlay-spinner {
+  animation: loading-overlay-spin 1.2s linear infinite;
+}
+
 // === Form styling ===
 
 .validation-summary-valid,

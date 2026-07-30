@@ -28,27 +28,6 @@ public class DashboardModel : TraderEnginePageModelBase
     _exchangeName = apiSettings.Value.ExchangeName;
   }
 
-  public decimal TotalDeposited { get; set; }
-
-  public decimal TotalWithdrawn { get; set; }
-
-  public BalanceDto CurrentBalance { get; set; } = null!;
-
-  public string QuoteSymbol => CurrentBalance.QuoteSymbol;
-
-  public string QuoteCurrencySign => QuoteSymbol switch
-  {
-    "EUR" => "€",
-    "USD" => "$",
-    _ => QuoteSymbol,
-  };
-
-  public decimal CumulativeValue => CurrentBalance.AmountQuoteTotal + TotalWithdrawn;
-
-  public decimal TotalGain => CumulativeValue - TotalDeposited;
-
-  public decimal TotalGainPercent => TotalDeposited == 0 ? 0 : 100 * (CumulativeValue / TotalDeposited - 1);
-
   private async Task<ApiCredReqDto> GetCredentialsOrThrow(Guid userId)
   {
     var credentials = await _apiCredentialsRepository.GetApiCred(userId, _exchangeName);
@@ -59,7 +38,34 @@ public class DashboardModel : TraderEnginePageModelBase
     return credentials;
   }
 
-  public async Task<IActionResult> OnGetAsync(CancellationToken ct)
+  /// <summary>
+  /// Renders the page shell only — the exchange calls that populate it are slow enough (network
+  /// round-trip to the exchange itself) that blocking the initial render on them would defeat the
+  /// point of the loading overlay, so the client fetches <see cref="OnGetSummaryAsync"/> instead.
+  /// Still checks stored credentials (a cheap DB lookup) so users without keys configured yet are
+  /// redirected immediately rather than shown an empty dashboard that will only ever 401.
+  /// </summary>
+  public async Task<IActionResult> OnGetAsync()
+  {
+    var user = await GetCurrentUserAsync();
+
+    try
+    {
+      await GetCredentialsOrThrow(user.Id);
+
+      return Page();
+    }
+    catch (ExchangeAuthenticationException ex)
+    {
+      TempData["Error"] = ex.Message;
+      return RedirectToPage("/ExchangeApiKeys");
+    }
+  }
+
+  /// <summary>
+  /// Fetched once by the dashboard page on load to populate the balance summary table via AJAX.
+  /// </summary>
+  public async Task<IActionResult> OnGetSummaryAsync(CancellationToken ct)
   {
     var user = await GetCurrentUserAsync();
 
@@ -73,27 +79,30 @@ public class DashboardModel : TraderEnginePageModelBase
 
       await Task.WhenAll(depositedTask, withdrawnTask, balanceTask);
 
-      TotalDeposited = depositedTask.Result;
-      TotalWithdrawn = withdrawnTask.Result;
-      CurrentBalance = balanceTask.Result;
+      var balance = balanceTask.Result;
+      var quoteSymbol = balance.QuoteSymbol;
 
-      return Page();
+      return new JsonResult(new
+      {
+        quoteSymbol,
+        quoteCurrencySign = quoteSymbol switch
+        {
+          "EUR" => "€",
+          "USD" => "$",
+          _ => quoteSymbol,
+        },
+        totalDeposited = depositedTask.Result,
+        totalWithdrawn = withdrawnTask.Result,
+        currentBalance = balance,
+      });
     }
-    catch (ExchangeAuthenticationException ex)
+    catch (ExchangeAuthenticationException)
     {
-      TempData["Error"] = ex.Message;
-      return RedirectToPage("/ExchangeApiKeys");
+      return StatusCode(StatusCodes.Status401Unauthorized);
     }
     catch (TraderEngineApiException ex)
     {
-      // Not a credentials problem — the dashboard has no useful figures to fall back to here, so
-      // this at least avoids a raw unhandled-exception page while the underlying cause is fixed.
-      return StatusCode(StatusCodes.Status500InternalServerError, new ProblemDetails
-      {
-        Title = "An error occurred while processing your request.",
-        Detail = ex.Message,
-        Status = StatusCodes.Status500InternalServerError,
-      });
+      return StatusCode((int)ex.StatusCode);
     }
   }
 
