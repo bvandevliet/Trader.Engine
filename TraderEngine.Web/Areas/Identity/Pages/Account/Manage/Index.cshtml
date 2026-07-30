@@ -19,6 +19,16 @@
                 <label asp-for="Input.DisplayName" class="form-label"></label>
                 <span asp-validation-for="Input.DisplayName" class="text-danger"></span>
             </div>
+            <div class="form-floating mb-3">
+                <select asp-for="Input.TimeZoneId" class="form-select">
+                    @foreach (var tz in Model.AvailableTimeZones)
+                    {
+                        <option value="@tz.Id">@tz.DisplayName</option>
+                    }
+                </select>
+                <label asp-for="Input.TimeZoneId" class="form-label"></label>
+                <span asp-validation-for="Input.TimeZoneId" class="text-danger"></span>
+            </div>
             <button id="update-profile-button" type="submit" class="btn btn-primary">Save changes</button>
         </form>
     </div>

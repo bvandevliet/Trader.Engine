@@ -36,6 +36,26 @@ public class EmailNotificationService : IEmailNotificationService
       ?? throw new InvalidOperationException($"User '{userId}' not found.");
   }
 
+  // Emails have no client-side JS to localize timestamps with (see localizeTimestamps in the web
+  // app's format.ts), so this is the one place that still converts server-side — using the
+  // recipient's own stored TimeZoneId rather than the server's, which is what ToLocalTime() would
+  // have used. Falls back to labeled UTC if the stored id isn't recognized on this host (e.g. a
+  // Windows zone id from a dev machine landing on a Linux production server).
+  private static string FormatForUser(DateTime utcTimestamp, string timeZoneId)
+  {
+    try
+    {
+      var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+      var local = TimeZoneInfo.ConvertTimeFromUtc(utcTimestamp, timeZone);
+
+      return $"{local:yyyy-MM-dd HH:mm:ss} ({timeZone.Id})";
+    }
+    catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
+    {
+      return $"{utcTimestamp:yyyy-MM-dd HH:mm:ss} UTC";
+    }
+  }
+
   private readonly string _cssString =
 @"
 pre,
@@ -69,7 +89,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC and executed successfully!</p>" +
+    $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} and executed successfully!</p>" +
     $"<p>Your current balance summary:<br>" +
     $"<table class=\"monospace\">" +
     $"<tr>" +
@@ -162,7 +182,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed!<br>" +
+    $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} but failed!<br>" +
     $"We will try again within an hour.</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
@@ -214,7 +234,7 @@ td+td {
     $"<meta name=\"format-detection\" content=\"telephone=no\">" +
     $"<style>{_cssString}</style>" +
     $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC " +
+    $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} " +
     $"but failed because exchange API authentication failed!</p>" +
     $"<p>Please update your exchange API key or disable automation.<br>" +
     $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";

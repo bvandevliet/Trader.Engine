@@ -28,12 +28,18 @@ public class IndexModel : PageModel
   [BindProperty]
   public InputModel Input { get; set; } = new();
 
+  public IReadOnlyList<TimeZoneInfo> AvailableTimeZones { get; } = TimeZoneInfo.GetSystemTimeZones();
+
   public class InputModel
   {
     [Required(ErrorMessage = "Display name is required.")]
     [StringLength(100, ErrorMessage = "{0} must be at least {2} characters long.", MinimumLength = 1)]
     [Display(Name = "Display name")]
     public string DisplayName { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Time zone is required.")]
+    [Display(Name = "Time zone")]
+    public string TimeZoneId { get; set; } = string.Empty;
   }
 
   private async Task LoadAsync(AppUser user)
@@ -43,6 +49,7 @@ public class IndexModel : PageModel
     Input = new InputModel
     {
       DisplayName = user.DisplayName,
+      TimeZoneId = user.TimeZoneId,
     };
   }
 
@@ -68,13 +75,21 @@ public class IndexModel : PageModel
       return Page();
     }
 
-    if (Input.DisplayName != user.DisplayName)
+    if (AvailableTimeZones.All(tz => tz.Id != Input.TimeZoneId))
+    {
+      ModelState.AddModelError($"{nameof(Input)}.{nameof(Input.TimeZoneId)}", "Invalid time zone selected.");
+      await LoadAsync(user);
+      return Page();
+    }
+
+    if (Input.DisplayName != user.DisplayName || Input.TimeZoneId != user.TimeZoneId)
     {
       user.DisplayName = Input.DisplayName;
+      user.TimeZoneId = Input.TimeZoneId;
       var result = await _userManager.UpdateAsync(user);
       if (!result.Succeeded)
       {
-        StatusMessage = "Error: unexpected error setting display name.";
+        StatusMessage = "Error: unexpected error updating profile.";
         return RedirectToPage();
       }
 
