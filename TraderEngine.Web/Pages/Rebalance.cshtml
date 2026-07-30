@@ -59,36 +59,36 @@
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Config.NthRoot" class="form-label" title="Nth root of Market Cap EMA, to dampen the effect an individual asset has on the portfolio."></label>
-                        <input asp-for="Config.NthRoot" class="form-control config-input" data-config-field="nthRoot" min="1" max="25" step="0.1" />
+                        <input asp-for="Config.NthRoot" type="number" class="form-control config-input" data-config-field="nthRoot" min="1" max="25" step="0.1" />
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label asp-for="Config.QuoteTakeout" class="form-label" title="Takeout a given amount of quote currency.">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span class="quote-symbol"></span>]</label>
-                        <input asp-for="Config.QuoteTakeout" class="form-control config-input" data-config-field="quoteTakeout" min="0" step="1" />
+                        <input asp-for="Config.QuoteTakeout" type="number" class="form-control config-input" data-config-field="quoteTakeout" min="0" step="1" />
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Config.QuoteAllocation" class="form-label" title="Allocate a given percentage to quote currency."></label>
-                        <input asp-for="Config.QuoteAllocation" class="form-control config-input" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
+                        <input asp-for="Config.QuoteAllocation" type="number" class="form-control config-input" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Config.CurrentAllocWeightingMult" class="form-label" title="Multiply weighting of current allocations by this factor. To prevent frequent swaps when two or more assets are on the edge of the balanced portfolio."></label>
-                        <input asp-for="Config.CurrentAllocWeightingMult" class="form-control config-input" data-config-field="currentAllocWeightingMult" min="1" step="0.01" />
+                        <input asp-for="Config.CurrentAllocWeightingMult" type="number" class="form-control config-input" data-config-field="currentAllocWeightingMult" min="1" step="0.01" />
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <label asp-for="Config.MinimumDiffQuote" class="form-label" title="The minimum order size in quote required to trigger an automated rebalance.">@Html.DisplayNameFor(m => m.Config.MinimumDiffQuote) [<span class="quote-symbol"></span>]</label>
-                        <input asp-for="Config.MinimumDiffQuote" class="form-control config-input" data-config-field="minimumDiffQuote" data-no-resim min="5" step="1" />
+                        <input asp-for="Config.MinimumDiffQuote" class="form-control config-input" data-config-field="minimumDiffQuote" data-no-resim min="0" step="1" />
                     </div>
                     <div class="col-md-4">
                         <label asp-for="Config.MinimumDiffAllocation" class="form-label d-flex justify-content-between" title="Minimum allocation difference in quote required to trigger an automated rebalance.">
                             <span>@Html.DisplayNameFor(m => m.Config.MinimumDiffAllocation)</span>
                             <span class="text-muted">(<span class="quote-symbol"></span>~<span id="tracking-error-quote"></span>)</span>
                         </label>
-                        <input asp-for="Config.MinimumDiffAllocation" class="form-control config-input" data-config-field="minimumDiffAllocation" data-no-resim min="0" max="100" step="0.1" />
+                        <input asp-for="Config.MinimumDiffAllocation" type="number" class="form-control config-input" data-config-field="minimumDiffAllocation" data-no-resim min="0" max="100" step="0.1" />
                     </div>
                     <div class="col-md-4">
                         <div class="d-flex justify-content-between align-items-center">
@@ -98,7 +98,7 @@
                                 <label asp-for="Config.AutomationEnabled" class="form-check-label" title="Automatically perform portfolio rebalance when conditions are met.">@Html.DisplayNameFor(m => m.Config.AutomationEnabled)</label>
                             </div>
                         </div>
-                        <input asp-for="Config.IntervalHours" class="form-control config-input" data-config-field="intervalHours" data-no-resim min="1" step="1" />
+                        <input asp-for="Config.IntervalHours" class="form-control config-input" data-config-field="intervalHours" data-no-resim min="1" max="672" step="1" />
                     </div>
                 </div>
 
