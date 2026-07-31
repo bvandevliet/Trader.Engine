@@ -1,4 +1,4 @@
-import { csrfHeaders } from './shared/csrf';
+import { ApiError, postJson } from './shared/api';
 import { numberFormat, quoteSymbolFor } from './shared/format';
 import { attachLoadingOverlay } from './shared/loading-overlay';
 
@@ -65,6 +65,7 @@ let totalDeposited = 0;
 let totalWithdrawn = 0;
 
 const form = document.getElementById('rebalance-form') as HTMLFormElement;
+const saveBtn = form.querySelector<HTMLButtonElement>('button[type=\'submit\']')!;
 const rebalanceNowBtn = document.getElementById('rebalance-now-btn') as HTMLButtonElement;
 const expectedFeeEl = document.getElementById('expected-fee')!;
 const lastRebalanceEl = document.getElementById('last-rebalance')!;
@@ -73,7 +74,38 @@ const portfolioTableBody = document.querySelector('#portfolio-table tbody')!;
 const portfolioTableOverlay = attachLoadingOverlay(document.getElementById('portfolio-table-wrapper')!);
 const balanceSummaryOverlay = attachLoadingOverlay(document.getElementById('balance-summary-wrapper')!);
 const quoteSymbolEls = document.querySelectorAll<HTMLElement>('.quote-symbol');
-const errorEl = document.getElementById('rebalance-error')!;
+
+// Scoped to whichever card the failing/succeeding action belongs to, rather than one page-level
+// banner: paramsError/paramsNotice sit in the "Rebalance parameters" card (Save, Rebalance now —
+// both triggered by buttons in that card), portfolioError sits in the "Current vs. balanced
+// allocation" card (init/simulate, which only ever affect that table).
+const paramsErrorEl = document.getElementById('params-error')!;
+const paramsNoticeEl = document.getElementById('params-notice')!;
+const portfolioErrorEl = document.getElementById('portfolio-error')!;
+
+// Deliberately not Bootstrap's built-in data-bs-dismiss — that plugin removes the alert element
+// from the DOM entirely once its fade-out finishes, which is fine for _Layout.cshtml's one-shot
+// TempData alerts (rendered once, never touched again) but not for these: they're long-lived
+// elements this script keeps reusing across every AJAX call, so a user dismissing one would make
+// it vanish permanently instead of just hiding until the next message.
+function showAlert (alertEl: HTMLElement, message: string): void
+{
+  alertEl.querySelector('span')!.textContent = message;
+  alertEl.classList.add('show');
+  alertEl.classList.remove('d-none');
+}
+
+function hideAlert (alertEl: HTMLElement): void
+{
+  alertEl.classList.add('d-none');
+  alertEl.classList.remove('show');
+  alertEl.querySelector('span')!.textContent = null;
+}
+
+[paramsErrorEl, paramsNoticeEl, portfolioErrorEl].forEach(alertEl =>
+{
+  alertEl.querySelector('.btn-close')!.addEventListener('click', () => hideAlert(alertEl));
+});
 
 function buildConfigFromForm (): Record<string, unknown>
 {
@@ -169,6 +201,14 @@ function applySimulation (simulation: SimulationDto): void
   updateTrackingErrorQuote();
 }
 
+// Shared by every handler that calls postJson() — ApiError carries the server's own message
+// (see Dashboard.cshtml.cs), anything else (network failure, unexpected response shape) falls
+// back to a generic per-call message instead of leaking a raw exception to the user.
+function showError (alertEl: HTMLElement, err: unknown, fallback: string): void
+{
+  showAlert(alertEl, err instanceof ApiError ? err.message : fallback);
+}
+
 function setBalanceField (field: string, value: string): void
 {
   const cell = document.querySelector<HTMLTableCellElement>(`[data-field='${field}']`);
@@ -180,7 +220,7 @@ function renderBalanceSummary (balance: BalanceDto): void
 {
   const cumulative = balance.amountQuoteTotal + totalWithdrawn;
   const gain = cumulative - totalDeposited;
-  const gainPercent = totalDeposited === 0 ? 0 : 100 * (cumulative / totalDeposited - 1);
+  const gainPercent = totalDeposited === 0 ? 0 : 100 * ((cumulative / totalDeposited) - 1);
 
   setBalanceField('balance', numberFormat(balance.amountQuoteTotal));
   setBalanceField('cumulative', numberFormat(cumulative));
@@ -231,38 +271,25 @@ async function init (): Promise<void>
   rebalanceNowBtn.classList.add('loading');
   portfolioTableOverlay.show();
   balanceSummaryOverlay.show();
-  errorEl.classList.add('d-none');
+  hideAlert(portfolioErrorEl);
 
   try
   {
-    const response = await fetch('/dashboard/init', {
-      method: 'POST',
-      headers: csrfHeaders(),
-      body: JSON.stringify(buildConfigFromForm()),
-    });
+    const initData = await postJson<InitDto>('/dashboard/init', buildConfigFromForm());
 
-    if (!response.ok)
-    {
-      const body = await response.json().catch(() => null);
+    ({ totalDeposited, totalWithdrawn } = initData);
 
-      errorEl.textContent = body?.error ?? 'Could not load the dashboard.';
-      errorEl.classList.remove('d-none');
-
-      return;
-    }
-
-    const init: InitDto = await response.json();
-
-    totalDeposited = init.totalDeposited;
-    totalWithdrawn = init.totalWithdrawn;
-
-    quoteSymbolEls.forEach(el => (el.textContent = quoteSymbolFor(init.simulation.curBalance.quoteSymbol)));
-    setBalanceField('deposited', numberFormat(init.totalDeposited));
-    setBalanceField('withdrawn', numberFormat(init.totalWithdrawn));
-    renderBalanceSummary(init.simulation.curBalance);
-    applySimulation(init.simulation);
+    quoteSymbolEls.forEach(el => (el.textContent = quoteSymbolFor(initData.simulation.curBalance.quoteSymbol)));
+    setBalanceField('deposited', numberFormat(initData.totalDeposited));
+    setBalanceField('withdrawn', numberFormat(initData.totalWithdrawn));
+    renderBalanceSummary(initData.simulation.curBalance);
+    applySimulation(initData.simulation);
 
     rebalanceNowBtn.disabled = false;
+  }
+  catch (err)
+  {
+    showError(portfolioErrorEl, err, 'Could not load the dashboard.');
   }
   finally
   {
@@ -278,34 +305,64 @@ async function simulate (): Promise<void>
 {
   rebalanceNowBtn.disabled = true;
   rebalanceNowBtn.classList.add('loading');
-  errorEl.classList.add('d-none');
+  hideAlert(portfolioErrorEl);
 
-  const response = await fetch('/dashboard/simulate', {
-    method: 'POST',
-    headers: csrfHeaders(),
-    body: JSON.stringify(buildConfigFromForm()),
-  });
-
-  if (!response.ok)
+  try
   {
-    const body = await response.json().catch(() => null);
+    applySimulation(await postJson<SimulationDto>('/dashboard/simulate', buildConfigFromForm()));
 
-    errorEl.textContent = body?.error ?? 'Could not simulate a rebalance.';
-    errorEl.classList.remove('d-none');
-    rebalanceNowBtn.classList.remove('loading');
-    portfolioTableOverlay.hide();
+    rebalanceNowBtn.disabled = false;
+  }
+  catch (err)
+  {
+    showError(portfolioErrorEl, err, 'Could not simulate a rebalance.');
 
     if (!lastSimulation) { portfolioTableBody.replaceChildren(); }
-
-    return;
   }
-
-  applySimulation(await response.json());
-
-  rebalanceNowBtn.disabled = false;
-  rebalanceNowBtn.classList.remove('loading');
-  portfolioTableOverlay.hide();
+  finally
+  {
+    rebalanceNowBtn.classList.remove('loading');
+    portfolioTableOverlay.hide();
+  }
 }
+
+let noticeFadeHandle: ReturnType<typeof setTimeout> | undefined;
+
+async function saveConfig (): Promise<void>
+{
+  saveBtn.disabled = true;
+  saveBtn.classList.add('loading');
+  hideAlert(paramsErrorEl);
+  clearTimeout(noticeFadeHandle);
+  hideAlert(paramsNoticeEl);
+
+  try
+  {
+    await postJson('/dashboard/save', buildConfigFromForm());
+
+    showAlert(paramsNoticeEl, 'Configuration updated.');
+
+    // Clears it after a while so it doesn't linger indefinitely if the user doesn't dismiss it
+    // themselves via the alert's own close button.
+    noticeFadeHandle = setTimeout(() => hideAlert(paramsNoticeEl), 5000);
+  }
+  catch (err)
+  {
+    showError(paramsErrorEl, err, 'Could not save the configuration.');
+  }
+  finally
+  {
+    saveBtn.disabled = false;
+    saveBtn.classList.remove('loading');
+  }
+}
+
+form.addEventListener('submit', e =>
+{
+  e.preventDefault();
+
+  saveConfig();
+});
 
 let debounceHandle: ReturnType<typeof setTimeout> | undefined;
 
@@ -343,31 +400,28 @@ rebalanceNowBtn.addEventListener('click', () =>
     rebalanceNowBtn.disabled = true;
     rebalanceNowBtn.classList.add('loading');
     portfolioTableOverlay.show();
+    hideAlert(paramsErrorEl);
 
     let succeeded = false;
 
     try
     {
-      const response = await fetch('/dashboard/rebalancenow', {
-        method: 'POST',
-        headers: csrfHeaders(),
-        body: JSON.stringify({
-          config: buildConfigFromForm(),
-          newAbsAllocs: lastSimulation.newAbsAllocs,
-        }),
-      });
-
-      if (!response.ok) { return; }
-
       // The response already carries the post-trade balance (see OnPostRebalanceNowAsync) — no
       // separate /dashboard/currentbalance round-trip needed to refresh these two.
-      const { currentBalance }: { currentBalance: BalanceDto } = await response.json();
+      const { currentBalance } = await postJson<{ currentBalance: BalanceDto }>('/dashboard/rebalancenow', {
+        config: buildConfigFromForm(),
+        newAbsAllocs: lastSimulation.newAbsAllocs,
+      });
 
       renderPortfolioTable(currentBalance, lastSimulation.newBalance);
       renderBalanceSummary(currentBalance);
       lastRebalanceEl.textContent = 'Just now';
       expectedFeeEl.textContent = numberFormat(0);
       succeeded = true;
+    }
+    catch (err)
+    {
+      showError(paramsErrorEl, err, 'Could not perform the rebalance.');
     }
     finally
     {

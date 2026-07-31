@@ -7,8 +7,6 @@
 
 <h1>@ViewData["Title"]</h1>
 
-<div id="rebalance-error" class="alert alert-danger d-none" role="alert"></div>
-
 <div class="row">
     <div class="col-lg-6 vstack">
         <section class="card">
@@ -53,9 +51,16 @@
             </div>
         </section>
         <section class="card">
-            <form method="post" asp-page-handler="Save" id="rebalance-form" class="card-body">
+            <form id="rebalance-form" class="card-body">
                 <h2 class="card-title h4">Rebalance parameters</h2>
-                <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+                <div id="params-notice" class="alert alert-success alert-dismissible fade d-none" role="alert">
+                    <span></span>
+                    <button type="button" class="btn-close" aria-label="Close"></button>
+                </div>
+                <div id="params-error" class="alert alert-danger alert-dismissible fade d-none" role="alert">
+                    <span></span>
+                    <button type="button" class="btn-close" aria-label="Close"></button>
+                </div>
 
                 <div class="row mb-3">
                     <div class="col-md-4">
@@ -124,6 +129,10 @@
         <section class="card">
             <div class="card-body">
                 <h2 class="card-title h4">Current vs. balanced allocation</h2>
+                <div id="portfolio-error" class="alert alert-danger alert-dismissible fade d-none" role="alert">
+                    <span></span>
+                    <button type="button" class="btn-close" aria-label="Close"></button>
+                </div>
                 <div class="table-responsive" id="portfolio-table-wrapper">
                     <table class="table table-hover mb-0" id="portfolio-table">
                         <thead>

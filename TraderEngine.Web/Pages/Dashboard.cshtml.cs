@@ -1,8 +1,8 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using TraderEngine.Common.DTOs.API.Request;
-using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Data.Entities;
 using TraderEngine.Data.Repositories;
 using TraderEngine.Web.AppSettings;
@@ -57,6 +57,28 @@ public class DashboardModel : TraderEnginePageModelBase
   }
 
   /// <summary>
+  /// Shared by every handler below that talks to the exchange via <see cref="ITraderEngineApiClient"/>
+  /// — translates the two exceptions that boundary can throw into the same JSON error shape the
+  /// client's <c>postJson</c> helper expects, so callers only need to describe the call itself.
+  /// </summary>
+  private async Task<IActionResult> ExecuteExchangeCall<T>(Func<Task<T>> action)
+    where T : notnull
+  {
+    try
+    {
+      return StatusCode(StatusCodes.Status200OK, await action());
+    }
+    catch (ExchangeAuthenticationException ex)
+    {
+      return StatusCode(StatusCodes.Status401Unauthorized, new { error = ex.Message });
+    }
+    catch (TraderEngineApiException ex)
+    {
+      return StatusCode((int)ex.StatusCode, new { error = ex.Message });
+    }
+  }
+
+  /// <summary>
   /// Renders the page shell only — the exchange calls that populate it are slow enough (network
   /// round-trips to the exchange itself) that blocking the initial render on them would defeat
   /// the point of the loading overlays, so the client fetches <see cref="OnPostInitAsync"/>
@@ -82,28 +104,36 @@ public class DashboardModel : TraderEnginePageModelBase
     }
   }
 
-  public async Task<IActionResult> OnPostSaveAsync()
+  /// <summary>
+  /// Takes the config over the wire rather than via the usual <see cref="Config"/> bind property
+  /// — the form posts via fetch like every other handler on this page now, not a browser
+  /// navigation, so there's no page re-render to fall back on for redisplaying validation errors.
+  /// </summary>
+  public async Task<IActionResult> OnPostSaveAsync([FromBody] ConfigReqDto config)
   {
     var user = await GetCurrentUserAsync();
 
-    // The client re-fetches a simulation via OnPostSimulateAsync as soon as the page (re-)renders
-    // (see dashboard.ts) — no need to simulate here too just to redisplay the form with errors.
-    if (!ModelState.IsValid)
-      return Page();
+    var validationResults = new List<ValidationResult>();
+
+    if (!Validator.TryValidateObject(config, new ValidationContext(config), validationResults, validateAllProperties: true))
+    {
+      return StatusCode(StatusCodes.Status400BadRequest, new
+      {
+        error = string.Join(" ", validationResults.Select(result => result.ErrorMessage)),
+      });
+    }
 
     // Preserve the last-rebalance timestamp and the advanced allocation config fields, which
-    // this form never edits — only the RebalanceReqDto-mirroring fields below are user input here.
+    // this form never edits — only the RebalanceReqDto-mirroring fields above are user input here.
     var existing = await _configRepository.GetConfig(user.Id);
-    Config.LastRebalance = existing.LastRebalance;
-    Config.AltWeightingFactors = existing.AltWeightingFactors;
-    Config.TagsToInclude = existing.TagsToInclude;
-    Config.TagsToIgnore = existing.TagsToIgnore;
+    config.LastRebalance = existing.LastRebalance;
+    config.AltWeightingFactors = existing.AltWeightingFactors;
+    config.TagsToInclude = existing.TagsToInclude;
+    config.TagsToIgnore = existing.TagsToIgnore;
 
-    await _configRepository.SaveConfig(user.Id, Config);
+    await _configRepository.SaveConfig(user.Id, config);
 
-    TempData["Notice"] = "Configuration updated.";
-
-    return RedirectToPage();
+    return StatusCode(StatusCodes.Status200OK);
   }
 
   /// <summary>
@@ -119,7 +149,7 @@ public class DashboardModel : TraderEnginePageModelBase
   {
     var user = await GetCurrentUserAsync();
 
-    try
+    return await ExecuteExchangeCall(async () =>
     {
       var credentials = await GetCredentialsOrThrow(user.Id);
 
@@ -129,21 +159,13 @@ public class DashboardModel : TraderEnginePageModelBase
 
       await Task.WhenAll(depositedTask, withdrawnTask, simulationTask);
 
-      return StatusCode(StatusCodes.Status200OK, new
+      return new
       {
         totalDeposited = depositedTask.Result,
         totalWithdrawn = withdrawnTask.Result,
         simulation = simulationTask.Result,
-      });
-    }
-    catch (ExchangeAuthenticationException ex)
-    {
-      return StatusCode(StatusCodes.Status401Unauthorized, new { error = ex.Message });
-    }
-    catch (TraderEngineApiException ex)
-    {
-      return StatusCode((int)ex.StatusCode, new { error = ex.Message });
-    }
+      };
+    });
   }
 
   /// <summary>
@@ -155,21 +177,12 @@ public class DashboardModel : TraderEnginePageModelBase
   {
     var user = await GetCurrentUserAsync();
 
-    try
+    return await ExecuteExchangeCall(async () =>
     {
       var credentials = await GetCredentialsOrThrow(user.Id);
-      var simulation = await _apiClient.SimulateRebalance(user, _exchangeName, Source, new SimulationReqDto(credentials, config), ct);
 
-      return StatusCode(StatusCodes.Status200OK, simulation);
-    }
-    catch (ExchangeAuthenticationException ex)
-    {
-      return StatusCode(StatusCodes.Status401Unauthorized, new { error = ex.Message });
-    }
-    catch (TraderEngineApiException ex)
-    {
-      return StatusCode((int)ex.StatusCode, new { error = ex.Message });
-    }
+      return await _apiClient.SimulateRebalance(user, _exchangeName, Source, new SimulationReqDto(credentials, config), ct);
+    });
   }
 
   public class RebalanceNowRequest
@@ -188,7 +201,7 @@ public class DashboardModel : TraderEnginePageModelBase
   {
     var user = await GetCurrentUserAsync();
 
-    try
+    return await ExecuteExchangeCall(async () =>
     {
       var credentials = await GetCredentialsOrThrow(user.Id);
 
@@ -202,16 +215,8 @@ public class DashboardModel : TraderEnginePageModelBase
       // it can't run in parallel with placing the orders the way OnPostInitAsync's calls can.
       var currentBalance = await _apiClient.GetCurrentBalance(user, _exchangeName, credentials, ct);
 
-      return StatusCode(StatusCodes.Status200OK, new { orders, currentBalance });
-    }
-    catch (ExchangeAuthenticationException ex)
-    {
-      return StatusCode(StatusCodes.Status401Unauthorized, new { error = ex.Message });
-    }
-    catch (TraderEngineApiException ex)
-    {
-      return StatusCode((int)ex.StatusCode, new { error = ex.Message });
-    }
+      return new { orders, currentBalance };
+    });
   }
 
   /// <summary>
