@@ -1,0 +1,140 @@
+@page
+@model TraderEngine.Web.Pages.Admin.UsersModel
+@using TraderEngine.Web.Models
+@{
+    ViewData["Title"] = "Users";
+    UserRow dummy = default!;
+}
+
+<div class="d-flex justify-content-between align-items-center gap-2 mb-3">
+    <h1>@ViewData["Title"]</h1>
+    <a asp-area="Identity" asp-page="/Account/Register" class="btn btn-primary">Register new user</a>
+</div>
+
+<form method="get" class="d-flex align-items-center gap-2 mb-3">
+    <input type="text" name="searchString" value="@Model.CurrentFilter" class="form-control" placeholder="Search by username, display name or email..." />
+    <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Search</button>
+    @if (Model.CurrentFilter != null)
+    {
+        <a asp-page="/Admin/Users" class="btn btn-link flex-shrink-0">Clear</a>
+    }
+</form>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>@Html.DisplayNameFor(_ => dummy.UserName)</th>
+                <th>@Html.DisplayNameFor(_ => dummy.DisplayName)</th>
+                <th>@Html.DisplayNameFor(_ => dummy.Email)</th>
+                <th>@Html.DisplayNameFor(_ => dummy.Roles)</th>
+                <th>@Html.DisplayNameFor(_ => dummy.LoginCount)</th>
+                <th>@Html.DisplayNameFor(_ => dummy.LastLoginAt)</th>
+                <th style="width: 1%;">Status</th>
+                <th style="width: 1%;"></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in Model.Users)
+            {
+                <tr>
+                    <td><a asp-page="/Admin/EditUser" asp-route-id="@user.Id" asp-route-currentFilter="@Model.CurrentFilter">@user.UserName</a></td>
+                    <td>@user.DisplayName</td>
+                    <td>@user.Email</td>
+                    <td>
+                        @if (user.Roles.Count > 0)
+                        {
+                            foreach (var role in user.Roles)
+                            {
+                                <span class="badge bg-info">@role</span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="text-muted">(standard access)</span>
+                        }
+                    </td>
+                    <td>@user.LoginCount</td>
+                    <td class="text-nowrap">
+                        @if (user.LastLoginAt.HasValue)
+                        {
+                            <time datetime="@user.LastLoginAt.Value.ToString("o")" data-utc-date-only="true" data-utc-title="true" title="@user.LastLoginAt.Value.UtcDateTime.ToString("yyyy-MM-dd HH:mm") UTC">@user.LastLoginAt.Value.UtcDateTime.ToString("yyyy-MM-dd")</time>
+                        }
+                        else
+                        {
+                            <span class="text-muted">Never</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        @if (user.LockedOut)
+                        {
+                            <span class="badge bg-danger">Locked</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        @if (user.MustChangePassword)
+                        {
+                            <span class="badge bg-warning text-dark" title="User must change their password on next login">Password required</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        <a asp-page="/Admin/EditUser" asp-route-id="@user.Id" asp-route-currentFilter="@Model.CurrentFilter" class="btn btn-sm btn-primary">Edit</a>
+
+                        <form asp-page-handler="ToggleLockout" asp-route-id="@user.Id" method="post" style="display:inline;">
+                            @if (user.LockedOut)
+                            {
+                                <button type="submit" class="btn btn-sm btn-success" data-confirm="Unlock this user?">Unlock</button>
+                            }
+                            else
+                            {
+                                <button type="submit" class="btn btn-sm btn-warning" data-confirm="Lock this user?">Lock</button>
+                            }
+                        </form>
+
+                        <form asp-page-handler="DeleteUser" asp-route-id="@user.Id" method="post" style="display:inline;">
+                            <button type="submit" class="btn btn-sm btn-danger" data-confirm="Delete this user? This action cannot be undone.">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+            @if (Model.Users.Count == 0)
+            {
+                <tr>
+                    <td colspan="8" class="text-center text-muted">No users found.</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+@if (Model.Users.TotalPages > 1)
+{
+    <nav aria-label="Pagination" class="mt-3">
+        <ul class="pagination align-items-center">
+            @if (Model.Users.HasPreviousPage)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-page="/Admin/Users" asp-route-pageNumber="@(Model.Users.PageIndex - 1)" asp-route-currentFilter="@Model.CurrentFilter">Previous</a>
+                </li>
+            }
+            else
+            {
+                <li class="page-item disabled"><span class="page-link">Previous</span></li>
+            }
+            <li class="page-item disabled">
+                <span class="page-link">Page @Model.Users.PageIndex of @Model.Users.TotalPages</span>
+            </li>
+            @if (Model.Users.HasNextPage)
+            {
+                <li class="page-item">
+                    <a class="page-link" asp-page="/Admin/Users" asp-route-pageNumber="@(Model.Users.PageIndex + 1)" asp-route-currentFilter="@Model.CurrentFilter">Next</a>
+                </li>
+            }
+            else
+            {
+                <li class="page-item disabled"><span class="page-link">Next</span></li>
+            }
+        </ul>
+    </nav>
+}

@@ -1,10 +1,10 @@
 using System.Text.RegularExpressions;
-using AnyClone;
+using TraderEngine.API.Mappers;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Extensions;
-using TraderEngine.Common.Repositories;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Services;
 
@@ -45,8 +45,6 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
   public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
   {
-    currentAssets = currentAssets?.Clone();
-
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
     // Expected to have at least 100 records, and one of them BTC. Bail out for safety.
@@ -63,6 +61,8 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
     var ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
     var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase);
+
+    currentAssets = currentAssets?.Select(a => a.DeepClone()).ToList();
 
     return
       marketCapLatest

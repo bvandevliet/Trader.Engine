@@ -1,8 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
 using Microsoft.Net.Http.Headers;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.API.Mappers;
@@ -10,6 +8,7 @@ using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
+using TraderEngine.Common.Extensions;
 using TraderEngine.Common.Models;
 using TraderEngine.Common.Results;
 
@@ -26,15 +25,6 @@ public class BitvavoExchange : IExchange
   public decimal MinOrderSizeInQuote { get; } = 5;
   public decimal MakerFee { get; } = .0015m;
   public decimal TakerFee { get; } = .0025m;
-  public string ApiKey { get; set; } = string.Empty;
-  public string ApiSecret { get; set; } = string.Empty;
-
-  private readonly JsonSerializerOptions _jsonOptions = new()
-  {
-    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
-    PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-    DictionaryKeyPolicy = JsonNamingPolicy.CamelCase,
-  };
 
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
@@ -44,12 +34,9 @@ public class BitvavoExchange : IExchange
 
     _httpClient = httpClient;
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
-
-    _jsonOptions.Converters
-      .Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase));
   }
 
-  private string CreateSignature(long timestamp, string method, string url, string? payload)
+  private static string CreateSignature(ExchangeCredentials credentials, long timestamp, string method, string url, string? payload)
   {
     var hashString = new StringBuilder();
 
@@ -60,7 +47,7 @@ public class BitvavoExchange : IExchange
       _ = hashString.Append(payload);
     }
 
-    using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(ApiSecret));
+    using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(credentials.ApiSecret));
 
     var inputBytes = Encoding.UTF8.GetBytes(hashString.ToString());
 
@@ -69,7 +56,7 @@ public class BitvavoExchange : IExchange
     return BitConverter.ToString(signatureBytes).Replace("-", "").ToLower();
   }
 
-  private HttpRequestMessage CreateRequestMsg(HttpMethod method, string requestPath, object? body = null)
+  private HttpRequestMessage CreateRequestMsg(ExchangeCredentials credentials, HttpMethod method, string requestPath, object? body = null)
   {
     var request = new HttpRequestMessage(method, new Uri(_httpClient.BaseAddress!, requestPath));
 
@@ -77,7 +64,7 @@ public class BitvavoExchange : IExchange
 
     if (null != body)
     {
-      payload = JsonSerializer.Serialize(body, body.GetType(), _jsonOptions);
+      payload = AppJsonSerializer.Serialize(body, body.GetType());
 
       request.Content = new StringContent(payload, Encoding.UTF8, "application/json");
     }
@@ -87,18 +74,18 @@ public class BitvavoExchange : IExchange
 
     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    var signature = CreateSignature(timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, payload);
+    var signature = CreateSignature(credentials, timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, payload);
 
-    request.Headers.Add("bitvavo-access-key", ApiKey);
+    request.Headers.Add("bitvavo-access-key", credentials.ApiKey);
     request.Headers.Add("bitvavo-access-timestamp", timestamp.ToString());
     request.Headers.Add("bitvavo-access-signature", signature);
 
     return request;
   }
 
-  public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance()
+  public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
   {
-    using var request = CreateRequestMsg(HttpMethod.Get, "balance");
+    using var request = CreateRequestMsg(credentials, HttpMethod.Get, "balance");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -106,7 +93,7 @@ public class BitvavoExchange : IExchange
     {
       try
       {
-        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+        var error = await response.Content.DeserializeAsync<JsonObject>();
 
         var errorCode = error?["errorCode"]?.ToString();
 
@@ -129,7 +116,7 @@ public class BitvavoExchange : IExchange
     List<BitvavoAllocationDto>? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<List<BitvavoAllocationDto>>();
+      result = await response.Content.DeserializeAsync<List<BitvavoAllocationDto>>();
 
       if (null == result)
         throw new Exception("Bitvavo get balance response was empty or null.");
@@ -160,7 +147,7 @@ public class BitvavoExchange : IExchange
       {
         var market = new MarketReqDto(QuoteSymbol, alloc.AllocDto.Symbol);
 
-        var price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(market);
+        var price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(credentials, market);
 
         var allocation = new Allocation(market, price, alloc.AmountQuote);
 
@@ -178,10 +165,10 @@ public class BitvavoExchange : IExchange
     return Result<Balance, ExchangeErrCodeEnum>.Success(balance);
   }
 
-  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited()
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"depositHistory?symbol={QuoteSymbol}&start=0");
+      credentials, HttpMethod.Get, $"depositHistory?symbol={QuoteSymbol}&start=0");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -189,7 +176,7 @@ public class BitvavoExchange : IExchange
     {
       try
       {
-        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+        var error = await response.Content.DeserializeAsync<JsonObject>();
 
         var errorCode = error?["errorCode"]?.ToString();
 
@@ -212,7 +199,7 @@ public class BitvavoExchange : IExchange
     JsonArray? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<JsonArray>();
+      result = await response.Content.DeserializeAsync<JsonArray>();
 
       if (null == result)
         throw new Exception("Bitvavo deposit response was empty or null.");
@@ -227,10 +214,10 @@ public class BitvavoExchange : IExchange
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
   }
 
-  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn()
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"withdrawalHistory?symbol={QuoteSymbol}&start=0");
+      credentials, HttpMethod.Get, $"withdrawalHistory?symbol={QuoteSymbol}&start=0");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -238,7 +225,7 @@ public class BitvavoExchange : IExchange
     {
       try
       {
-        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+        var error = await response.Content.DeserializeAsync<JsonObject>();
 
         var errorCode = error?["errorCode"]?.ToString();
 
@@ -261,7 +248,7 @@ public class BitvavoExchange : IExchange
     JsonArray? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<JsonArray>();
+      result = await response.Content.DeserializeAsync<JsonArray>();
 
       if (null == result)
         throw new Exception("Bitvavo withdrawal response was empty or null.");
@@ -276,10 +263,10 @@ public class BitvavoExchange : IExchange
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
   }
 
-  public async Task<MarketDataDto?> GetMarket(MarketReqDto market)
+  public async Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"markets?market={market}");
+      credentials, HttpMethod.Get, $"markets?market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -287,7 +274,7 @@ public class BitvavoExchange : IExchange
     {
       try
       {
-        var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+        var error = await response.Content.DeserializeAsync<JsonObject>();
 
         if (error?["errorCode"]?.ToString() == "205")
         {
@@ -311,7 +298,7 @@ public class BitvavoExchange : IExchange
     BitvavoMarketDataDto? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<BitvavoMarketDataDto>();
+      result = await response.Content.DeserializeAsync<BitvavoMarketDataDto>();
 
       if (null == result)
         throw new Exception("Bitvavo get market response was empty or null.");
@@ -325,10 +312,10 @@ public class BitvavoExchange : IExchange
     return ApiMapper.MapMarketData(result);
   }
 
-  public async Task<AssetDataDto?> GetAsset(string baseSymbol)
+  public async Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"assets?symbol={baseSymbol}");
+      credentials, HttpMethod.Get, $"assets?symbol={baseSymbol}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -343,7 +330,7 @@ public class BitvavoExchange : IExchange
     BitvavoAssetDataDto? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<BitvavoAssetDataDto>();
+      result = await response.Content.DeserializeAsync<BitvavoAssetDataDto>();
 
       if (null == result)
         throw new Exception("Bitvavo asset response was empty or null.");
@@ -357,10 +344,10 @@ public class BitvavoExchange : IExchange
     return ApiMapper.MapAssetData(result);
   }
 
-  public async Task<decimal> GetPrice(MarketReqDto market)
+  public async Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"ticker/price?market={market}");
+      credentials, HttpMethod.Get, $"ticker/price?market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -375,7 +362,7 @@ public class BitvavoExchange : IExchange
     BitvavoTickerPriceDto? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<BitvavoTickerPriceDto>();
+      result = await response.Content.DeserializeAsync<BitvavoTickerPriceDto>();
 
       if (null == result)
         throw new Exception("Bitvavo ticker price response was empty or null.");
@@ -389,7 +376,7 @@ public class BitvavoExchange : IExchange
     return decimal.Parse(result.Price);
   }
 
-  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API")
+  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
   {
     var newOrderDto = ApiMapper.MapOrderReq(order);
 
@@ -412,7 +399,7 @@ public class BitvavoExchange : IExchange
 
     try
     {
-      using var request = CreateRequestMsg(HttpMethod.Post, "order", newOrderDto);
+      using var request = CreateRequestMsg(credentials, HttpMethod.Post, "order", newOrderDto);
 
       using var response = await _httpClient.SendAsync(request);
 
@@ -420,7 +407,7 @@ public class BitvavoExchange : IExchange
       {
         try
         {
-          var error = await response.Content.ReadFromJsonAsync<JsonObject>();
+          var error = await response.Content.DeserializeAsync<JsonObject>();
 
           var errorCode = error?["errorCode"]?.ToString();
 
@@ -443,7 +430,7 @@ public class BitvavoExchange : IExchange
       BitvavoOrderDto? result;
       try
       {
-        result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+        result = await response.Content.DeserializeAsync<BitvavoOrderDto>();
 
         if (null == result)
           throw new Exception("Bitvavo new order response was empty or null.");
@@ -466,10 +453,10 @@ public class BitvavoExchange : IExchange
     }
   }
 
-  public async Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
+  public async Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market)
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Get, $"order?orderId={orderId}&market={market}");
+      credentials, HttpMethod.Get, $"order?orderId={orderId}&market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -484,7 +471,7 @@ public class BitvavoExchange : IExchange
     BitvavoOrderDto? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+      result = await response.Content.DeserializeAsync<BitvavoOrderDto>();
 
       if (null == result)
         throw new Exception("Bitvavo get order response was empty or null.");
@@ -498,10 +485,10 @@ public class BitvavoExchange : IExchange
     return ApiMapper.MapOrder(result);
   }
 
-  public async Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API")
+  public async Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
   {
     using var request = CreateRequestMsg(
-      HttpMethod.Delete, $"order?orderId={orderId}&market={market}");
+      credentials, HttpMethod.Delete, $"order?orderId={orderId}&market={market}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -516,7 +503,7 @@ public class BitvavoExchange : IExchange
     BitvavoOrderDto? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<BitvavoOrderDto>();
+      result = await response.Content.DeserializeAsync<BitvavoOrderDto>();
 
       if (null == result)
         throw new Exception("Bitvavo cancel order response was empty or null.");
@@ -530,14 +517,14 @@ public class BitvavoExchange : IExchange
     return ApiMapper.MapOrder(result);
   }
 
-  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API")
+  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
   {
-    using var request = CreateRequestMsg(HttpMethod.Delete, $"orders?operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
+    using var request = CreateRequestMsg(credentials, HttpMethod.Delete, $"orders?operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
 
     using var response = await _httpClient.SendAsync(request);
 
@@ -552,7 +539,7 @@ public class BitvavoExchange : IExchange
     List<BitvavoOrderDto>? result;
     try
     {
-      result = await response.Content.ReadFromJsonAsync<List<BitvavoOrderDto>>();
+      result = await response.Content.DeserializeAsync<List<BitvavoOrderDto>>();
 
       if (null == result)
         throw new Exception("Bitvavo cancel all open orders response was empty or null.");
@@ -566,7 +553,7 @@ public class BitvavoExchange : IExchange
     return ApiMapper.MapOrders(result);
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? asset = null, string source = "API")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? asset = null, string source = "API")
   {
     throw new NotImplementedException();
   }

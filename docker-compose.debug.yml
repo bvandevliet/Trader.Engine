@@ -1,0 +1,36 @@
+# Overlay consumed only by docker-compose.dcproj (via AdditionalComposeFilePaths), for
+# Visual Studio's "Docker Compose" F5 debugging. NOT loaded by a plain `docker compose`
+# invocation, so it has no effect on the production deployment in docker-compose.yml.
+#
+# Points the build at the debug-only Dockerfiles (which build from source, so Fast Mode
+# never depends on a pre-published bin/ folder) with the build context widened to the
+# repo root, since those Dockerfiles also need TraderEngine.Common/TraderEngine.Data
+# sources and the root Directory.Build.props / Directory.Packages.props.
+#
+# Fast Mode forces both app containers' entrypoint to VS's DistrolessHelper wait-stub
+# (see obj/Docker/docker-compose.vs.debug.g.yml) until the debugger attaches, so nothing
+# listens on :80 yet at container start. The base file's healthcheck (which VS's
+# generated overlay does not touch) would therefore never pass, and traderengine.web's
+# `depends_on: traderengine.api: condition: service_healthy` would block `docker compose
+# up` forever waiting on a health status that can only flip once the debugger is already
+# attached and running the real app — a deadlock. Disable the healthcheck and relax the
+# dependency to service_started for the debug session only.
+services:
+  traderengine.postgres:
+    ports:
+      - "5432:5432"
+  traderengine.api:
+    build:
+      context: .
+      dockerfile: TraderEngine.API/Dockerfile.debug
+    healthcheck:
+      disable: true
+  traderengine.web:
+    build:
+      context: .
+      dockerfile: TraderEngine.Web/Dockerfile.debug
+    depends_on:
+      traderengine.api:
+        condition: service_started
+    healthcheck:
+      disable: true

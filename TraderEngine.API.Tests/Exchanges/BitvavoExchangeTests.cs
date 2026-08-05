@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 
 namespace TraderEngine.API.Tests.Exchanges;
 
@@ -20,7 +21,9 @@ public class BitvavoExchangeTests
 
     var bitvavo = new BitvavoExchange(logger, httpClient);
 
-    var result = await bitvavo.NewOrder(new()
+    var credentials = new ExchangeCredentials("key", "secret");
+
+    var result = await bitvavo.NewOrder(credentials, new()
     {
       Market = new("EUR", "BTC"),
       Side = OrderSide.Buy,

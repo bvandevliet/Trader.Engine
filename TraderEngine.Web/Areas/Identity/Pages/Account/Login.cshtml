@@ -1,0 +1,48 @@
+@page
+@model LoginModel
+
+@{
+    ViewData["Title"] = "Log in";
+}
+
+<div class="row justify-content-center align-items-center flex-grow-1">
+    <div class="col-md-7 col-lg-5 col-xl-4">
+        <section class="card">
+            <form id="account" method="post" class="card-body">
+                <div class="text-center">
+                    <object class="brand-logo" type="image/svg+xml" data="~/images/favicon.svg" asp-append-version="true" width="48" height="48" aria-label="Trader"></object>
+                </div>
+                <hr />
+                <div asp-validation-summary="ModelOnly" class="text-danger" role="alert"></div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.UserNameOrEmail" class="form-control" autocomplete="username" aria-required="true" placeholder="username" />
+                    <label asp-for="Input.UserNameOrEmail" class="form-label">Username or email</label>
+                    <span asp-validation-for="Input.UserNameOrEmail" class="text-danger"></span>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.Password" class="form-control" autocomplete="current-password" aria-required="true" placeholder="password" />
+                    <label asp-for="Input.Password" class="form-label">Password</label>
+                    <span asp-validation-for="Input.Password" class="text-danger"></span>
+                </div>
+                <div class="checkbox mb-3">
+                    <label asp-for="Input.RememberMe" class="form-label mb-0">
+                        <input class="form-check-input" asp-for="Input.RememberMe" />
+                        @Html.DisplayNameFor(m => m.Input.RememberMe)
+                    </label>
+                </div>
+                <div>
+                    <button id="login-submit" type="submit" class="w-100 btn btn-lg btn-primary">Log in</button>
+                </div>
+                <div>
+                    <p>
+                        <a id="forgot-password" asp-page="./ForgotPassword">Restore password</a>
+                    </p>
+                </div>
+                <hr />
+                <small>
+                    Trader is a platform for crypto portfolio management and automated rebalancing. You can only get an account by invitation.
+                </small>
+            </form>
+        </section>
+    </div>
+</div>

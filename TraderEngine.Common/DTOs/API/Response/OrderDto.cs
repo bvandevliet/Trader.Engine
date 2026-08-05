@@ -1,4 +1,3 @@
-using System.Text.Json;
 using System.Text.Json.Serialization;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
@@ -58,9 +57,4 @@ public class OrderDto : OrderReqDto
 
   [JsonIgnore]
   public bool HasEnded => Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;
-
-  public override string ToString()
-  {
-    return JsonSerializer.Serialize(this, new JsonSerializerOptions() { WriteIndented = true });
-  }
 }

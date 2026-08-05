@@ -1,0 +1,37 @@
+{
+  "name": "traderengine.web",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "up-all": "pnpm up --recursive",
+    "copy:fonts": "shx mkdir -p ./wwwroot/css/fonts && shx cp -r ./node_modules/bootstrap-icons/font/fonts/. ./wwwroot/css/fonts/",
+    "build:js": "esbuild ./src/js/*.ts --outdir=./wwwroot/js --bundle --sourcemap",
+    "watch:js": "esbuild ./src/js/*.ts --outdir=./wwwroot/js --bundle --sourcemap --watch",
+    "publish:js": "esbuild ./src/js/*.ts --outdir=./wwwroot/js --bundle --minify --drop:console",
+    "build:css": "sass ./src/scss/site.scss:./wwwroot/css/site.css --source-map --embed-sources",
+    "watch:css": "sass ./src/scss/site.scss:./wwwroot/css/site.css --source-map --embed-sources --watch",
+    "publish:css": "sass ./src/scss/site.scss:./wwwroot/css/site.css --style=compressed",
+    "build": "pnpm run copy:fonts && tsc --noEmit && pnpm run build:js && pnpm run build:css",
+    "watch": "concurrently -n js,css -c green,blue \"pnpm run watch:js\" \"pnpm run watch:css\"",
+    "publish": "pnpm run copy:fonts && tsc --noEmit && pnpm run publish:js && pnpm run publish:css",
+    "clean": "shx rm -rf ./wwwroot/js/*.js ./wwwroot/js/*.map ./wwwroot/css/*.css ./wwwroot/css/*.map ./wwwroot/css/fonts"
+  },
+  "devDependencies": {
+    "@eslint/css": "^1.4.0",
+    "@eslint/js": "^10.0.1",
+    "@eslint/json": "^2.0.1",
+    "@eslint/markdown": "^8.0.3",
+    "concurrently": "^10.0.3",
+    "esbuild": "^0.28.1",
+    "eslint": "^10.7.0",
+    "globals": "^17.7.0",
+    "sass": "^1.101.6",
+    "shx": "^0.4.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.65.0"
+  },
+  "dependencies": {
+    "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1"
+  }
+}

@@ -10,7 +10,7 @@ namespace TraderEngine.Common.Tests.Exchanges;
 /// <summary>
 /// A <see cref="MockExchange"/> that otherwise behaves normally (real balance mutation, so a
 /// batch of several orders can be exercised together) but lets individual orders be scripted to
-/// fail in specific ways, to test that <c>RebalanceExtensions</c> degrades a single failing
+/// fail in specific ways, to test that <c>RebalancingService</c> degrades a single failing
 /// order gracefully instead of losing the whole batch. Uses the same base-class-hiding pattern
 /// as the production <see cref="SimExchange"/>.
 /// </summary>
@@ -75,10 +75,10 @@ internal sealed class FailureInjectingExchange : MockExchange, IExchange
       }));
   }
 
-  public new Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "Mock")
+  public new Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "Mock")
   {
     return _newOrderOverrides.TryGetValue(order.Market.BaseSymbol, out var overrideFn)
       ? overrideFn()
-      : base.NewOrder(order, source);
+      : base.NewOrder(credentials, order, source);
   }
 }

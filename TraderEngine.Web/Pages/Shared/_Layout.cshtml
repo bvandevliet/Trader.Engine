@@ -1,0 +1,103 @@
+@using System.Reflection
+@using TraderEngine.Data.Constants
+@inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="csrf-token" content="@Antiforgery.GetAndStoreTokens(Context).RequestToken" />
+    <title>@ViewData["Title"] • Trader</title>
+    <script src="~/js/theme.js" asp-append-version="true"></script>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <!-- https://realfavicongenerator.net/ -->
+    <link rel="icon" type="image/png" href="~/images/favicon-96x96.png" sizes="96x96" asp-append-version="true" />
+    <link id="favicon-svg" rel="icon" type="image/svg+xml" href="~/images/favicon-light.svg" asp-append-version="true" />
+    <link rel="shortcut icon" href="~/images/favicon.ico" asp-append-version="true" />
+    <link rel="manifest" href="~/images/site.webmanifest" asp-append-version="true" />
+</head>
+<body>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <header>
+            <nav class="navbar navbar-expand-sm" role="navigation" aria-label="Main navigation">
+                <div class="container">
+                    <a class="navbar-brand" asp-area="" asp-page="/Dashboard">
+                        <object class="brand-logo" type="image/svg+xml" data="~/images/favicon.svg" asp-append-version="true" width="32" height="32" aria-label="Trader"></object>
+                    </a>
+                    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+                            aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                    <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
+                        <ul class="navbar-nav flex-grow-1">
+                            @if (User.Identity?.IsAuthenticated == true)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-page="/Dashboard">Dashboard</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-page="/Config">Allocation Config</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-page="/ExchangeApiKeys">Exchange API Keys</a>
+                                </li>
+                            }
+                            @if (User.IsInRole(Roles.Admin))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link" asp-area="" asp-page="/Admin/Users">Users</a>
+                                </li>
+                            }
+                        </ul>
+                        <ul class="navbar-nav">
+                            <li class="nav-item">
+                                <button type="button" class="btn btn-link nav-link" id="bd-theme" aria-label="Toggle theme">
+                                    <i class="bi bi-circle-half theme-icon-active"></i>
+                                </button>
+                            </li>
+                        </ul>
+                        <partial name="_LoginPartial" />
+                    </div>
+                </div>
+            </nav>
+        </header>
+    }
+
+    <div class="container py-3">
+        @if (TempData["Notice"] is string notice)
+        {
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
+                @notice
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        @if (TempData["Error"] is string error)
+        {
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                @error
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        }
+        <main role="main" class="pb-3">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="border-top footer text-muted">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center gap-2">
+                <span><a asp-area="" asp-page="/Dashboard">Trader</a> &copy; @DateTime.Now.Year</span>
+                <span>v@(AppVersion)</span>
+            </div>
+        </div>
+    </footer>
+    <script src="~/js/site.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
+@functions {
+    private static readonly string? AppVersion = Assembly.GetEntryAssembly()?
+        .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+}

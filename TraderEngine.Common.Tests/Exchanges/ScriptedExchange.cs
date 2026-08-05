@@ -28,10 +28,6 @@ internal sealed class ScriptedExchange : IExchange
 
   public decimal TakerFee { get; init; } = 0;
 
-  public string ApiKey { get; set; } = string.Empty;
-
-  public string ApiSecret { get; set; } = string.Empty;
-
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];
 
   /// <summary>
@@ -79,7 +75,7 @@ internal sealed class ScriptedExchange : IExchange
     _getOrderResponses.Enqueue(order);
   }
 
-  public Task<MarketDataDto?> GetMarket(MarketReqDto market)
+  public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
   {
     GetMarketCalls.Add(market.BaseSymbol);
 
@@ -88,14 +84,14 @@ internal sealed class ScriptedExchange : IExchange
       : null);
   }
 
-  public Task<OrderDto?> GetOrder(string orderId, MarketReqDto market)
+  public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market)
   {
     GetOrderCalls.Add(orderId);
 
     return Task.FromResult(_getOrderResponses.Count > 0 ? _getOrderResponses.Dequeue() : null);
   }
 
-  public Task<OrderDto?> CancelOrder(string orderId, MarketReqDto market, string source = "API")
+  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
   {
     CancelOrderCalls.Add((orderId, market));
 
@@ -105,47 +101,47 @@ internal sealed class ScriptedExchange : IExchange
     return Task.FromResult(CancelOrderResponse);
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(MarketReqDto? market = null, string source = "API")
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
   {
     return Task.FromResult(Enumerable.Empty<OrderDto>())!;
   }
 
-  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance()
+  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited()
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn()
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials)
   {
     throw new NotImplementedException();
   }
 
-  public Task<AssetDataDto?> GetAsset(string baseSymbol)
+  public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
     throw new NotImplementedException();
   }
 
-  public Task<decimal> GetPrice(MarketReqDto market)
+  public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(OrderReqDto order, string source = "API")
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
   {
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>?> GetOpenOrders(MarketReqDto? market = null)
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
   {
     throw new NotImplementedException();
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(string? baseSymbol = null, string source = "API")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API")
   {
     throw new NotImplementedException();
   }

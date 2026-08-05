@@ -1,0 +1,39 @@
+# Debug-only Dockerfile used by docker-compose.dcproj (Visual Studio Docker Compose
+# debugging / Fast Mode). Builds the app from source inside the image, so `docker
+# compose up` never depends on a pre-published bin/ folder on the host.
+#
+# The production image built by CI (Actions.Shared) uses the sibling `Dockerfile`,
+# which is left untouched by this file.
+
+FROM mcr.microsoft.com/dotnet/aspnet:10.0-alpine AS base
+EXPOSE 80
+
+RUN apk add -U --no-cache tzdata wget
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+ARG BUILD_CONFIGURATION=Debug
+WORKDIR /src
+COPY ["Directory.Build.props", "Directory.Packages.props", "./"]
+COPY ["TraderEngine.API/TraderEngine.API.csproj", "TraderEngine.API/"]
+COPY ["TraderEngine.Common/TraderEngine.Common.csproj", "TraderEngine.Common/"]
+COPY ["TraderEngine.Data/TraderEngine.Data.csproj", "TraderEngine.Data/"]
+RUN dotnet restore "TraderEngine.API/TraderEngine.API.csproj"
+COPY . .
+WORKDIR "/src/TraderEngine.API"
+RUN dotnet build "TraderEngine.API.csproj" -c $BUILD_CONFIGURATION -o /app/build
+
+FROM build AS publish
+ARG BUILD_CONFIGURATION=Debug
+RUN dotnet publish "TraderEngine.API.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+USER appuser
+
+ENV ASPNETCORE_ENVIRONMENT=Development
+ENTRYPOINT ["dotnet", "TraderEngine.API.dll"]

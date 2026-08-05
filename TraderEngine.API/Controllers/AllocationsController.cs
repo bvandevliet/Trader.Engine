@@ -1,14 +1,16 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Mappers;
 
 namespace TraderEngine.API.Controllers;
 
-[ApiController, Route("api/[controller]")]
+[ApiController, Route("api/[controller]"), EnableRateLimiting("trading")]
 public class AllocationsController : ControllerBase
 {
   // TODO: Put quote symbol for market cap records in appsettings.
@@ -38,10 +40,9 @@ public class AllocationsController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    exchange.ApiKey = apiCredReqDto.ApiKey;
-    exchange.ApiSecret = apiCredReqDto.ApiSecret;
+    var credentials = new ExchangeCredentials(apiCredReqDto.ApiKey, apiCredReqDto.ApiSecret);
 
-    var balanceResult = await exchange.GetBalance();
+    var balanceResult = await exchange.GetBalance(credentials);
 
     return balanceResult.ErrorCode switch
     {

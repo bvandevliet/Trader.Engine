@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 
 namespace TraderEngine.API.Controllers;
 
@@ -29,10 +30,9 @@ public class AccountController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    exchange.ApiKey = apiCredentials.ApiKey;
-    exchange.ApiSecret = apiCredentials.ApiSecret;
+    var credentials = new ExchangeCredentials(apiCredentials.ApiKey, apiCredentials.ApiSecret);
 
-    var totalDepositedResult = await exchange.TotalDeposited();
+    var totalDepositedResult = await exchange.TotalDeposited(credentials);
 
     return totalDepositedResult.ErrorCode switch
     {
@@ -52,10 +52,9 @@ public class AccountController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    exchange.ApiKey = apiCredentials.ApiKey;
-    exchange.ApiSecret = apiCredentials.ApiSecret;
+    var credentials = new ExchangeCredentials(apiCredentials.ApiKey, apiCredentials.ApiSecret);
 
-    var totalWithdrawnResult = await exchange.TotalWithdrawn();
+    var totalWithdrawnResult = await exchange.TotalWithdrawn(credentials);
 
     return totalWithdrawnResult.ErrorCode switch
     {

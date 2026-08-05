@@ -1,64 +1,88 @@
-version: '3.4'
-
+# Usage:  docker compose --env-file .env.example up -d
 services:
-
-  traderengine.mariadb:
-    container_name: traderengine.mariadb
-    image: mariadb:latest
-    # command: '--default-authentication-plugin=mysql_native_password'
-    volumes:
-      - ./.volumes/db-data:/var/lib/mysql
+  traderengine.postgres:
+    container_name: traderengine.postgres
+    image: timescale/timescaledb:latest-pg18
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 5s
+    volumes:
+      - ./.volumes/postgres-data:/var/lib/postgresql
     environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - MYSQL_USER=${MYSQL_USERNAME}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?}
   traderengine.api:
     container_name: traderengine.api
     image: ${DOCKER_REGISTRY-}traderengine.api:${TAG:-latest}
-    restart: unless-stopped
     build:
-      context: .
-      dockerfile: TraderEngine.API/Dockerfile
-    tty: true
-    environment:
-      - TZ=Europe/Amsterdam
-      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};Pooling=true;MinPoolSize=0;MaxPoolSize=8;
-
-  traderengine.cli:
-    container_name: traderengine.cli
-    image: ${DOCKER_REGISTRY-}traderengine.cli:${TAG:-latest}
-    restart: unless-stopped
-    build:
-      context: .
-      dockerfile: TraderEngine.CLI/Dockerfile
+      context: ./TraderEngine.API
+      dockerfile: Dockerfile
     depends_on:
-      - traderengine.api
-      - traderengine.mariadb
-    tty: true
+      traderengine.postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 25
+      start_period: 5s
+    volumes:
+      - ./.volumes/secrets:/app/secrets
     environment:
       - TZ=Europe/Amsterdam
-      - Addresses__TRADER_API=http://traderengine.api
-      - Addresses__TRADER_CRYPTO=http://traderengine.cryptography
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - Kestrel__Endpoints__Http__Url=http://*:80
+      - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD:?}
+      - DataProtection__KeyRingPath=/app/secrets
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:?}
+      - AdminSeed__UserName=${ADMIN_USERNAME}
+      - AdminSeed__Email=${ADMIN_EMAIL}
+      - AdminSeed__Password=${ADMIN_PASSWORD}
       - CoinMarketCap__API_KEY=${CMC_API_KEY}
-      - ConnectionStrings__MySql=server=traderengine.mariadb;port=3306;database=${MYSQL_DATABASE};uid=${MYSQL_USERNAME};pwd=${MYSQL_PASSWORD};Pooling=true;MinPoolSize=0;MaxPoolSize=8;
-      - ConnectionStrings__CMS=server=traderengine.mariadb;port=3306;database=${CMS_DATABASE};uid=${CMS_USERNAME};pwd=${CMS_PASSWORD};Pooling=true;MinPoolSize=0;MaxPoolSize=8;
-      - CmsDbSettings__TablePrefix=${CMS_TABLE_PREFIX}
       - EmailSettings__SmtpServer=${SMTP_SERVER}
       - EmailSettings__SmtpPort=${SMTP_PORT}
       - EmailSettings__SmtpUsername=${SMTP_USERNAME}
       - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
       - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
-
-  traderengine.cryptography:
-    container_name: traderengine.cryptography
-    image: bvandevliet/cryptography:${TAG:-latest}
+      - EmailSettings__WebsiteUrl=${WEBSITE_URL}
+  traderengine.web:
+    container_name: traderengine.web
+    image: ${DOCKER_REGISTRY-}traderengine.web:${TAG:-latest}
+    build:
+      context: ./TraderEngine.Web
+      dockerfile: Dockerfile
+    depends_on:
+      traderengine.postgres:
+        condition: service_healthy
+      traderengine.api:
+        condition: service_healthy
     restart: unless-stopped
-    tty: true
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 25
+      start_period: 5s
     volumes:
       - ./.volumes/secrets:/app/secrets
     environment:
       - TZ=Europe/Amsterdam
-      - AllowedHosts=*
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - Kestrel__Endpoints__Http__Url=http://*:80
+      - ConnectionStrings__Postgres=Host=traderengine.postgres;Port=5432;Database=${POSTGRES_DATABASE};Username=${POSTGRES_USERNAME};Password=${POSTGRES_PASSWORD:?}
+      - DataProtection__KeyRingPath=/app/secrets
+      - Jwt__SigningKey=${JWT_SIGNING_KEY:?}
+      - TraderEngineApi__BaseUrl=http://traderengine.api/
+      - EmailSettings__SmtpServer=${SMTP_SERVER}
+      - EmailSettings__SmtpPort=${SMTP_PORT}
+      - EmailSettings__SmtpUsername=${SMTP_USERNAME}
+      - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
+      - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
+    ports:
+      - "8081:80"

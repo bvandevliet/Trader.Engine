@@ -4,28 +4,27 @@ using NSubstitute;
 using TraderEngine.API.Exchanges;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.Enums;
+using TraderEngine.Common.Exchanges;
 
 namespace TraderEngine.API.Tests.Exchanges;
 
 /// <summary>
 /// Covers <see cref="BitvavoExchange.CancelOrder"/>, which previously threw
 /// <see cref="NotImplementedException"/> unconditionally. That exception was swallowed by
-/// <c>RebalanceExtensions.VerifyOrderEnded</c>'s catch block, meaning an order that never filled
+/// <c>RebalancingService.VerifyOrderEnded</c>'s catch block, meaning an order that never filled
 /// within its polling budget could never actually be cancelled on the live exchange — a silent,
 /// live gap rather than a hypothetical one.
 /// </summary>
 [TestClass]
 public class BitvavoExchangeCancelOrderTests
 {
+  private static readonly ExchangeCredentials _credentials = new("key", "secret");
+
   private static BitvavoExchange NewExchange(FakeHttpMessageHandler handler)
   {
     var httpClient = new HttpClient(handler) { BaseAddress = new("https://api.bitvavo.com/v2/") };
 
-    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient)
-    {
-      ApiKey = "key",
-      ApiSecret = "secret",
-    };
+    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient);
   }
 
   [TestMethod]
@@ -38,7 +37,7 @@ public class BitvavoExchangeCancelOrderTests
     var exchange = NewExchange(handler);
 
     // Act
-    var result = await exchange.CancelOrder("abc-123", new MarketReqDto("EUR", "BTC"));
+    var result = await exchange.CancelOrder(_credentials, "abc-123", new MarketReqDto("EUR", "BTC"));
 
     // Assert
     Assert.IsNotNull(result);
@@ -61,7 +60,7 @@ public class BitvavoExchangeCancelOrderTests
     var exchange = NewExchange(handler);
 
     // Act
-    var result = await exchange.CancelOrder("does-not-exist", new MarketReqDto("EUR", "BTC"));
+    var result = await exchange.CancelOrder(_credentials, "does-not-exist", new MarketReqDto("EUR", "BTC"));
 
     // Assert
     Assert.IsNull(result);

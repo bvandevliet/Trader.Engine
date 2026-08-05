@@ -7,7 +7,7 @@ namespace TraderEngine.Common.Tests.Exchanges;
 /// <summary>
 /// A <see cref="MockExchange"/> whose <see cref="GetAsset"/> reports no known decimals
 /// precision (<c>Decimals = null</c>), unlike <see cref="MockExchange"/> which always reports
-/// 8. Used to exercise the dust-liquidation branch in <c>RebalanceExtensions</c> that falls
+/// 8. Used to exercise the dust-liquidation branch in <c>RebalancingService</c> that falls
 /// back to the unrounded allocation amount when precision is unknown. Uses the same
 /// base-class-hiding pattern as the production <see cref="SimExchange"/>.
 /// </summary>
@@ -19,7 +19,7 @@ internal sealed class NullDecimalsExchange : MockExchange, IExchange
   {
   }
 
-  public new Task<AssetDataDto?> GetAsset(string baseSymbol)
+  public new Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
     return Task.FromResult<AssetDataDto?>(new AssetDataDto
     {
