@@ -24,7 +24,7 @@ public class BitvavoExchangeCancelOrderTests
   {
     var httpClient = new HttpClient(handler) { BaseAddress = new("https://api.bitvavo.com/v2/") };
 
-    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient);
+    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient, new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>()));
   }
 
   [TestMethod]

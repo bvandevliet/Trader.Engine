@@ -236,16 +236,31 @@ public class RebalancingService : IRebalancingService
 
   public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60)
   {
-    while (
-      checks > 0 &&
-      order.Id != null &&
-      !order.HasEnded)
+    if (exchange is IExchangeOrderNotifications pushExchange && order.Id != null && !order.HasEnded)
     {
-      await Task.Delay(1000);
+      // Wait for a pushed status update instead of polling GetOrder every second. On timeout or
+      // any push failure, fall back to a single authoritative REST check rather than re-polling
+      // for another full budget of `checks` seconds.
+      order = await pushExchange.WaitForOrderEndedAsync(credentials, order, TimeSpan.FromSeconds(checks)) is { } pushed
+        ? pushed
+        : await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
 
-      order = await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
+      // Reuse `checks == 0` below as the "still open" signal, matching the polling path's semantics.
+      checks = order.HasEnded ? 1 : 0;
+    }
+    else
+    {
+      while (
+        checks > 0 &&
+        order.Id != null &&
+        !order.HasEnded)
+      {
+        await Task.Delay(1000);
 
-      checks--;
+        order = await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
+
+        checks--;
+      }
     }
 
     if (cancel && checks == 0)

@@ -144,6 +144,7 @@ public class Program
     builder.Services.AddHostedService<AutomationRebalancingService>();
 
     builder.Services.AddHttpClient<IExchange>().ApplyDefaultPoolAndPolicyConfig();
+    builder.Services.AddSingleton<BitvavoWebSocketConnectionPool>();
     foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 
