@@ -45,7 +45,13 @@ public interface IRebalancingService
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="credentials"></param>
-  /// <param name="config"></param>
+  /// <param name="config">
+  /// <see cref="ConfigReqDto.UseLimitOrders"/> is honored for both real execution and
+  /// preview/dry-run calls (against a <c>MockExchange</c>/<c>SimExchange</c>) alike: the mock
+  /// resolves a limit order's price from the already-cached allocation price at zero extra cost
+  /// and fills it instantly, so a preview's estimated fees correctly reflect the maker rate
+  /// without ever needing a real order book lookup.
+  /// </param>
   /// <param name="newAbsAllocs"></param>
   /// <param name="curBalance"></param>
   /// <param name="source"></param>

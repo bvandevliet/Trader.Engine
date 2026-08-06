@@ -31,6 +31,11 @@ public interface IExchange
 
   public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market);
 
+  /// <summary>
+  /// Get the current best bid/ask prices for <paramref name="market"/>, used to price limit orders.
+  /// </summary>
+  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market);
+
   public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API");
 
   public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market);

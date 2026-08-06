@@ -91,6 +91,19 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
+  /// <summary>
+  /// No live order book to query against — reports the already-known cached allocation price as
+  /// both bid and ask (zero-spread approximation), so a simulated <see cref="OrderType.Limit"/>
+  /// order can still be priced without spending a real API call on a placement that will never
+  /// actually rest (fills are always simulated as instant/complete, see <see cref="NewOrder"/>).
+  /// </summary>
+  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    var price = _curBalance.GetAllocation(market.BaseSymbol)?.Price ?? 0;
+
+    return Task.FromResult(price <= 0 ? null : new BestBidAskDto { Bid = price, Ask = price });
+  }
+
   public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "Mock")
   {
     var quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
@@ -103,13 +116,20 @@ public class MockExchange : IExchange
     {
       Market = order.Market,
       Side = order.Side,
+      Type = order.Type,
       Status = OrderStatus.Filled,
       Price = order.Price,
       Amount = order.Amount,
       AmountQuote = order.AmountQuote,
     };
 
-    var price = curAlloc?.Price ?? 0;
+    // Prefer the order's own (limit) price over the cached allocation price, so the
+    // Amount<->AmountQuote conversion round-trips exactly through whichever price was actually
+    // used to size the order in the first place.
+    var price = order.Price ?? curAlloc?.Price ?? 0;
+
+    // A resting limit order earns the maker rate; a market order always takes.
+    var feeRate = order.Type == OrderType.Limit ? MakerFee : TakerFee;
 
     decimal amountQuote;
 
@@ -118,7 +138,7 @@ public class MockExchange : IExchange
       amountQuote = order.AmountQuote ?? (decimal)(order.Amount! * price);
 
       // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
-      newAlloc.AmountQuote += amountQuote * (1 - TakerFee);
+      newAlloc.AmountQuote += amountQuote * (1 - feeRate);
 
       quoteAlloc.AmountQuote -= amountQuote;
 
@@ -131,14 +151,14 @@ public class MockExchange : IExchange
       newAlloc.AmountQuote -= amountQuote;
 
       // TODO: Fee multiplier causes weird artifacts in expected unit test results !!
-      quoteAlloc.AmountQuote += amountQuote * (1 - TakerFee);
+      quoteAlloc.AmountQuote += amountQuote * (1 - feeRate);
 
       returnOrder.Amount = order.Amount;
     }
 
     returnOrder.AmountFilled = price == 0 ? 0 : amountQuote / price;
     returnOrder.AmountQuoteFilled = amountQuote;
-    returnOrder.FeePaid = amountQuote * TakerFee;
+    returnOrder.FeePaid = amountQuote * feeRate;
 
     if (null == curAlloc)
       _ = (_curBalance?.TryAddAllocation(newAlloc));

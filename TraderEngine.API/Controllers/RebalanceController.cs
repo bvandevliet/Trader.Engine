@@ -78,7 +78,10 @@ public class RebalanceController : ControllerBase
     // Await for the task to complete.
     var absAllocs = await absAllocsTask;
 
-    // Simulate rebalance.
+    // Simulate rebalance. SimExchange/MockExchange resolve a Limit order's price from the cached
+    // allocation price (no real order book lookup) and fill it instantly at the maker rate, so
+    // UseLimitOrders is honored here too — the preview's estimated fees stay accurate without
+    // ever touching a real API for a placement that will never actually rest.
     var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, absAllocs, balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.

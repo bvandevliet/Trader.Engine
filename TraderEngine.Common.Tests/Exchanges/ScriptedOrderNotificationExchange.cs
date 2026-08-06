@@ -63,6 +63,8 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
 
   public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market) => _inner.GetPrice(credentials, market);
 
+  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market) => _inner.GetBestBidAsk(credentials, market);
+
   public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API") => _inner.NewOrder(credentials, order, source);
 
   public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market) => _inner.GetOrder(credentials, orderId, market);

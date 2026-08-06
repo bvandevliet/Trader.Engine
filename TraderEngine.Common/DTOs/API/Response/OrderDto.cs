@@ -44,6 +44,15 @@ public class OrderDto : OrderReqDto
   public decimal FeePaid { get; set; }
 
   /// <summary>
+  /// True when this order was a resting limit order that didn't (fully) fill in time and was
+  /// cancelled and replaced by a separate market order for the remaining amount. The replacement
+  /// order appears as its own entry in the same result array. Consumers that need "one outcome
+  /// per planned trade" should filter these out; this order's own fields still reflect whatever
+  /// portion of it did fill.
+  /// </summary>
+  public bool IsSuperseded { get; set; }
+
+  /// <summary>
   /// Timestamp this order was created.
   /// </summary>
   // TODO: MAKE THIS WORK, EVEN THOUGH WE DON'T NEED IT.

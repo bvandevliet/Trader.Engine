@@ -168,7 +168,10 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // Await for the task to complete.
         var absAllocs = await absAllocsTask;
 
-        // Simulate rebalance.
+        // Simulate rebalance. SimExchange/MockExchange resolve a Limit order's price from the
+        // cached allocation price (no real order book lookup) and fill it instantly at the maker
+        // rate, so UseLimitOrders is honored here too — the dry-run's estimated fees stay accurate
+        // without ever touching a real API for a placement that will never actually rest.
         var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, absAllocs, balance, "automation");
 
         var newBalanceDto = CommonMapper.MapBalance(balance);
@@ -237,7 +240,9 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           return;
         }
 
-        // Execute and return resulting rebalance DTO.
+        // Execute and return resulting rebalance DTO. simulated.Orders already carries the right
+        // Type per order (MockExchange preserves it on the simulated result), so real execution
+        // just re-quotes each Limit order against the real order book and re-verifies from there.
         var ordersExecuted = await _rebalancingService.Rebalance(exchange, credentials, simulated.Orders, "automation");
 
         // If no orders were placed, return.
@@ -249,8 +254,14 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           return;
         }
 
+        // A limit order that timed out and fell back to a market order for the remainder appears
+        // as two entries: the original (superseded) limit leg plus the market fallback leg. Only
+        // the non-superseded leg represents the final outcome of a planned trade, so the checks
+        // below ignore superseded entries.
+        var finalOrders = ordersExecuted.Where(order => !order.IsSuperseded).ToArray();
+
         // If any of the orders have not been filled, return.
-        if (ordersExecuted.Any(order => order.Status != OrderStatus.Filled))
+        if (finalOrders.Any(order => order.Status != OrderStatus.Filled))
         {
           _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
@@ -267,7 +278,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // If not the same amount of orders were executed and filled as simulated, return.
-        if (ordersExecuted.Length != simulated.Orders.Length)
+        if (finalOrders.Length != simulated.Orders.Length)
         {
           _logger.LogError(
             "Not all simulated orders were executed for user '{userId}'.", userConfig.Key);

@@ -95,6 +95,11 @@ public class AutomationOrchestratorConcurrencyTests
       throw new NotSupportedException();
     }
 
+    public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+    {
+      throw new NotSupportedException();
+    }
+
     public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
     {
       throw new NotSupportedException();

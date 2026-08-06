@@ -72,6 +72,43 @@ public class RebalancingServiceTests
   }
 
   [TestMethod]
+  public async Task Rebalance_UseLimitOrdersEnabled_SimulatesAsLimitOrders_AtMakerFee()
+  {
+    // Arrange
+    // RebalancingService itself has no notion of "simulation" — it always honors
+    // ConfigReqDto.UseLimitOrders as given. MockExchange (used for both real dry-run previews and
+    // this test) resolves a Limit order's price from the cached allocation price rather than a
+    // real order book, and fills it instantly — so the preview stays accurate (maker fee, correct
+    // Type on the result) without ever touching a real exchange for a placement that will never
+    // actually rest.
+    var curBalance = new Balance("EUR");
+    curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 0));
+    curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 300));
+    curBalance.TryAddAllocation(new Allocation(_eth, price: 1, amount: 100));
+
+    var exchange = NewExchange(curBalance, minOrderSize: 1, makerFee: 0.0015m, takerFee: 0.0025m);
+
+    var targets = new[]
+    {
+      new AbsAllocReqDto(_btc, .5m),
+      new AbsAllocReqDto(_eth, .5m),
+    };
+
+    var config = new ConfigReqDto { UseLimitOrders = true };
+
+    // Act
+    var orders = await _service.Rebalance(exchange, _credentials, config, targets, curBalance);
+
+    // Assert
+    Assert.AreEqual(2, orders.Length);
+    Assert.IsTrue(orders.All(order => order.Type == OrderType.Limit));
+    Assert.IsTrue(orders.All(order => !order.IsSuperseded)); // MockExchange always fills outright.
+
+    // Sell of 100 BTC (@1) at the 0.15% maker rate, not the 0.25% taker rate.
+    Assert.AreEqual(100m * 0.0015m, orders[0].FeePaid);
+  }
+
+  [TestMethod]
   public async Task Rebalance_AlreadyAtTarget_ProducesNoOrders()
   {
     // Arrange

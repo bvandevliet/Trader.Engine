@@ -364,6 +364,38 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return decimal.Parse(result.Price);
   }
 
+  public async Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    using var request = CreateRequestMsg(
+      credentials, HttpMethod.Get, $"ticker/book?market={market}");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("Failed to get ticker book from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    BitvavoTickerBookDto? result;
+    try
+    {
+      result = await response.Content.DeserializeAsync<BitvavoTickerBookDto>();
+
+      if (null == result)
+        throw new Exception("Bitvavo ticker book response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker book response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
+
+    return ApiMapper.MapTickerBook(result);
+  }
+
   public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
   {
     var newOrderDto = ApiMapper.MapOrderReq(order);

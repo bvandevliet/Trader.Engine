@@ -30,6 +30,8 @@ internal sealed class ScriptedExchange : IExchange
 
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];
 
+  private readonly Dictionary<string, BestBidAskDto> _bestBidAsks = [];
+
   /// <summary>
   /// Base symbols for which <see cref="GetMarket"/> was called, in call order (including repeats).
   /// </summary>
@@ -65,6 +67,21 @@ internal sealed class ScriptedExchange : IExchange
   {
     _marketStatuses[baseSymbol] = status;
   }
+
+  /// <summary>
+  /// Configures <see cref="GetBestBidAsk"/> to report <paramref name="bid"/>/<paramref name="ask"/>
+  /// for <paramref name="baseSymbol"/>. A symbol with no configured book causes
+  /// <see cref="GetBestBidAsk"/> to return <c>null</c>, simulating unavailable book data.
+  /// </summary>
+  public void SetBestBidAsk(string baseSymbol, decimal bid, decimal ask)
+  {
+    _bestBidAsks[baseSymbol] = new BestBidAskDto { Bid = bid, Ask = ask };
+  }
+
+  /// <summary>
+  /// Base symbols for which <see cref="GetBestBidAsk"/> was called, in call order (including repeats).
+  /// </summary>
+  public List<string> GetBestBidAskCalls { get; } = [];
 
   /// <summary>
   /// Enqueues the <see cref="OrderDto"/> to be returned by the next <see cref="GetOrder"/> call.
@@ -173,6 +190,13 @@ internal sealed class ScriptedExchange : IExchange
   public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
   {
     throw new NotImplementedException();
+  }
+
+  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    GetBestBidAskCalls.Add(market.BaseSymbol);
+
+    return Task.FromResult(_bestBidAsks.TryGetValue(market.BaseSymbol, out var bidAsk) ? bidAsk : null);
   }
 
   public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
