@@ -17,4 +17,15 @@ public interface IExchangeOrderNotifications
   /// </summary>
   /// <returns>The updated, ended order; or null if no confirmed terminal state was observed before <paramref name="timeout"/>.</returns>
   Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default);
+
+  /// <summary>
+  /// Begins a session that keeps a push-notification connection open for the duration of one
+  /// <see cref="Services.RebalancingService.Rebalance(IExchange, ExchangeCredentials, DTOs.API.Request.ConfigReqDto, IEnumerable{DTOs.API.Request.AbsAllocReqDto}, Models.Balance?, string)"/>
+  /// call, so back-to-back <see cref="WaitForOrderEndedAsync"/> calls for multiple orders in that
+  /// run share one connection instead of each independently acquiring one. Disposing the returned
+  /// session releases the connection for reuse or teardown; never throws, since a session that
+  /// fails to establish still lets callers fall through to <see cref="WaitForOrderEndedAsync"/>'s
+  /// own per-order REST fallback.
+  /// </summary>
+  Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default);
 }

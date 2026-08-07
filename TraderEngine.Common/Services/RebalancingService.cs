@@ -491,6 +491,10 @@ public class RebalancingService : IRebalancingService
     Balance? curBalance = null,
     string source = "API")
   {
+    await using var orderNotificationSession = exchange is IExchangeOrderNotifications pushExchange
+      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
+      : NoOpAsyncDisposable.Instance;
+
     // Clear the path ..
     _ = await exchange.CancelAllOpenOrders(credentials);
 
@@ -519,6 +523,10 @@ public class RebalancingService : IRebalancingService
     IEnumerable<OrderReqDto> orders,
     string source = "API")
   {
+    await using var orderNotificationSession = exchange is IExchangeOrderNotifications pushExchange
+      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
+      : NoOpAsyncDisposable.Instance;
+
     // Clear the path ..
     _ = await exchange.CancelAllOpenOrders(credentials);
 

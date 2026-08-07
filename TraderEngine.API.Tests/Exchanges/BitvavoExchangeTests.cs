@@ -19,7 +19,7 @@ public class BitvavoExchangeTests
       BaseAddress = new("https://api.bitvavo.com/v2/")
     };
 
-    var wsPool = new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>());
+    var wsPool = new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState());
 
     var bitvavo = new BitvavoExchange(logger, httpClient, wsPool);
 

@@ -58,7 +58,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
 
     request.Headers.Add(HeaderNames.Accept, "application/json");
-    request.Headers.Add("bitvavo-access-window", "10000 ");
+    request.Headers.Add("bitvavo-access-window", BitvavoDefaults.AccessWindowMs.ToString());
 
     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -505,9 +505,37 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return ApiMapper.MapOrder(result);
   }
 
-  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
+  public async Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
   {
-    throw new NotImplementedException();
+    var requestPath = market is null ? "ordersOpen" : $"ordersOpen?market={market}";
+
+    using var request = CreateRequestMsg(credentials, HttpMethod.Get, requestPath);
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("Failed to get open orders from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    List<BitvavoOrderDto>? result;
+    try
+    {
+      result = await response.Content.DeserializeAsync<List<BitvavoOrderDto>>();
+
+      if (null == result)
+        throw new Exception("Bitvavo get open orders response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get open orders response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
+
+    return ApiMapper.MapOrders(result);
   }
 
   public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
@@ -544,6 +572,20 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? asset = null, string source = "API")
   {
     throw new NotImplementedException();
+  }
+
+  public async Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default)
+  {
+    try
+    {
+      return await _wsPool.AcquireSessionAsync(credentials, ct);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to begin Bitvavo WebSocket session; orders in this run will fall back to REST polling.");
+
+      return NoOpAsyncDisposable.Instance;
+    }
   }
 
   public async Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default)
