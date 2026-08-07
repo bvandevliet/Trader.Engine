@@ -9,13 +9,13 @@ namespace TraderEngine.API.Exchanges;
 /// </summary>
 public interface IWebSocketTransport : IAsyncDisposable
 {
-  WebSocketState State { get; }
+  public WebSocketState State { get; }
 
-  Task ConnectAsync(Uri uri, CancellationToken ct);
+  public Task ConnectAsync(Uri uri, CancellationToken ct);
 
-  Task SendAsync(byte[] data, CancellationToken ct);
+  public Task SendAsync(byte[] data, CancellationToken ct);
 
-  Task<WebSocketReceiveResult> ReceiveAsync(byte[] buffer, CancellationToken ct);
+  public Task<WebSocketReceiveResult> ReceiveAsync(byte[] buffer, CancellationToken ct);
 
-  Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken ct);
+  public Task CloseAsync(WebSocketCloseStatus closeStatus, string statusDescription, CancellationToken ct);
 }

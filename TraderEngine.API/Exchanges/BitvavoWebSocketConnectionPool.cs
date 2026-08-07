@@ -1,5 +1,4 @@
 using System.Collections.Concurrent;
-using Microsoft.Extensions.Logging;
 using TraderEngine.Common.Exchanges;
 
 namespace TraderEngine.API.Exchanges;

@@ -24,17 +24,20 @@ public class RebalancingServiceSessionScopeTests
 
   private static readonly MarketReqDto _btc = new("EUR", "BTC");
 
-  private static OrderDto FilledOrder(string id) => new()
+  private static OrderDto FilledOrder(string id)
   {
-    Id = id,
-    Market = _btc,
-    Side = OrderSide.Sell,
-    Type = OrderType.Market,
-    Status = OrderStatus.Filled,
-    Amount = 1,
-    AmountFilled = 1,
-    AmountRemaining = 0,
-  };
+    return new()
+    {
+      Id = id,
+      Market = _btc,
+      Side = OrderSide.Sell,
+      Type = OrderType.Market,
+      Status = OrderStatus.Filled,
+      Amount = 1,
+      AmountFilled = 1,
+      AmountRemaining = 0,
+    };
+  }
 
   [TestMethod]
   public async Task Rebalance_ExchangeImplementsOrderNotifications_BeginsAndDisposesSessionExactlyOnce()

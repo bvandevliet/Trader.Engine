@@ -1,5 +1,4 @@
 using System.Net.Http.Headers;
-using Microsoft.Extensions.Logging;
 
 namespace TraderEngine.API.Exchanges;
 

@@ -51,31 +51,70 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
 
   public decimal TakerFee => _inner.TakerFee;
 
-  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials) => _inner.GetBalance(credentials);
+  public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
+  {
+    return _inner.GetBalance(credentials);
+  }
 
-  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials) => _inner.TotalDeposited(credentials);
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)
+  {
+    return _inner.TotalDeposited(credentials);
+  }
 
-  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials) => _inner.TotalWithdrawn(credentials);
+  public Task<Result<decimal, ExchangeErrCodeEnum>> TotalWithdrawn(ExchangeCredentials credentials)
+  {
+    return _inner.TotalWithdrawn(credentials);
+  }
 
-  public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market) => _inner.GetMarket(credentials, market);
+  public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    return _inner.GetMarket(credentials, market);
+  }
 
-  public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol) => _inner.GetAsset(credentials, baseSymbol);
+  public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
+  {
+    return _inner.GetAsset(credentials, baseSymbol);
+  }
 
-  public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market) => _inner.GetPrice(credentials, market);
+  public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    return _inner.GetPrice(credentials, market);
+  }
 
-  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market) => _inner.GetBestBidAsk(credentials, market);
+  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    return _inner.GetBestBidAsk(credentials, market);
+  }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API") => _inner.NewOrder(credentials, order, source);
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
+  {
+    return _inner.NewOrder(credentials, order, source);
+  }
 
-  public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market) => _inner.GetOrder(credentials, orderId, market);
+  public Task<OrderDto?> GetOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market)
+  {
+    return _inner.GetOrder(credentials, orderId, market);
+  }
 
-  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API") => _inner.CancelOrder(credentials, orderId, market, source);
+  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
+  {
+    return _inner.CancelOrder(credentials, orderId, market, source);
+  }
 
-  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null) => _inner.GetOpenOrders(credentials, market);
+  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return _inner.GetOpenOrders(credentials, market);
+  }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API") => _inner.CancelAllOpenOrders(credentials, market, source);
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
+  {
+    return _inner.CancelAllOpenOrders(credentials, market, source);
+  }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API") => _inner.SellAllPositions(credentials, baseSymbol, source);
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API")
+  {
+    return _inner.SellAllPositions(credentials, baseSymbol, source);
+  }
 
   private sealed class TrackingDisposable : IAsyncDisposable
   {

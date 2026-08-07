@@ -16,7 +16,7 @@ public interface IExchangeOrderNotifications
   /// is caught internally and reported as a null result so the caller can fall back to REST polling.
   /// </summary>
   /// <returns>The updated, ended order; or null if no confirmed terminal state was observed before <paramref name="timeout"/>.</returns>
-  Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default);
+  public Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default);
 
   /// <summary>
   /// Begins a session that keeps a push-notification connection open for the duration of one
@@ -27,5 +27,5 @@ public interface IExchangeOrderNotifications
   /// fails to establish still lets callers fall through to <see cref="WaitForOrderEndedAsync"/>'s
   /// own per-order REST fallback.
   /// </summary>
-  Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default);
+  public Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default);
 }
