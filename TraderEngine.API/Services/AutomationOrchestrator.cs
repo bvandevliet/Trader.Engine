@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using TraderEngine.API.AppSettings;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -20,6 +22,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
   private readonly IRebalancingService _rebalancingService;
   private readonly IMarketCapService _marketCapService;
   private readonly IConfigRepository _configRepo;
+  private readonly int _maxConcurrentRuns;
 
   public AutomationOrchestrator(
     ILogger<AutomationOrchestrator> logger,
@@ -27,7 +30,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     IServiceScopeFactory scopeFactory,
     IRebalancingService rebalancingService,
     IMarketCapService marketCapService,
-    IConfigRepository configRepo)
+    IConfigRepository configRepo,
+    IOptions<AutomationSettings>? automationSettings = null)
   {
     _logger = logger;
     _environment = environment;
@@ -35,6 +39,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     _rebalancingService = rebalancingService;
     _marketCapService = marketCapService;
     _configRepo = configRepo;
+    _maxConcurrentRuns = automationSettings?.Value.MaxConcurrentRuns ?? 5;
   }
 
   public async Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct)
@@ -54,14 +59,19 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
     var userConfigs = await _configRepo.GetConfigs();
 
-    await Task.WhenAll(userConfigs.Select(async userConfig =>
+    // Bounded (MaxDegreeOfParallelism = _maxConcurrentRuns) rather than the unbounded Task.WhenAll
+    // this used to be: every user's Bitvavo REST traffic shares one rate-limit budget regardless
+    // of which account it belongs to (see BitvavoRateLimitState), since it all leaves from this
+    // app's single outbound IP — an unbounded fan-out would let one especially busy cycle burn
+    // through that shared budget and throttle every other user's cycle in the same run at once.
+    await Parallel.ForEachAsync(userConfigs, new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentRuns, CancellationToken = ct }, async (userConfig, ct) =>
     {
       var now = DateTime.UtcNow;
 
       // Resolve a dedicated DI scope per user, created up-front so it also covers the catch
       // block below: IExchange implementations are registered Scoped and carry mutable
-      // per-instance ApiKey/ApiSecret, while this method runs many users concurrently
-      // (Task.WhenAll) inside a single orchestrator-level scope. Sharing one
+      // per-instance ApiKey/ApiSecret, while this method runs many users concurrently (bounded by
+      // _maxConcurrentRuns) inside a single orchestrator-level scope. Sharing one
       // ExchangeFactory/exchange instance across users here would let their credentials race
       // and cross-contaminate between accounts. IApiCredentialsRepository/IConfigRepository/
       // IEmailNotificationService must likewise be resolved from this per-user scope rather than
@@ -331,7 +341,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           _logger.LogCritical(exception2, "Error while sending automation exception notification.");
         }
       }
-    }));
+    });
   }
 
   public static bool IsEligibleForRebalance(ConfigReqDto configReqDto, SimulationDto simulated)

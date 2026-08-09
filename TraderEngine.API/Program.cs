@@ -57,6 +57,7 @@ public class Program
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
     builder.Services.Configure<RebalancingSettings>(builder.Configuration.GetSection("Rebalancing"));
+    builder.Services.Configure<AutomationSettings>(builder.Configuration.GetSection("Automation"));
 
     // A factory (rather than a plain scoped AddDbContext) so repositories that fan out
     // concurrent work (e.g. EfMarketCapInternalRepository.TryInsertMany) can create their own
