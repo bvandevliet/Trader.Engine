@@ -12,9 +12,19 @@ public class RebalancingService : IRebalancingService
 {
   private readonly ILogger<RebalancingService> _logger;
 
-  public RebalancingService(ILogger<RebalancingService> logger)
+  /// <summary>
+  /// Default <see cref="VerifyOrderEnded"/> wait budget (in seconds) used by every internal call
+  /// site in this service, most notably <see cref="PlaceLimitThenFallback"/>'s fill-then-cancel
+  /// window for a <see cref="OrderType.Limit"/> order. Configurable via the caller's composition
+  /// root (see TraderEngine.API's "Rebalancing:FillWaitTimeoutSeconds" setting) rather than baked
+  /// in here, since this project has no notion of app configuration of its own.
+  /// </summary>
+  private readonly int _defaultVerifyChecks;
+
+  public RebalancingService(ILogger<RebalancingService> logger, int fillWaitTimeoutSeconds = 60)
   {
     _logger = logger;
+    _defaultVerifyChecks = fillWaitTimeoutSeconds;
   }
 
   private class AllocDiffReqDto : AllocationDto
@@ -188,9 +198,9 @@ public class RebalancingService : IRebalancingService
 
   /// <summary>
   /// Places a <see cref="OrderType.Limit"/> order at the current best bid (sell) / best ask (buy),
-  /// waits up to <see cref="VerifyOrderEnded"/>'s default budget for it to fill, and — if it
-  /// didn't fully fill in time — cancels it and places a plain <see cref="OrderType.Market"/>
-  /// order for exactly the remaining amount, so the leg always completes.
+  /// waits up to <see cref="_defaultVerifyChecks"/> seconds for it to fill, and — if it didn't
+  /// fully fill in time — cancels it and places a plain <see cref="OrderType.Market"/> order for
+  /// exactly the remaining amount, so the leg always completes.
   /// </summary>
   /// <returns>
   /// A single-element array if the limit order filled outright, or a two-element array
@@ -401,7 +411,7 @@ public class RebalancingService : IRebalancingService
 
     try
     {
-      return await VerifyOrderEnded(exchange, credentials, order, cancel);
+      return await VerifyOrderEnded(exchange, credentials, order, cancel, _defaultVerifyChecks);
     }
     catch (Exception ex)
     {

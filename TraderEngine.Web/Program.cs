@@ -109,12 +109,14 @@ public class Program
       httpClient.BaseAddress = new Uri(apiSettings.BaseUrl);
 
       // A limit-order rebalance can legitimately run past HttpClient's 100-second default: sells
-      // and buys each get up to a 60-second fill-then-fallback window (see
-      // RebalancingService.VerifyOrderEnded's default `checks`), and those two phases run
-      // sequentially within a single api/rebalance request. Hitting the default here doesn't just
-      // surface as a spurious "failure" in the dashboard — RebalanceController's action has no
-      // CancellationToken, so the API keeps executing (and placing real orders) after the Web
+      // and buys each get up to a fill-then-fallback window (TraderEngine.API's
+      // "Rebalancing:FillWaitTimeoutSeconds" setting, 60 seconds by default), and those two phases
+      // run sequentially within a single api/rebalance request. Hitting the default here doesn't
+      // just surface as a spurious "failure" in the dashboard — RebalanceController's action has
+      // no CancellationToken, so the API keeps executing (and placing real orders) after the Web
       // client has already given up and shown an error, which is worse than just waiting longer.
+      // Keep this comfortably above double whatever FillWaitTimeoutSeconds is configured to on the
+      // API side if that ever changes, since a rebalance can hit that budget for both phases.
       httpClient.Timeout = TimeSpan.FromMinutes(5);
     });
 
