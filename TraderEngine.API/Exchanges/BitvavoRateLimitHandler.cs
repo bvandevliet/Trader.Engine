@@ -37,7 +37,7 @@ public sealed class BitvavoRateLimitHandler : DelegatingHandler
 
   protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
   {
-    await ThrottleIfNeededAsync(ct);
+    await ThrottleIfNeededAsync(request, ct);
 
     var response = await base.SendAsync(request, ct);
 
@@ -49,7 +49,7 @@ public sealed class BitvavoRateLimitHandler : DelegatingHandler
     return response;
   }
 
-  private async Task ThrottleIfNeededAsync(CancellationToken ct)
+  private async Task ThrottleIfNeededAsync(HttpRequestMessage request, CancellationToken ct)
   {
     if (_state.Remaining < 0 || _state.Remaining > ThrottleThreshold)
       return;
@@ -65,11 +65,28 @@ public sealed class BitvavoRateLimitHandler : DelegatingHandler
     if (wait > MaxWait)
       wait = MaxWait;
 
+    // The rate limit itself is shared account/IP-wide (see BitvavoRateLimitState's doc comment),
+    // so this delay can be caused by — and applies to — a different user's request than the one
+    // it's logged against. Naming the delayed request's own API key (masked; every BitvavoExchange
+    // call carries one via CreateRequestMsg's "bitvavo-access-key" header) at least makes clear
+    // whose request is currently paying the wait, even though it can't say whose activity drove
+    // the shared budget down in the first place.
     _logger.LogInformation(
-      "Bitvavo rate limit low ({Remaining} remaining); waiting {Wait} before sending the next request.",
-      _state.Remaining, wait);
+      "Bitvavo rate limit low ({Remaining} remaining); waiting {Wait} before sending the next request for API key {ApiKey}.",
+      _state.Remaining, wait, MaskApiKey(request.Headers.TryGetValues("bitvavo-access-key", out var values) ? values.FirstOrDefault() : null));
 
     await _delayFn(wait, ct);
+  }
+
+  /// <summary>
+  /// Reduces an API key down to its last 4 characters for logging, so a diagnostic log line can
+  /// still distinguish which account is affected without ever writing a usable secret to the log.
+  /// </summary>
+  private static string MaskApiKey(string? apiKey)
+  {
+    return string.IsNullOrEmpty(apiKey)
+      ? "unknown"
+      : $"...{apiKey[Math.Max(0, apiKey.Length - 4)..]}";
   }
 
   /// <returns>True if both rate-limit headers were present and parsed successfully.</returns>
