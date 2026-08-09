@@ -6,7 +6,9 @@
 version: 2
 updates:
   - package-ecosystem: "nuget"
-    directories: # Locations of package manifests
+    exclude-paths:
+      - "**/*.Tests"
+    directories:
       - "/"
       - "*/"
     schedule:
@@ -21,8 +23,26 @@ updates:
         applies-to: version-updates
         update-types:
           - "patch"
-    ignore:
-      - dependency-name: "*"
+    allow:
+      - update-types:
+          - "version-update:semver-patch"
+  - package-ecosystem: "npm"
+    directories:
+      - "/"
+      - "*/"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    groups:
+      security:
+        applies-to: security-updates
         update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
+          - "patch"
+      patches:
+        applies-to: version-updates
+        update-types:
+          - "patch"
+    allow:
+      - dependency-type: "production"
+        update-types:
+          - "version-update:semver-patch"
