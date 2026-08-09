@@ -400,7 +400,11 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   {
     var newOrderDto = ApiMapper.MapOrderReq(order);
 
-    newOrderDto.DisableMarketProtection = true;
+    // Only valid for market orders — Bitvavo rejects the whole request (error 202) if this is set
+    // on a limit order.
+    if (order.Type == OrderType.Market)
+      newOrderDto.DisableMarketProtection = true;
+
     newOrderDto.ResponseRequired = false;
     newOrderDto.OperatorId = $"trader.{source.ToLower()}".GetHashCode();
 

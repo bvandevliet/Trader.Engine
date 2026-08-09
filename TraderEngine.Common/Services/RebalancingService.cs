@@ -222,10 +222,16 @@ public class RebalancingService : IRebalancingService
       return [marketOrder];
     }
 
+    // Honor decimals precision for the amount of this asset — a limit order (unlike a market
+    // order sized by AmountQuote) always requires an explicit Amount, so an over-precise value
+    // here risks outright rejection by the exchange rather than silent server-side rounding.
+    var limitAssetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
+    var limitDecimals = limitAssetData?.Decimals;
+
     var limitAmount = orderReq.Amount is decimal amount
-      ? TruncateToDecimals(amount, 8)
+      ? TruncateToDecimals(amount, limitDecimals ?? 8)
       : orderReq.AmountQuote is decimal amountQuote
-        ? TruncateToDecimals(amountQuote / limitPrice, 8)
+        ? TruncateToDecimals(amountQuote / limitPrice, limitDecimals ?? 8)
         : 0;
 
     if (limitAmount <= 0)
@@ -245,7 +251,11 @@ public class RebalancingService : IRebalancingService
     // never be allowed to just sit there past this point.
     var limitOrder = await PlaceAndVerifySingleOrder(exchange, credentials, limitReq, source, cancel: true);
 
-    if (limitOrder.Status == OrderStatus.Filled || limitOrder.AmountRemaining <= 0)
+    // A Failed status here means the limit order was rejected outright at placement (e.g. bad
+    // price/amount precision, insufficient balance) rather than resting-then-timing-out — nothing
+    // was ever superseded, and a market order for the same amount would fail for the same reason,
+    // so there's nothing to gain from attempting it.
+    if (limitOrder.Status is OrderStatus.Filled or OrderStatus.Failed || limitOrder.AmountRemaining <= 0)
       return [limitOrder];
 
     limitOrder.IsSuperseded = true;
@@ -293,7 +303,7 @@ public class RebalancingService : IRebalancingService
         Market = orderReq.Market,
         Side = orderReq.Side,
         Type = OrderType.Market,
-        AmountQuote = remainingAmountQuote,
+        AmountQuote = RoundAmountQuote(remainingAmountQuote, orderReq.Side),
       };
     }
 
@@ -317,6 +327,20 @@ public class RebalancingService : IRebalancingService
       Amount = orderReq.Amount,
       AmountQuote = orderReq.AmountQuote,
     };
+  }
+
+  /// <summary>
+  /// Rounds <paramref name="amountQuote"/> to the 2 decimals exchanges commonly require for an
+  /// AmountQuote-based order, away from zero: up for a <see cref="OrderSide.Sell"/> so the
+  /// remainder is fully liquidated rather than left short of what's actually available to sell,
+  /// down for a <see cref="OrderSide.Buy"/> so it never overspends what's actually available to
+  /// spend.
+  /// </summary>
+  private static decimal RoundAmountQuote(decimal amountQuote, OrderSide side)
+  {
+    return side == OrderSide.Sell
+      ? Math.Ceiling(amountQuote * 100) / 100
+      : Math.Floor(amountQuote * 100) / 100;
   }
 
   /// <summary>
@@ -353,13 +377,17 @@ public class RebalancingService : IRebalancingService
     {
       var result = await exchange.NewOrder(credentials, orderReq, source);
 
-      if (result.Value is null)
+      // A failure carries its own synthetic OrderDto (Status = Failed, for callers that want to
+      // report on the attempt) rather than a null Value — checking Value alone would treat every
+      // exchange-side rejection (bad price/amount precision, insufficient balance, etc.) as if the
+      // order had actually been placed, silently dropping the failure instead of surfacing it.
+      if (result.ErrorCode != ExchangeErrCodeEnum.Ok || result.Value is null)
       {
         _logger.LogError(
-          "Failed to place order for market {Market} on exchange {Exchange}: exchange returned no order payload (error code {ErrorCode}).",
-          orderReq.Market, exchange.GetType().Name, result.ErrorCode);
+          "Failed to place order for market {Market} on exchange {Exchange}: {ErrorCode} {Summary}",
+          orderReq.Market, exchange.GetType().Name, result.ErrorCode, result.Summary);
 
-        return NewFailedOrder(orderReq);
+        return result.Value ?? NewFailedOrder(orderReq);
       }
 
       order = result.Value;
@@ -487,7 +515,7 @@ public class RebalancingService : IRebalancingService
           var assetData = exchange.GetAsset(credentials, allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
           var decimals = assetData?.Decimals;
 
-          order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
+          order.Amount = decimals is not int ? allocDiff.Amount : TruncateToDecimals(allocDiff.Amount, (int)decimals);
         }
         else
         {
@@ -529,7 +557,7 @@ public class RebalancingService : IRebalancingService
       .Select(sellOrder =>
       {
         if (sellOrder.AmountQuote is decimal amountQuote)
-          sellOrder.AmountQuote = Math.Ceiling(amountQuote * 100) / 100;
+          sellOrder.AmountQuote = RoundAmountQuote(amountQuote, OrderSide.Sell);
 
         return sellOrder;
       })
@@ -626,9 +654,18 @@ public class RebalancingService : IRebalancingService
         return (decimal)buyOrder.AmountQuote!;
       });
 
+    // Bitvavo docs: placing an order blocks (`onHold`) the traded amount, but the trading fee
+    // itself is only charged after the trade completes, with a slight settlement lag. When this
+    // balance was just fetched right after selling (see Rebalance()), AmountQuoteAvailable can
+    // therefore still include gross, pre-fee sell proceeds for a brief window — sizing buys
+    // against that figure risks a since-settled fee shrinking real availability out from under an
+    // order sized right at the edge. Reserving TakerFee's worth of headroom (the worse of the two
+    // rates) absorbs that lag; a zero-fee exchange (e.g. in tests) sees no change in behavior.
+    var availableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+
     // Multiplication ratio to avoid potentially oversized buy order sizes.
     var ratio = totalBuy == 0 ? 0 :
-      Math.Min(totalBuy, curBalance.AmountQuoteAvailable) / totalBuy;
+      Math.Min(totalBuy, availableWithFeeBuffer) / totalBuy;
 
     // The buy task loop, diffs are already filtered ..
     var results = await Task.WhenAll(
@@ -639,7 +676,7 @@ public class RebalancingService : IRebalancingService
       .Select(buyOrder =>
       {
         buyOrder.AmountQuote *= ratio;
-        buyOrder.AmountQuote = Math.Floor((decimal)buyOrder.AmountQuote! * 100) / 100;
+        buyOrder.AmountQuote = RoundAmountQuote((decimal)buyOrder.AmountQuote!, OrderSide.Buy);
 
         return buyOrder;
       })
