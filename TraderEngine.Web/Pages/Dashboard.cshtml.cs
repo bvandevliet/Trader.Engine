@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using TraderEngine.Common.DTOs.API.Request;
+using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Data.Entities;
 using TraderEngine.Data.Repositories;
 using TraderEngine.Web.AppSettings;
@@ -144,6 +145,12 @@ public class DashboardModel : TraderEnginePageModelBase
   /// the current balance (<c>curBalance</c>), and fetching it twice would just double the wait on
   /// the slowest call this page makes. Deposited/withdrawn totals aren't part of the simulation
   /// response, so those still need their own calls, run in parallel with the simulation.
+  ///
+  /// The simulation leg is awaited separately from the deposited/withdrawn totals — it depends on
+  /// market cap data (see TraderEngineApiClient.PostAuthenticated) that can still be catching up
+  /// right after the stack starts, while the totals have no such dependency. A single
+  /// Task.WhenAll across all three would let a failing simulation discard totals that had already
+  /// succeeded, hiding them from the dashboard for no reason.
   /// </summary>
   public async Task<IActionResult> OnPostInitAsync([FromBody] ConfigReqDto config, CancellationToken ct)
   {
@@ -157,13 +164,26 @@ public class DashboardModel : TraderEnginePageModelBase
       var withdrawnTask = _apiClient.GetTotalWithdrawn(user, _exchangeName, credentials, ct);
       var simulationTask = _apiClient.SimulateRebalance(user, _exchangeName, Source, new SimulationReqDto(credentials, config), ct);
 
-      await Task.WhenAll(depositedTask, withdrawnTask, simulationTask);
+      await Task.WhenAll(depositedTask, withdrawnTask);
+
+      SimulationDto? simulation = null;
+      string? simulationError = null;
+
+      try
+      {
+        simulation = await simulationTask;
+      }
+      catch (TraderEngineApiException ex)
+      {
+        simulationError = ex.Message;
+      }
 
       return new
       {
         totalDeposited = depositedTask.Result,
         totalWithdrawn = withdrawnTask.Result,
-        simulation = simulationTask.Result,
+        simulation,
+        simulationError,
       };
     });
   }

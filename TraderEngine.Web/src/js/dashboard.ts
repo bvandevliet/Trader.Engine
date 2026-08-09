@@ -43,7 +43,10 @@ interface SimulationDto {
 interface InitDto {
   totalDeposited: number;
   totalWithdrawn: number;
-  simulation: SimulationDto;
+  // Null when the simulation leg failed independently of the totals (e.g. market cap data isn't
+  // ingested yet) — see OnPostInitAsync's per-leg error handling.
+  simulation: SimulationDto | null;
+  simulationError: string | null;
 }
 
 const POLL_INTERVAL_MS = 5000;
@@ -222,6 +225,9 @@ function renderBalanceSummary (balance: BalanceDto): void
   const gain = cumulative - totalDeposited;
   const gainPercent = totalDeposited === 0 ? 0 : 100 * ((cumulative / totalDeposited) - 1);
 
+  // Set here rather than only once in init() — refreshBalance() also needs it, since init() may
+  // finish without ever receiving a curBalance (see the null-simulation branch below).
+  quoteSymbolEls.forEach(el => (el.textContent = quoteSymbolFor(balance.quoteSymbol)));
   setBalanceField('balance', numberFormat(balance.amountQuoteTotal));
   setBalanceField('cumulative', numberFormat(cumulative));
   setBalanceField('gain', numberFormat(gain));
@@ -279,13 +285,24 @@ async function init (): Promise<void>
 
     ({ totalDeposited, totalWithdrawn } = initData);
 
-    quoteSymbolEls.forEach(el => (el.textContent = quoteSymbolFor(initData.simulation.curBalance.quoteSymbol)));
     setBalanceField('deposited', numberFormat(initData.totalDeposited));
     setBalanceField('withdrawn', numberFormat(initData.totalWithdrawn));
-    renderBalanceSummary(initData.simulation.curBalance);
-    applySimulation(initData.simulation);
 
-    rebalanceNowBtn.disabled = false;
+    if (initData.simulation)
+    {
+      renderBalanceSummary(initData.simulation.curBalance);
+      applySimulation(initData.simulation);
+
+      rebalanceNowBtn.disabled = false;
+    }
+    else
+    {
+      // Totals loaded fine but the simulation leg failed on its own (e.g. market cap data isn't
+      // ingested yet) — surface that in the portfolio card without hiding the totals above, and
+      // fall back to the plain balance endpoint so the summary card and quote symbol still populate.
+      showAlert(portfolioErrorEl, initData.simulationError ?? 'Could not load rebalance simulation.');
+      await refreshBalance();
+    }
   }
   catch (err)
   {
