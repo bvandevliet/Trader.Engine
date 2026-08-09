@@ -49,7 +49,8 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Get current balance.
     var balanceResult = await exchange.GetBalance(credentials);
@@ -113,7 +114,8 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Filter for assets that are potentially tradable.
     var absAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials, rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.Config.TopRankingCount);
@@ -127,7 +129,6 @@ public class RebalanceController : ControllerBase
     // whether the calling client is still around to receive the response (e.g. the browser tab was
     // closed, or the client-side HTTP timeout elapsed, mid-request) — see the "not yet implemented"
     // notes on that failure mode in CLAUDE.md.
-    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
     rebalanceReqDto.Config.LastRebalance = DateTime.UtcNow;
     await _configRepository.SaveConfig(userId, rebalanceReqDto.Config);
 
@@ -144,7 +145,8 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Execute rebalance orders.
     // TODO: Properly handle exchange auth errors.

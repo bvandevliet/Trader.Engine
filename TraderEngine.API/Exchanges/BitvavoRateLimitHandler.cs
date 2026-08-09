@@ -11,6 +11,13 @@ namespace TraderEngine.API.Exchanges;
 /// </summary>
 public sealed class BitvavoRateLimitHandler : DelegatingHandler
 {
+  /// <summary>
+  /// Carries this app's own user id on an outgoing request (set by <see cref="BitvavoExchange.CreateRequestMsg"/>
+  /// from <see cref="ExchangeCredentials.UserId"/>, when known), purely so the throttle log below
+  /// can attribute a delay to a specific user without ever logging exchange credential material.
+  /// </summary>
+  public static readonly HttpRequestOptionsKey<Guid> UserIdOptionKey = new("TraderEngine.UserId");
+
   // Bitvavo's default REST budget is 1000 weight/minute; throttling once this low leaves headroom
   // for a handful of in-flight concurrent calls without needing to track per-endpoint weights.
   private const int ThrottleThreshold = 50;
@@ -67,26 +74,16 @@ public sealed class BitvavoRateLimitHandler : DelegatingHandler
 
     // The rate limit itself is shared account/IP-wide (see BitvavoRateLimitState's doc comment),
     // so this delay can be caused by — and applies to — a different user's request than the one
-    // it's logged against. Naming the delayed request's own API key (masked; every BitvavoExchange
-    // call carries one via CreateRequestMsg's "bitvavo-access-key" header) at least makes clear
-    // whose request is currently paying the wait, even though it can't say whose activity drove
-    // the shared budget down in the first place.
+    // it's logged against. Preferring the app's own user id (set on the request by BitvavoExchange
+    // whenever the caller supplied one) over any fragment of exchange credential material: it's
+    // the same identifier every other log line in this app already correlates on, so an operator
+    // doesn't need a separate "which user owns this key" lookup mid-incident, and nothing derived
+    // from ApiKey/ApiSecret needs to appear in a log line at all.
     _logger.LogInformation(
-      "Bitvavo rate limit low ({Remaining} remaining); waiting {Wait} before sending the next request for API key {ApiKey}.",
-      _state.Remaining, wait, MaskApiKey(request.Headers.TryGetValues("bitvavo-access-key", out var values) ? values.FirstOrDefault() : null));
+      "Bitvavo rate limit low ({Remaining} remaining); waiting {Wait} before sending the next request for user {UserId}.",
+      _state.Remaining, wait, request.Options.TryGetValue(UserIdOptionKey, out var userId) ? userId : "unknown");
 
     await _delayFn(wait, ct);
-  }
-
-  /// <summary>
-  /// Reduces an API key down to its last 4 characters for logging, so a diagnostic log line can
-  /// still distinguish which account is affected without ever writing a usable secret to the log.
-  /// </summary>
-  private static string MaskApiKey(string? apiKey)
-  {
-    return string.IsNullOrEmpty(apiKey)
-      ? "unknown"
-      : $"...{apiKey[Math.Max(0, apiKey.Length - 4)..]}";
   }
 
   /// <returns>True if both rate-limit headers were present and parsed successfully.</returns>

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.API.Factories;
@@ -40,7 +41,8 @@ public class AllocationsController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(apiCredReqDto.ApiKey, apiCredReqDto.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(apiCredReqDto.ApiKey, apiCredReqDto.ApiSecret, userId);
 
     var balanceResult = await exchange.GetBalance(credentials);
 

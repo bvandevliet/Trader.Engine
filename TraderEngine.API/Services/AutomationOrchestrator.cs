@@ -130,7 +130,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // Get API credentials.
         var apiCred = await keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
-        var credentials = new ExchangeCredentials(apiCred.ApiKey, apiCred.ApiSecret);
+        var credentials = new ExchangeCredentials(apiCred.ApiKey, apiCred.ApiSecret, userConfig.Key);
 
         // Get current balance.
         var balanceResult = await exchange.GetBalance(credentials);

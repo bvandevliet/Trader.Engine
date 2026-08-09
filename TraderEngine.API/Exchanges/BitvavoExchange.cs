@@ -68,6 +68,12 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     request.Headers.Add("bitvavo-access-timestamp", timestamp.ToString());
     request.Headers.Add("bitvavo-access-signature", signature);
 
+    // Carried purely for BitvavoRateLimitHandler's diagnostic logging (attributing a shared
+    // rate-limit throttle delay to a specific user) — never used for authentication, and absent
+    // entirely when the caller has no notion of an app-level user.
+    if (credentials.UserId is { } userId)
+      request.Options.Set(BitvavoRateLimitHandler.UserIdOptionKey, userId);
+
     return request;
   }
 
