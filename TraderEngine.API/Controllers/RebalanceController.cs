@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.API.Factories;
@@ -8,6 +9,7 @@ using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Mappers;
 using TraderEngine.Common.Services;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Controllers;
 
@@ -20,17 +22,20 @@ public class RebalanceController : ControllerBase
   private readonly ILogger<RebalanceController> _logger;
   private readonly ExchangeFactory _exchangeFactory;
   private readonly IRebalancingService _rebalancingService;
+  private readonly IConfigRepository _configRepository;
   private readonly Func<IMarketCapService> _marketCapService;
 
   public RebalanceController(
     ILogger<RebalanceController> logger,
     IServiceProvider serviceProvider,
     ExchangeFactory exchangeFactory,
-    IRebalancingService rebalancingService)
+    IRebalancingService rebalancingService,
+    IConfigRepository configRepository)
   {
     _logger = logger;
     _exchangeFactory = exchangeFactory;
     _rebalancingService = rebalancingService;
+    _configRepository = configRepository;
     _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
   }
 
@@ -116,6 +121,15 @@ public class RebalanceController : ControllerBase
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
     var orders = await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, absAllocs, null, source);
+
+    // Persisted here rather than left to the caller (TraderEngine.Web used to set this only after
+    // a successful round trip): the rebalance has already run for real by this point regardless of
+    // whether the calling client is still around to receive the response (e.g. the browser tab was
+    // closed, or the client-side HTTP timeout elapsed, mid-request) — see the "not yet implemented"
+    // notes on that failure mode in CLAUDE.md.
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    rebalanceReqDto.Config.LastRebalance = DateTime.UtcNow;
+    await _configRepository.SaveConfig(userId, rebalanceReqDto.Config);
 
     return Ok(orders);
   }
