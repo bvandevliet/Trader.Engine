@@ -119,7 +119,7 @@
                 <div class="row mb-3">
                     <div class="col-md-4">
                         <div class="form-check">
-                            <input asp-for="Config.UseLimitOrders" class="form-check-input config-input" data-config-field="useLimitOrders" data-no-resim />
+                            <input asp-for="Config.UseLimitOrders" class="form-check-input config-input" data-config-field="useLimitOrders" />
                             <label asp-for="Config.UseLimitOrders" class="form-check-label" title="Place limit orders at the best bid/ask to reduce fees, falling back to a market order for any unfilled remainder.">@Html.DisplayNameFor(m => m.Config.UseLimitOrders)</label>
                         </div>
                     </div>
