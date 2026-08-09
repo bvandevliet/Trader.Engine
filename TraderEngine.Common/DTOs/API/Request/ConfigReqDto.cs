@@ -42,6 +42,9 @@ public class ConfigReqDto
   [Display(Name = "Automation")]
   public bool AutomationEnabled { get; set; } = false;
 
+  [Display(Name = "Use limit orders")]
+  public bool UseLimitOrders { get; set; } = false;
+
   [Display(Name = "Rebalance interval [hrs]")]
   [Range(1, 672)] // = 28 days (4 weeks)
   public int IntervalHours { get; set; } = 6;

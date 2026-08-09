@@ -1,5 +1,5 @@
-using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Net.Http.Headers;
 using TraderEngine.API.DTOs.Bitvavo.Response;
@@ -14,10 +14,11 @@ using TraderEngine.Common.Results;
 
 namespace TraderEngine.API.Exchanges;
 
-public class BitvavoExchange : IExchange
+public class BitvavoExchange : IExchange, IExchangeOrderNotifications
 {
   private readonly ILogger<BitvavoExchange> _logger;
   private readonly HttpClient _httpClient;
+  private readonly BitvavoWebSocketConnectionPool _wsPool;
 
   public ILogger<IExchange> Logger => _logger;
 
@@ -28,9 +29,11 @@ public class BitvavoExchange : IExchange
 
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
-    HttpClient httpClient)
+    HttpClient httpClient,
+    BitvavoWebSocketConnectionPool wsPool)
   {
     _logger = logger;
+    _wsPool = wsPool;
 
     _httpClient = httpClient;
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
@@ -38,22 +41,7 @@ public class BitvavoExchange : IExchange
 
   private static string CreateSignature(ExchangeCredentials credentials, long timestamp, string method, string url, string? payload)
   {
-    var hashString = new StringBuilder();
-
-    _ = hashString.Append(timestamp).Append(method).Append(url);
-
-    if (payload != null)
-    {
-      _ = hashString.Append(payload);
-    }
-
-    using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(credentials.ApiSecret));
-
-    var inputBytes = Encoding.UTF8.GetBytes(hashString.ToString());
-
-    var signatureBytes = hmac.ComputeHash(inputBytes);
-
-    return BitConverter.ToString(signatureBytes).Replace("-", "").ToLower();
+    return BitvavoSignature.Compute(credentials.ApiSecret, timestamp, method, url, payload);
   }
 
   private HttpRequestMessage CreateRequestMsg(ExchangeCredentials credentials, HttpMethod method, string requestPath, object? body = null)
@@ -70,7 +58,7 @@ public class BitvavoExchange : IExchange
     }
 
     request.Headers.Add(HeaderNames.Accept, "application/json");
-    request.Headers.Add("bitvavo-access-window", "10000 ");
+    request.Headers.Add("bitvavo-access-window", BitvavoDefaults.AccessWindowMs.ToString());
 
     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
@@ -79,6 +67,12 @@ public class BitvavoExchange : IExchange
     request.Headers.Add("bitvavo-access-key", credentials.ApiKey);
     request.Headers.Add("bitvavo-access-timestamp", timestamp.ToString());
     request.Headers.Add("bitvavo-access-signature", signature);
+
+    // Carried purely for BitvavoRateLimitHandler's diagnostic logging (attributing a shared
+    // rate-limit throttle delay to a specific user) — never used for authentication, and absent
+    // entirely when the caller has no notion of an app-level user.
+    if (credentials.UserId is { } userId)
+      request.Options.Set(BitvavoRateLimitHandler.UserIdOptionKey, userId);
 
     return request;
   }
@@ -376,11 +370,47 @@ public class BitvavoExchange : IExchange
     return decimal.Parse(result.Price);
   }
 
+  public async Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    using var request = CreateRequestMsg(
+      credentials, HttpMethod.Get, $"ticker/book?market={market}");
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("Failed to get ticker book from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    BitvavoTickerBookDto? result;
+    try
+    {
+      result = await response.Content.DeserializeAsync<BitvavoTickerBookDto>();
+
+      if (null == result)
+        throw new Exception("Bitvavo ticker book response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker book response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
+
+    return ApiMapper.MapTickerBook(result);
+  }
+
   public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
   {
     var newOrderDto = ApiMapper.MapOrderReq(order);
 
-    newOrderDto.DisableMarketProtection = true;
+    // Only valid for market orders — Bitvavo rejects the whole request (error 202) if this is set
+    // on a limit order.
+    if (order.Type == OrderType.Market)
+      newOrderDto.DisableMarketProtection = true;
+
     newOrderDto.ResponseRequired = false;
     newOrderDto.OperatorId = $"trader.{source.ToLower()}".GetHashCode();
 
@@ -517,9 +547,37 @@ public class BitvavoExchange : IExchange
     return ApiMapper.MapOrder(result);
   }
 
-  public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
+  public async Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)
   {
-    throw new NotImplementedException();
+    var requestPath = market is null ? "ordersOpen" : $"ordersOpen?market={market}";
+
+    using var request = CreateRequestMsg(credentials, HttpMethod.Get, requestPath);
+
+    using var response = await _httpClient.SendAsync(request);
+
+    if (!response.IsSuccessStatusCode)
+    {
+      _logger.LogError("Failed to get open orders from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+      return null;
+    }
+
+    List<BitvavoOrderDto>? result;
+    try
+    {
+      result = await response.Content.DeserializeAsync<List<BitvavoOrderDto>>();
+
+      if (null == result)
+        throw new Exception("Bitvavo get open orders response was empty or null.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get open orders response: {Content}", await response.Content.ReadAsStringAsync());
+      throw;
+    }
+
+    return ApiMapper.MapOrders(result);
   }
 
   public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
@@ -556,5 +614,91 @@ public class BitvavoExchange : IExchange
   public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? asset = null, string source = "API")
   {
     throw new NotImplementedException();
+  }
+
+  public async Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default)
+  {
+    try
+    {
+      return await _wsPool.AcquireSessionAsync(credentials, ct);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to begin Bitvavo WebSocket session; orders in this run will fall back to REST polling.");
+
+      return NoOpAsyncDisposable.Instance;
+    }
+  }
+
+  public async Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default)
+  {
+    if (order.Id is not string orderId)
+      return order;
+
+    var market = order.Market.ToString();
+
+    BitvavoWebSocketClient client;
+
+    try
+    {
+      client = await _wsPool.GetConnectedAsync(credentials, ct);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex, "Failed to establish Bitvavo WebSocket connection for order {OrderId}; falling back to REST polling.", orderId);
+      return null;
+    }
+
+    var tcs = new TaskCompletionSource<OrderDto>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+    void OnAccountEvent(JsonElement element)
+    {
+      if (!element.TryGetProperty("orderId", out var idProp) || idProp.GetString() != orderId)
+        return;
+
+      BitvavoOrderDto? dto;
+
+      try
+      {
+        dto = element.Deserialize<BitvavoOrderDto>(AppJsonSerializer.Options);
+      }
+      catch (Exception ex)
+      {
+        _logger.LogError(ex, "Failed to deserialize Bitvavo WebSocket order push for order {OrderId}.", orderId);
+        return;
+      }
+
+      if (dto is null)
+        return;
+
+      var mapped = ApiMapper.MapOrder(dto);
+
+      if (mapped.HasEnded)
+        tcs.TrySetResult(mapped);
+    }
+
+    try
+    {
+      await client.SubscribeAccountAsync(market, OnAccountEvent, ct);
+
+      using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+      timeoutCts.CancelAfter(timeout);
+
+      return await tcs.Task.WaitAsync(timeoutCts.Token);
+    }
+    catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+    {
+      // Timed out waiting for a push update — not an error, the caller falls back to a REST check.
+      return null;
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex, "Bitvavo WebSocket subscription failed for order {OrderId}; falling back to REST polling.", orderId);
+      return null;
+    }
+    finally
+    {
+      client.UnsubscribeAccount(market);
+    }
   }
 }

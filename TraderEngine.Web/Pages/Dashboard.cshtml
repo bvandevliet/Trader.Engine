@@ -94,6 +94,16 @@
 
                 <div class="row mb-3">
                     <div class="col-md-4">
+                        <div class="form-check">
+                            <input asp-for="Config.UseLimitOrders" class="form-check-input config-input" data-config-field="useLimitOrders" />
+                            <label asp-for="Config.UseLimitOrders" class="form-check-label" title="Place limit orders at the best bid/ask to reduce fees, falling back to a market order for any unfilled remainder.">@Html.DisplayNameFor(m => m.Config.UseLimitOrders) <span class="badge bg-warning text-dark" title="This feature is new and has not been extensively battle-tested yet.">Experimental</span></label>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 class="h6 text-muted border-top pt-3">Automation</h3>
+                <div class="row mb-3">
+                    <div class="col-md-4">
                         <label asp-for="Config.MinimumDiffQuote" class="form-label" title="The minimum order size in quote required to trigger an automated rebalance.">@Html.DisplayNameFor(m => m.Config.MinimumDiffQuote) [<span class="quote-symbol"></span>]</label>
                         <input asp-for="Config.MinimumDiffQuote" class="form-control config-input" data-config-field="minimumDiffQuote" data-no-resim min="0" step="1" />
                     </div>

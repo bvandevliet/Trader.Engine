@@ -14,6 +14,17 @@ internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string r
 
   public string? LastRequestBody { get; private set; }
 
+  private (string Name, string Value)[] _responseHeaders = [];
+
+  /// <summary>
+  /// Configures response headers to attach to every subsequent canned response (e.g. Bitvavo's
+  /// <c>bitvavo-ratelimit-remaining</c>/<c>bitvavo-ratelimit-resetat</c>).
+  /// </summary>
+  public void SetResponseHeaders(params (string Name, string Value)[] headers)
+  {
+    _responseHeaders = headers;
+  }
+
   protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
   {
     LastRequest = request;
@@ -21,9 +32,14 @@ internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string r
       ? await request.Content.ReadAsStringAsync(cancellationToken)
       : null;
 
-    return new HttpResponseMessage(statusCode)
+    var response = new HttpResponseMessage(statusCode)
     {
       Content = new StringContent(responseBody, Encoding.UTF8, "application/json"),
     };
+
+    foreach (var (name, value) in _responseHeaders)
+      response.Headers.TryAddWithoutValidation(name, value);
+
+    return response;
   }
 }

@@ -12,9 +12,19 @@ public class RebalancingService : IRebalancingService
 {
   private readonly ILogger<RebalancingService> _logger;
 
-  public RebalancingService(ILogger<RebalancingService> logger)
+  /// <summary>
+  /// Default <see cref="VerifyOrderEnded"/> wait budget (in seconds) used by every internal call
+  /// site in this service, most notably <see cref="PlaceLimitThenFallback"/>'s fill-then-cancel
+  /// window for a <see cref="OrderType.Limit"/> order. Configurable via the caller's composition
+  /// root (see TraderEngine.API's "Rebalancing:FillWaitTimeoutSeconds" setting) rather than baked
+  /// in here, since this project has no notion of app configuration of its own.
+  /// </summary>
+  private readonly int _defaultVerifyChecks;
+
+  public RebalancingService(ILogger<RebalancingService> logger, int fillWaitTimeoutSeconds = 60)
   {
     _logger = logger;
+    _defaultVerifyChecks = fillWaitTimeoutSeconds;
   }
 
   private class AllocDiffReqDto : AllocationDto
@@ -167,6 +177,195 @@ public class RebalancingService : IRebalancingService
 
   /// <summary>
   /// Places <paramref name="orderReq"/> and, on success, verifies it has ended.
+  /// For a <see cref="OrderType.Limit"/> request, delegates to <see cref="PlaceLimitThenFallback"/>,
+  /// which may place a second market order for any unfilled remainder — so this can return more
+  /// than one <see cref="OrderDto"/>. For anything else, always returns exactly one.
+  /// </summary>
+  /// <param name="exchange"></param>
+  /// <param name="credentials"></param>
+  /// <param name="orderReq"></param>
+  /// <param name="source"></param>
+  /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
+  /// <returns>The placed (and, where possible, ended) order(s).</returns>
+  private async Task<OrderDto[]> PlaceAndVerifyOrder(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel)
+  {
+    if (orderReq.Type != OrderType.Limit)
+      return [await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)];
+
+    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source);
+  }
+
+  /// <summary>
+  /// Places a <see cref="OrderType.Limit"/> order at the current best bid (sell) / best ask (buy),
+  /// waits up to <see cref="_defaultVerifyChecks"/> seconds for it to fill, and — if it didn't
+  /// fully fill in time — cancels it and places a plain <see cref="OrderType.Market"/> order for
+  /// exactly the remaining amount, so the leg always completes.
+  /// </summary>
+  /// <returns>
+  /// A single-element array if the limit order filled outright, or a two-element array
+  /// [limit leg (<see cref="OrderDto.IsSuperseded"/> = true), market fallback leg] otherwise.
+  /// </returns>
+  private async Task<OrderDto[]> PlaceLimitThenFallback(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source)
+  {
+    decimal limitPrice;
+
+    try
+    {
+      var bidAsk = await exchange.GetBestBidAsk(credentials, orderReq.Market);
+
+      limitPrice = orderReq.Side == OrderSide.Sell ? bidAsk?.Bid ?? 0 : bidAsk?.Ask ?? 0;
+
+      if (limitPrice <= 0)
+        throw new InvalidOperationException($"No best bid/ask available for market {orderReq.Market}.");
+    }
+    catch (Exception ex)
+    {
+      _logger.LogWarning(ex,
+        "Failed to determine a limit price for market {Market} on exchange {Exchange} — falling back to a market order directly.",
+        orderReq.Market, exchange.GetType().Name);
+
+      var marketOrder = await PlaceAndVerifySingleOrder(
+        exchange, credentials, ToMarketOrder(orderReq), source, cancel: true);
+
+      return [marketOrder];
+    }
+
+    // Honor decimals precision for the amount of this asset — a limit order (unlike a market
+    // order sized by AmountQuote) always requires an explicit Amount, so an over-precise value
+    // here risks outright rejection by the exchange rather than silent server-side rounding.
+    var limitAssetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
+    var limitDecimals = limitAssetData?.Decimals;
+
+    var limitAmount = orderReq.Amount is decimal amount
+      ? TruncateToDecimals(amount, limitDecimals ?? 8)
+      : orderReq.AmountQuote is decimal amountQuote
+        ? TruncateToDecimals(amountQuote / limitPrice, limitDecimals ?? 8)
+        : 0;
+
+    if (limitAmount <= 0)
+      return [];
+
+    var limitReq = new OrderReqDto()
+    {
+      Market = orderReq.Market,
+      Side = orderReq.Side,
+      Type = OrderType.Limit,
+      Price = limitPrice,
+      Amount = limitAmount,
+    };
+
+    // Always cancel a limit order that hasn't (fully) filled by the timeout — the whole point of
+    // this path is to fall back to a market order for the remainder, so a resting limit order can
+    // never be allowed to just sit there past this point.
+    var limitOrder = await PlaceAndVerifySingleOrder(exchange, credentials, limitReq, source, cancel: true);
+
+    // A Failed status here means the limit order was rejected outright at placement (e.g. bad
+    // price/amount precision, insufficient balance) rather than resting-then-timing-out — nothing
+    // was ever superseded, and a market order for the same amount would fail for the same reason,
+    // so there's nothing to gain from attempting it.
+    if (limitOrder.Status is OrderStatus.Filled or OrderStatus.Failed || limitOrder.AmountRemaining <= 0)
+      return [limitOrder];
+
+    limitOrder.IsSuperseded = true;
+
+    // Value the remainder at the limit price used to size the order — good enough to pick a
+    // branch and, in the dust branch, to report on; the market fallback itself always settles at
+    // whatever the current price actually is.
+    var remainingAmountQuote = limitOrder.AmountRemaining * limitPrice;
+
+    OrderReqDto fallbackReq;
+
+    // Mirror the dust-prevention branch in SellOveragesAndVerify: a remainder below the exchange's
+    // minimum order size would get rejected as an AmountQuote-based order, but exchanges commonly
+    // still allow a full-position liquidation by exact (asset-decimals-rounded) Amount. This only
+    // applies to sells — a dust buy remainder has no such escape hatch (there's nothing existing
+    // to fully acquire), so it's simply dropped.
+    if (remainingAmountQuote < exchange.MinOrderSizeInQuote)
+    {
+      if (orderReq.Side != OrderSide.Sell)
+        return [limitOrder];
+
+      // Honor decimals precision for the amount of this asset.
+      var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
+      var decimals = assetData?.Decimals;
+
+      var dustAmount = decimals is not int
+        ? limitOrder.AmountRemaining
+        : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
+
+      if (dustAmount <= 0)
+        return [limitOrder];
+
+      fallbackReq = new OrderReqDto()
+      {
+        Market = orderReq.Market,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = dustAmount,
+      };
+    }
+    else
+    {
+      fallbackReq = new OrderReqDto()
+      {
+        Market = orderReq.Market,
+        Side = orderReq.Side,
+        Type = OrderType.Market,
+        AmountQuote = RoundAmountQuote(remainingAmountQuote, orderReq.Side),
+      };
+    }
+
+    var fallbackOrder = await PlaceAndVerifySingleOrder(exchange, credentials, fallbackReq, source, cancel: true);
+
+    return [limitOrder, fallbackOrder];
+  }
+
+  /// <summary>
+  /// Copies <paramref name="orderReq"/> into a plain <see cref="OrderType.Market"/> request,
+  /// keeping whichever of <see cref="OrderReqDto.Amount"/>/<see cref="OrderReqDto.AmountQuote"/>
+  /// was already specified (both are valid for market orders).
+  /// </summary>
+  private static OrderReqDto ToMarketOrder(OrderReqDto orderReq)
+  {
+    return new()
+    {
+      Market = orderReq.Market,
+      Side = orderReq.Side,
+      Type = OrderType.Market,
+      Amount = orderReq.Amount,
+      AmountQuote = orderReq.AmountQuote,
+    };
+  }
+
+  /// <summary>
+  /// Rounds <paramref name="amountQuote"/> to the 2 decimals exchanges commonly require for an
+  /// AmountQuote-based order, away from zero: up for a <see cref="OrderSide.Sell"/> so the
+  /// remainder is fully liquidated rather than left short of what's actually available to sell,
+  /// down for a <see cref="OrderSide.Buy"/> so it never overspends what's actually available to
+  /// spend.
+  /// </summary>
+  private static decimal RoundAmountQuote(decimal amountQuote, OrderSide side)
+  {
+    return side == OrderSide.Sell
+      ? Math.Ceiling(amountQuote * 100) / 100
+      : Math.Floor(amountQuote * 100) / 100;
+  }
+
+  /// <summary>
+  /// Truncates (rounds toward zero) <paramref name="amount"/> to <paramref name="decimals"/>
+  /// decimal places, so a computed order amount never rounds up past what's actually available.
+  /// </summary>
+  private static decimal TruncateToDecimals(decimal amount, int decimals)
+  {
+    var factor = (decimal)Math.Pow(10, decimals);
+
+    return Math.Floor(amount * factor) / factor;
+  }
+
+  /// <summary>
+  /// Places <paramref name="orderReq"/> and, on success, verifies it has ended.
   /// Never throws: a <see cref="Results.Result{TSuccess, TErrCode}"/> failure carrying no order
   /// payload, or any unexpected exception raised while placing or verifying the order, is
   /// converted into a synthetic <see cref="OrderStatus.Failed"/> <see cref="OrderDto"/> instead
@@ -179,7 +378,7 @@ public class RebalancingService : IRebalancingService
   /// <param name="source"></param>
   /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
   /// <returns>The placed (and, where possible, ended) order, or a synthetic failed order.</returns>
-  private async Task<OrderDto> PlaceAndVerifyOrder(
+  private async Task<OrderDto> PlaceAndVerifySingleOrder(
     IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel)
   {
     OrderDto order;
@@ -188,13 +387,17 @@ public class RebalancingService : IRebalancingService
     {
       var result = await exchange.NewOrder(credentials, orderReq, source);
 
-      if (result.Value is null)
+      // A failure carries its own synthetic OrderDto (Status = Failed, for callers that want to
+      // report on the attempt) rather than a null Value — checking Value alone would treat every
+      // exchange-side rejection (bad price/amount precision, insufficient balance, etc.) as if the
+      // order had actually been placed, silently dropping the failure instead of surfacing it.
+      if (result.ErrorCode != ExchangeErrCodeEnum.Ok || result.Value is null)
       {
         _logger.LogError(
-          "Failed to place order for market {Market} on exchange {Exchange}: exchange returned no order payload (error code {ErrorCode}).",
-          orderReq.Market, exchange.GetType().Name, result.ErrorCode);
+          "Failed to place order for market {Market} on exchange {Exchange}: {ErrorCode} {Summary}",
+          orderReq.Market, exchange.GetType().Name, result.ErrorCode, result.Summary);
 
-        return NewFailedOrder(orderReq);
+        return result.Value ?? NewFailedOrder(orderReq);
       }
 
       order = result.Value;
@@ -208,7 +411,7 @@ public class RebalancingService : IRebalancingService
 
     try
     {
-      return await VerifyOrderEnded(exchange, credentials, order, cancel);
+      return await VerifyOrderEnded(exchange, credentials, order, cancel, _defaultVerifyChecks);
     }
     catch (Exception ex)
     {
@@ -236,16 +439,31 @@ public class RebalancingService : IRebalancingService
 
   public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60)
   {
-    while (
-      checks > 0 &&
-      order.Id != null &&
-      !order.HasEnded)
+    if (exchange is IExchangeOrderNotifications pushExchange && order.Id != null && !order.HasEnded)
     {
-      await Task.Delay(1000);
+      // Wait for a pushed status update instead of polling GetOrder every second. On timeout or
+      // any push failure, fall back to a single authoritative REST check rather than re-polling
+      // for another full budget of `checks` seconds.
+      order = await pushExchange.WaitForOrderEndedAsync(credentials, order, TimeSpan.FromSeconds(checks)) is { } pushed
+        ? pushed
+        : await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
 
-      order = await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
+      // Reuse `checks == 0` below as the "still open" signal, matching the polling path's semantics.
+      checks = order.HasEnded ? 1 : 0;
+    }
+    else
+    {
+      while (
+        checks > 0 &&
+        order.Id != null &&
+        !order.HasEnded)
+      {
+        await Task.Delay(1000);
 
-      checks--;
+        order = await exchange.GetOrder(credentials, order.Id, order.Market) ?? order;
+
+        checks--;
+      }
     }
 
     if (cancel && checks == 0)
@@ -273,7 +491,7 @@ public class RebalancingService : IRebalancingService
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> SellOveragesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance)
   {
     if (null == curBalance)
     {
@@ -297,7 +515,7 @@ public class RebalancingService : IRebalancingService
         {
           Market = allocDiff.Market,
           Side = OrderSide.Sell,
-          Type = OrderType.Market,
+          Type = config.UseLimitOrders ? OrderType.Limit : OrderType.Market,
         };
 
         // Prevent dust.
@@ -307,7 +525,7 @@ public class RebalancingService : IRebalancingService
           var assetData = exchange.GetAsset(credentials, allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
           var decimals = assetData?.Decimals;
 
-          order.Amount = decimals is not int ? allocDiff.Amount : Math.Floor(allocDiff.Amount * (decimal)Math.Pow(10, (int)decimals)) / (decimal)Math.Pow(10, (int)decimals);
+          order.Amount = decimals is not int ? allocDiff.Amount : TruncateToDecimals(allocDiff.Amount, (int)decimals);
         }
         else
         {
@@ -333,7 +551,7 @@ public class RebalancingService : IRebalancingService
     IExchange exchange, ExchangeCredentials credentials, IEnumerable<OrderReqDto> orders, string source)
   {
     // The sell task loop ..
-    return await Task.WhenAll(
+    var results = await Task.WhenAll(
       orders
 
       // Filter for sell orders.
@@ -349,13 +567,16 @@ public class RebalancingService : IRebalancingService
       .Select(sellOrder =>
       {
         if (sellOrder.AmountQuote is decimal amountQuote)
-          sellOrder.AmountQuote = Math.Ceiling(amountQuote * 100) / 100;
+          sellOrder.AmountQuote = RoundAmountQuote(amountQuote, OrderSide.Sell);
 
         return sellOrder;
       })
 
-      // Sell, then verify the sell order ended.
+      // Sell, then verify the sell order ended. A limit order that falls back to market
+      // yields two entries; everything else yields exactly one.
       .Select(sellOrder => PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true)));
+
+    return results.SelectMany(orderResults => orderResults).ToArray();
   }
 
   /// <summary>
@@ -370,7 +591,7 @@ public class RebalancingService : IRebalancingService
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> BuyUnderagesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance = null)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance)
   {
     if (null == curBalance)
     {
@@ -392,7 +613,7 @@ public class RebalancingService : IRebalancingService
       {
         Market = allocDiff.Market,
         Side = OrderSide.Buy,
-        Type = OrderType.Market,
+        Type = config.UseLimitOrders ? OrderType.Limit : OrderType.Market,
         AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
       });
 
@@ -443,12 +664,21 @@ public class RebalancingService : IRebalancingService
         return (decimal)buyOrder.AmountQuote!;
       });
 
+    // Bitvavo docs: placing an order blocks (`onHold`) the traded amount, but the trading fee
+    // itself is only charged after the trade completes, with a slight settlement lag. When this
+    // balance was just fetched right after selling (see Rebalance()), AmountQuoteAvailable can
+    // therefore still include gross, pre-fee sell proceeds for a brief window — sizing buys
+    // against that figure risks a since-settled fee shrinking real availability out from under an
+    // order sized right at the edge. Reserving TakerFee's worth of headroom (the worse of the two
+    // rates) absorbs that lag; a zero-fee exchange (e.g. in tests) sees no change in behavior.
+    var availableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+
     // Multiplication ratio to avoid potentially oversized buy order sizes.
     var ratio = totalBuy == 0 ? 0 :
-      Math.Min(totalBuy, curBalance.AmountQuoteAvailable) / totalBuy;
+      Math.Min(totalBuy, availableWithFeeBuffer) / totalBuy;
 
     // The buy task loop, diffs are already filtered ..
-    return await Task.WhenAll(
+    var results = await Task.WhenAll(
       buyOrders
 
       // Scale to avoid potentially oversized buy order size,
@@ -456,7 +686,7 @@ public class RebalancingService : IRebalancingService
       .Select(buyOrder =>
       {
         buyOrder.AmountQuote *= ratio;
-        buyOrder.AmountQuote = Math.Floor((decimal)buyOrder.AmountQuote! * 100) / 100;
+        buyOrder.AmountQuote = RoundAmountQuote((decimal)buyOrder.AmountQuote!, OrderSide.Buy);
 
         return buyOrder;
       })
@@ -464,8 +694,11 @@ public class RebalancingService : IRebalancingService
       // Check if still reached minimum order size.
       .Where(buyOrder => buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
 
-      // Buy, then verify the buy order ended.
+      // Buy, then verify the buy order ended. A limit order that falls back to market
+      // yields two entries; everything else yields exactly one.
       .Select(buyOrder => PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false)));
+
+    return results.SelectMany(orderResults => orderResults).ToArray();
   }
 
   public async Task<OrderDto[]> Rebalance(
@@ -476,6 +709,10 @@ public class RebalancingService : IRebalancingService
     Balance? curBalance = null,
     string source = "API")
   {
+    await using var orderNotificationSession = exchange is IExchangeOrderNotifications pushExchange
+      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
+      : NoOpAsyncDisposable.Instance;
+
     // Clear the path ..
     _ = await exchange.CancelAllOpenOrders(credentials);
 
@@ -487,7 +724,7 @@ public class RebalancingService : IRebalancingService
     var sellResults = await SellOveragesAndVerify(exchange, credentials, absAllocList, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, absAllocList, source, config);
+    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, absAllocList, source, config, curBalance: null);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
@@ -504,6 +741,10 @@ public class RebalancingService : IRebalancingService
     IEnumerable<OrderReqDto> orders,
     string source = "API")
   {
+    await using var orderNotificationSession = exchange is IExchangeOrderNotifications pushExchange
+      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
+      : NoOpAsyncDisposable.Instance;
+
     // Clear the path ..
     _ = await exchange.CancelAllOpenOrders(credentials);
 

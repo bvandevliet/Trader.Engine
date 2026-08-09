@@ -56,6 +56,8 @@ public class Program
     builder.Services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<AdminSeedSettings>(builder.Configuration.GetSection("AdminSeed"));
+    builder.Services.Configure<RebalancingSettings>(builder.Configuration.GetSection("Rebalancing"));
+    builder.Services.Configure<AutomationSettings>(builder.Configuration.GetSection("Automation"));
 
     // A factory (rather than a plain scoped AddDbContext) so repositories that fan out
     // concurrent work (e.g. EfMarketCapInternalRepository.TryInsertMany) can create their own
@@ -116,7 +118,16 @@ public class Program
 
     builder.Services.AddScoped<IMarketCapInternalRepository, EfMarketCapInternalRepository>();
     builder.Services.AddScoped<IMarketCapService, MarketCapService>();
-    builder.Services.AddScoped<IRebalancingService, RebalancingService>();
+    builder.Services.AddScoped<IRebalancingService>(sp =>
+    {
+      var logger = sp.GetRequiredService<ILogger<RebalancingService>>();
+      var settings = sp.GetRequiredService<IOptions<RebalancingSettings>>().Value;
+
+      // TraderEngine.Common has no notion of app configuration of its own, so the configured
+      // value is translated into a plain constructor argument here at the composition root
+      // rather than RebalancingService taking an IOptions<RebalancingSettings> dependency.
+      return new RebalancingService(logger, settings.FillWaitTimeoutSeconds);
+    });
 
     builder.Services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
     {
@@ -143,7 +154,12 @@ public class Program
     builder.Services.AddHostedService<MarketCapIngestionService>();
     builder.Services.AddHostedService<AutomationRebalancingService>();
 
-    builder.Services.AddHttpClient<IExchange>().ApplyDefaultPoolAndPolicyConfig();
+    builder.Services.AddSingleton<BitvavoRateLimitState>();
+    builder.Services.AddTransient<BitvavoRateLimitHandler>();
+    builder.Services.AddHttpClient<IExchange>()
+      .ApplyDefaultPoolAndPolicyConfig()
+      .AddHttpMessageHandler<BitvavoRateLimitHandler>();
+    builder.Services.AddSingleton<BitvavoWebSocketConnectionPool>();
     foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 

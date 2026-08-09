@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using TraderEngine.API.Factories;
@@ -8,6 +9,7 @@ using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Mappers;
 using TraderEngine.Common.Services;
+using TraderEngine.Data.Repositories;
 
 namespace TraderEngine.API.Controllers;
 
@@ -20,17 +22,20 @@ public class RebalanceController : ControllerBase
   private readonly ILogger<RebalanceController> _logger;
   private readonly ExchangeFactory _exchangeFactory;
   private readonly IRebalancingService _rebalancingService;
+  private readonly IConfigRepository _configRepository;
   private readonly Func<IMarketCapService> _marketCapService;
 
   public RebalanceController(
     ILogger<RebalanceController> logger,
     IServiceProvider serviceProvider,
     ExchangeFactory exchangeFactory,
-    IRebalancingService rebalancingService)
+    IRebalancingService rebalancingService,
+    IConfigRepository configRepository)
   {
     _logger = logger;
     _exchangeFactory = exchangeFactory;
     _rebalancingService = rebalancingService;
+    _configRepository = configRepository;
     _marketCapService = serviceProvider.GetRequiredService<IMarketCapService>;
   }
 
@@ -44,7 +49,8 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Get current balance.
     var balanceResult = await exchange.GetBalance(credentials);
@@ -78,7 +84,10 @@ public class RebalanceController : ControllerBase
     // Await for the task to complete.
     var absAllocs = await absAllocsTask;
 
-    // Simulate rebalance.
+    // Simulate rebalance. SimExchange/MockExchange resolve a Limit order's price from the cached
+    // allocation price (no real order book lookup) and fill it instantly at the maker rate, so
+    // UseLimitOrders is honored here too — the preview's estimated fees stay accurate without
+    // ever touching a real API for a placement that will never actually rest.
     var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, absAllocs, balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.
@@ -105,7 +114,8 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Filter for assets that are potentially tradable.
     var absAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials, rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.Config.TopRankingCount);
@@ -113,6 +123,14 @@ public class RebalanceController : ControllerBase
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
     var orders = await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, absAllocs, null, source);
+
+    // Persisted here rather than left to the caller (TraderEngine.Web used to set this only after
+    // a successful round trip): the rebalance has already run for real by this point regardless of
+    // whether the calling client is still around to receive the response (e.g. the browser tab was
+    // closed, or the client-side HTTP timeout elapsed, mid-request) — see the "not yet implemented"
+    // notes on that failure mode in CLAUDE.md.
+    rebalanceReqDto.Config.LastRebalance = DateTime.UtcNow;
+    await _configRepository.SaveConfig(userId, rebalanceReqDto.Config);
 
     return Ok(orders);
   }
@@ -127,7 +145,8 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Execute rebalance orders.
     // TODO: Properly handle exchange auth errors.

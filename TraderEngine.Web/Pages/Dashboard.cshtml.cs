@@ -228,8 +228,10 @@ public class DashboardModel : TraderEnginePageModelBase
       var orders = await _apiClient.Rebalance(
         user, _exchangeName, Source, new RebalanceReqDto(credentials, request.Config, request.NewAbsAllocs), ct);
 
-      request.Config.LastRebalance = DateTime.UtcNow;
-      await _configRepository.SaveConfig(user.Id, request.Config);
+      // LastRebalance is persisted server-side by TraderEngine.API's RebalanceController itself,
+      // right after the rebalance actually runs — not here, since this line would never run (and
+      // the timestamp would silently go stale) if the client disconnects before the API response
+      // makes it back, even though the rebalance already executed for real.
 
       // Only fetched after the trades above have settled — this needs the post-trade balance, so
       // it can't run in parallel with placing the orders the way OnPostInitAsync's calls can.

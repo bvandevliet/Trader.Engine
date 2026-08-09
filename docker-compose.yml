@@ -51,6 +51,7 @@ services:
       - EmailSettings__SmtpPassword=${SMTP_PASSWORD}
       - EmailSettings__FromAddress=${FROM_EMAIL_ADDRESS}
       - EmailSettings__WebsiteUrl=${WEBSITE_URL}
+      - Rebalancing__FillWaitTimeoutSeconds=${REBALANCE_FILL_WAIT_TIMEOUT_SECONDS:-60}
   traderengine.web:
     container_name: traderengine.web
     image: ${DOCKER_REGISTRY-}traderengine.web:${TAG:-latest}

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
@@ -30,7 +31,8 @@ public class AccountController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(apiCredentials.ApiKey, apiCredentials.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(apiCredentials.ApiKey, apiCredentials.ApiSecret, userId);
 
     var totalDepositedResult = await exchange.TotalDeposited(credentials);
 
@@ -52,7 +54,8 @@ public class AccountController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var credentials = new ExchangeCredentials(apiCredentials.ApiKey, apiCredentials.ApiSecret);
+    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var credentials = new ExchangeCredentials(apiCredentials.ApiKey, apiCredentials.ApiSecret, userId);
 
     var totalWithdrawnResult = await exchange.TotalWithdrawn(credentials);
 

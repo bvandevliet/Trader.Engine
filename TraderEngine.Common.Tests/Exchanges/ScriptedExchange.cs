@@ -30,6 +30,8 @@ internal sealed class ScriptedExchange : IExchange
 
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];
 
+  private readonly Dictionary<string, BestBidAskDto> _bestBidAsks = [];
+
   /// <summary>
   /// Base symbols for which <see cref="GetMarket"/> was called, in call order (including repeats).
   /// </summary>
@@ -67,12 +69,43 @@ internal sealed class ScriptedExchange : IExchange
   }
 
   /// <summary>
+  /// Configures <see cref="GetBestBidAsk"/> to report <paramref name="bid"/>/<paramref name="ask"/>
+  /// for <paramref name="baseSymbol"/>. A symbol with no configured book causes
+  /// <see cref="GetBestBidAsk"/> to return <c>null</c>, simulating unavailable book data.
+  /// </summary>
+  public void SetBestBidAsk(string baseSymbol, decimal bid, decimal ask)
+  {
+    _bestBidAsks[baseSymbol] = new BestBidAskDto { Bid = bid, Ask = ask };
+  }
+
+  /// <summary>
+  /// Base symbols for which <see cref="GetBestBidAsk"/> was called, in call order (including repeats).
+  /// </summary>
+  public List<string> GetBestBidAskCalls { get; } = [];
+
+  /// <summary>
   /// Enqueues the <see cref="OrderDto"/> to be returned by the next <see cref="GetOrder"/> call.
   /// Once the queue is exhausted, subsequent calls return <c>null</c>.
   /// </summary>
   public void EnqueueGetOrderResponse(OrderDto? order)
   {
     _getOrderResponses.Enqueue(order);
+  }
+
+  private readonly Queue<Result<OrderDto, ExchangeErrCodeEnum>> _newOrderResponses = new();
+
+  /// <summary>
+  /// The <see cref="OrderReqDto"/> passed to each <see cref="NewOrder"/> call, in call order.
+  /// </summary>
+  public List<OrderReqDto> NewOrderCalls { get; } = [];
+
+  /// <summary>
+  /// Enqueues the result to be returned by the next <see cref="NewOrder"/> call.
+  /// Once the queue is exhausted, subsequent calls throw <see cref="InvalidOperationException"/>.
+  /// </summary>
+  public void EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum> result)
+  {
+    _newOrderResponses.Enqueue(result);
   }
 
   public Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
@@ -106,9 +139,24 @@ internal sealed class ScriptedExchange : IExchange
     return Task.FromResult(Enumerable.Empty<OrderDto>())!;
   }
 
+  /// <summary>
+  /// Configures the <see cref="Balance"/> returned by <see cref="GetBalance"/>. Defaults to an
+  /// empty <see cref="EUR"/> balance with a large quote allocation, so buy-side pro-rata scaling
+  /// (which reads <see cref="Balance.AmountQuoteAvailable"/>) never constrains a test unless a
+  /// smaller balance is explicitly configured.
+  /// </summary>
+  public Balance BalanceResponse { get; init; } = DefaultBalance();
+
+  private static Balance DefaultBalance()
+  {
+    var balance = new Balance("EUR");
+    balance.TryAddAllocation(new Allocation(new MarketReqDto("EUR", "EUR"), price: 1, amount: 1_000_000));
+    return balance;
+  }
+
   public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
   {
-    throw new NotImplementedException();
+    return Task.FromResult(Result<Balance, ExchangeErrCodeEnum>.Success(BalanceResponse));
   }
 
   public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)
@@ -121,9 +169,22 @@ internal sealed class ScriptedExchange : IExchange
     throw new NotImplementedException();
   }
 
+  private readonly Dictionary<string, int> _assetDecimals = [];
+
+  /// <summary>
+  /// Configures <see cref="GetAsset"/> to report <paramref name="decimals"/> for <paramref name="baseSymbol"/>.
+  /// A symbol with no configured decimals causes <see cref="GetAsset"/> to return <c>null</c>.
+  /// </summary>
+  public void SetAssetDecimals(string baseSymbol, int decimals)
+  {
+    _assetDecimals[baseSymbol] = decimals;
+  }
+
   public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
-    throw new NotImplementedException();
+    return Task.FromResult(_assetDecimals.TryGetValue(baseSymbol, out var decimals)
+      ? new AssetDataDto { BaseSymbol = baseSymbol, Name = baseSymbol, Decimals = decimals }
+      : null);
   }
 
   public Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)
@@ -131,9 +192,21 @@ internal sealed class ScriptedExchange : IExchange
     throw new NotImplementedException();
   }
 
+  public Task<BestBidAskDto?> GetBestBidAsk(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    GetBestBidAskCalls.Add(market.BaseSymbol);
+
+    return Task.FromResult(_bestBidAsks.TryGetValue(market.BaseSymbol, out var bidAsk) ? bidAsk : null);
+  }
+
   public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
   {
-    throw new NotImplementedException();
+    NewOrderCalls.Add(order);
+
+    if (_newOrderResponses.Count == 0)
+      throw new InvalidOperationException("No scripted NewOrder response was enqueued.");
+
+    return Task.FromResult(_newOrderResponses.Dequeue());
   }
 
   public Task<IEnumerable<OrderDto>?> GetOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null)

@@ -1,3 +1,5 @@
+using Microsoft.Extensions.Options;
+using TraderEngine.API.AppSettings;
 using TraderEngine.API.Factories;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -20,6 +22,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
   private readonly IRebalancingService _rebalancingService;
   private readonly IMarketCapService _marketCapService;
   private readonly IConfigRepository _configRepo;
+  private readonly int _maxConcurrentRuns;
 
   public AutomationOrchestrator(
     ILogger<AutomationOrchestrator> logger,
@@ -27,7 +30,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     IServiceScopeFactory scopeFactory,
     IRebalancingService rebalancingService,
     IMarketCapService marketCapService,
-    IConfigRepository configRepo)
+    IConfigRepository configRepo,
+    IOptions<AutomationSettings>? automationSettings = null)
   {
     _logger = logger;
     _environment = environment;
@@ -35,6 +39,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     _rebalancingService = rebalancingService;
     _marketCapService = marketCapService;
     _configRepo = configRepo;
+    _maxConcurrentRuns = automationSettings?.Value.MaxConcurrentRuns ?? 5;
   }
 
   public async Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct)
@@ -54,14 +59,19 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
     var userConfigs = await _configRepo.GetConfigs();
 
-    await Task.WhenAll(userConfigs.Select(async userConfig =>
+    // Bounded (MaxDegreeOfParallelism = _maxConcurrentRuns) rather than the unbounded Task.WhenAll
+    // this used to be: every user's Bitvavo REST traffic shares one rate-limit budget regardless
+    // of which account it belongs to (see BitvavoRateLimitState), since it all leaves from this
+    // app's single outbound IP — an unbounded fan-out would let one especially busy cycle burn
+    // through that shared budget and throttle every other user's cycle in the same run at once.
+    await Parallel.ForEachAsync(userConfigs, new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentRuns, CancellationToken = ct }, async (userConfig, ct) =>
     {
       var now = DateTime.UtcNow;
 
       // Resolve a dedicated DI scope per user, created up-front so it also covers the catch
       // block below: IExchange implementations are registered Scoped and carry mutable
-      // per-instance ApiKey/ApiSecret, while this method runs many users concurrently
-      // (Task.WhenAll) inside a single orchestrator-level scope. Sharing one
+      // per-instance ApiKey/ApiSecret, while this method runs many users concurrently (bounded by
+      // _maxConcurrentRuns) inside a single orchestrator-level scope. Sharing one
       // ExchangeFactory/exchange instance across users here would let their credentials race
       // and cross-contaminate between accounts. IApiCredentialsRepository/IConfigRepository/
       // IEmailNotificationService must likewise be resolved from this per-user scope rather than
@@ -120,7 +130,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // Get API credentials.
         var apiCred = await keyRepo.GetApiCred(userConfig.Key, exchangeName);
 
-        var credentials = new ExchangeCredentials(apiCred.ApiKey, apiCred.ApiSecret);
+        var credentials = new ExchangeCredentials(apiCred.ApiKey, apiCred.ApiSecret, userConfig.Key);
 
         // Get current balance.
         var balanceResult = await exchange.GetBalance(credentials);
@@ -168,7 +178,10 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // Await for the task to complete.
         var absAllocs = await absAllocsTask;
 
-        // Simulate rebalance.
+        // Simulate rebalance. SimExchange/MockExchange resolve a Limit order's price from the
+        // cached allocation price (no real order book lookup) and fill it instantly at the maker
+        // rate, so UseLimitOrders is honored here too — the dry-run's estimated fees stay accurate
+        // without ever touching a real API for a placement that will never actually rest.
         var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, absAllocs, balance, "automation");
 
         var newBalanceDto = CommonMapper.MapBalance(balance);
@@ -237,7 +250,9 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           return;
         }
 
-        // Execute and return resulting rebalance DTO.
+        // Execute and return resulting rebalance DTO. simulated.Orders already carries the right
+        // Type per order (MockExchange preserves it on the simulated result), so real execution
+        // just re-quotes each Limit order against the real order book and re-verifies from there.
         var ordersExecuted = await _rebalancingService.Rebalance(exchange, credentials, simulated.Orders, "automation");
 
         // If no orders were placed, return.
@@ -249,8 +264,14 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           return;
         }
 
+        // A limit order that timed out and fell back to a market order for the remainder appears
+        // as two entries: the original (superseded) limit leg plus the market fallback leg. Only
+        // the non-superseded leg represents the final outcome of a planned trade, so the checks
+        // below ignore superseded entries.
+        var finalOrders = ordersExecuted.Where(order => !order.IsSuperseded).ToArray();
+
         // If any of the orders have not been filled, return.
-        if (ordersExecuted.Any(order => order.Status != OrderStatus.Filled))
+        if (finalOrders.Any(order => order.Status != OrderStatus.Filled))
         {
           _logger.LogError("Not all orders were filled for user '{userId}'.", userConfig.Key);
 
@@ -267,7 +288,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // If not the same amount of orders were executed and filled as simulated, return.
-        if (ordersExecuted.Length != simulated.Orders.Length)
+        if (finalOrders.Length != simulated.Orders.Length)
         {
           _logger.LogError(
             "Not all simulated orders were executed for user '{userId}'.", userConfig.Key);
@@ -320,7 +341,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
           _logger.LogCritical(exception2, "Error while sending automation exception notification.");
         }
       }
-    }));
+    });
   }
 
   public static bool IsEligibleForRebalance(ConfigReqDto configReqDto, SimulationDto simulated)

@@ -23,6 +23,15 @@ public static partial class ApiMapper
   [MapProperty(nameof(BitvavoAssetDataDto.Symbol), nameof(AssetDataDto.BaseSymbol))]
   public static partial AssetDataDto MapAssetData(BitvavoAssetDataDto source);
 
+  // ── BitvavoTickerBookDto → BestBidAskDto ─────────────────────────────────────
+
+  [MapProperty(nameof(BitvavoTickerBookDto.Bid), nameof(BestBidAskDto.Bid))]
+  [MapProperty(nameof(BitvavoTickerBookDto.Ask), nameof(BestBidAskDto.Ask))]
+  [MapperIgnoreSource(nameof(BitvavoTickerBookDto.Market))]
+  [MapperIgnoreSource(nameof(BitvavoTickerBookDto.BidSize))]
+  [MapperIgnoreSource(nameof(BitvavoTickerBookDto.AskSize))]
+  public static partial BestBidAskDto MapTickerBook(BitvavoTickerBookDto source);
+
   // ── OrderReqDto → BitvavoOrderReqDto ────────────────────────────────────────
 
   [MapProperty(nameof(OrderReqDto.Type), nameof(BitvavoOrderReqDto.OrderType))]
@@ -38,6 +47,7 @@ public static partial class ApiMapper
   [MapProperty(nameof(BitvavoOrderDto.FilledAmount), nameof(OrderDto.AmountFilled))]
   [MapProperty(nameof(BitvavoOrderDto.FilledAmountQuote), nameof(OrderDto.AmountQuoteFilled))]
   [MapProperty(nameof(BitvavoOrderDto.OrderType), nameof(OrderDto.Type))]
+  [MapperIgnoreTarget(nameof(OrderDto.IsSuperseded))]
   public static partial OrderDto MapOrder(BitvavoOrderDto source);
 
   public static IEnumerable<OrderDto> MapOrders(IEnumerable<BitvavoOrderDto> source)

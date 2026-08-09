@@ -32,6 +32,8 @@ public class RebalancingConfiguration
 
   public bool AutomationEnabled { get; set; }
 
+  public bool UseLimitOrders { get; set; }
+
   public int IntervalHours { get; set; }
 
   public double CurrentAllocWeightingMult { get; set; }
