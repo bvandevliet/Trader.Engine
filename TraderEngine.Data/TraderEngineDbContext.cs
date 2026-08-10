@@ -65,7 +65,7 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
         .HasForeignKey<RebalancingConfiguration>(c => c.UserId)
         .OnDelete(DeleteBehavior.Cascade);
 
-      entity.Property(c => c.AltWeightingFactors)
+      entity.Property(c => c.WeightingOverrides)
         .HasConversion(doubleDictionaryConverter, doubleDictionaryComparer)
         .HasColumnType("jsonb");
 

@@ -233,8 +233,8 @@ public class AutomationOrchestratorConcurrencyTests
   }
 
   /// <summary>
-  /// Safeguards against a local Development environment (e.g. a dev database seeded with real,
-  /// migrated production credentials — see TraderEngine.Migration) ever placing a real exchange
+  /// Safeguards against a local Development environment (e.g. a dev database seeded with real
+  /// production credentials) ever placing a real exchange
   /// order, regardless of how many users have automation enabled.
   /// </summary>
   [TestMethod]

@@ -45,8 +45,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
   public async Task RunAsync(DateTimeOffset dataTimestamp, CancellationToken ct)
   {
     // Safeguard: this method places real exchange orders. Never let it run against the
-    // Development environment — e.g. a local dev database seeded with real, migrated production
-    // credentials (see TraderEngine.Migration) must never be able to trigger a real trade just
+    // Development environment — e.g. a local dev database seeded with real, production
+    // credentials must never be able to trigger a real trade just
     // because someone happened to be running/debugging the app locally.
     if (_environment.IsDevelopment())
     {
@@ -153,11 +153,11 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
         var balance = balanceResult.Value!;
 
-        var newAbsAllocs = await _marketCapService.BalancedAbsAllocs(
+        var rawTargetAllocs = await _marketCapService.BalancedTargetAllocs(
           _quoteSymbol, configReqDto, balance.Allocations.Select(alloc => alloc.Market).ToList());
 
         // If balanced allocations could not be determined, bail for safety.
-        if (null == newAbsAllocs)
+        if (null == rawTargetAllocs)
         {
           _logger.LogWarning(
             "Balanced allocations could not be determined for user '{userId}'.", userConfig.Key);
@@ -166,7 +166,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // Filter for assets that are potentially tradable.
-        var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, newAbsAllocs, configReqDto.TopRankingCount);
+        var targetAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, rawTargetAllocs, configReqDto.TopRankingCount);
 
         // Map here to retain current balance as it will be
         // modified by the simulation since it is passed by reference.
@@ -176,13 +176,13 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         var simExchange = new SimExchange(exchange, balance);
 
         // Await for the task to complete.
-        var absAllocs = await absAllocsTask;
+        var targetAllocs = await targetAllocsTask;
 
         // Simulate rebalance. SimExchange/MockExchange resolve a Limit order's price from the
         // cached allocation price (no real order book lookup) and fill it instantly at the maker
         // rate, so UseLimitOrders is honored here too — the dry-run's estimated fees stay accurate
         // without ever touching a real API for a placement that will never actually rest.
-        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, absAllocs, balance, "automation");
+        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, targetAllocs, balance, "automation");
 
         var newBalanceDto = CommonMapper.MapBalance(balance);
 
@@ -190,7 +190,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         {
           Config = configReqDto,
           Orders = simulatedOrders,
-          NewAbsAllocs = absAllocs,
+          TargetAllocs = targetAllocs,
           CurBalance = curBalanceDto,
           NewBalance = newBalanceDto,
         };
@@ -206,7 +206,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // Check if any assets are trading, if not, bail for safety.
-        if (!simulated.NewAbsAllocs.Any(absAlloc => absAlloc.MarketStatus == MarketStatus.Trading))
+        if (!simulated.TargetAllocs.Any(targetAlloc => targetAlloc.MarketStatus == MarketStatus.Trading))
         {
           _logger.LogWarning(
             "Skipping automation for user '{userId}' because no assets would be traded or allocated. " +
@@ -350,19 +350,19 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     // Ignoring quote takeout, because it's considered out of the game.
     var quoteTakeout = Math.Max(0, Math.Min(configReqDto.QuoteTakeout, simulated.CurBalance.AmountQuoteTotal));
     var relTotal = simulated.CurBalance.AmountQuoteTotal - quoteTakeout;
-    var quoteDiff = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
+    var quoteDrift = simulated.CurBalance.AmountQuoteAvailable - simulated.NewBalance.AmountQuoteAvailable;
 
     return !(
       // If no orders were simulated, no need to rebalance.
       simulated.Orders.Length == 0 ||
       // If the total portfolio is too small, we can't rebalance.
-      relTotal < configReqDto.MinimumDiffQuote ||
+      relTotal < configReqDto.MinimumOrderSizeQuote ||
       // If quote diff doesn't exceed the minimum order size,
-      Math.Abs(quoteDiff) < configReqDto.MinimumDiffQuote &&
+      Math.Abs(quoteDrift) < configReqDto.MinimumOrderSizeQuote &&
       // and none of the simulated orders exceed the minimum order size and diff,
       false == simulated.Orders.Any(order =>
-        order.AmountQuoteFilled >= configReqDto.MinimumDiffQuote &&
-        order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.MinimumDiffAllocation / 100));
+        order.AmountQuoteFilled >= configReqDto.MinimumOrderSizeQuote &&
+        order.AmountQuoteFilled / relTotal >= (decimal)configReqDto.DriftThresholdPercent / 100));
   }
 
   public static bool HasNonContiguousFullSellOrder(ConfigReqDto configReqDto, SimulationDto simulated)
@@ -381,7 +381,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
       .OrderBy(a => a.AmountQuote))
     {
       // Skip dust allocations — too small to matter.
-      if (allocation.AmountQuote < configReqDto.MinimumDiffQuote)
+      if (allocation.AmountQuote < configReqDto.MinimumOrderSizeQuote)
         continue;
 
       var isKept = !sellOrdersByMarket[allocation.Market]

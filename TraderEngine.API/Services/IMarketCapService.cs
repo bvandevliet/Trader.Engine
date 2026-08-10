@@ -25,5 +25,5 @@ public interface IMarketCapService
   /// <param name="configReqDto"></param>
   /// <param name="currentAssets"></param>
   /// <returns></returns>
-  public Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null);
+  public Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null);
 }

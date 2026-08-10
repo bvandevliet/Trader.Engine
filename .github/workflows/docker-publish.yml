@@ -48,7 +48,6 @@ jobs:
         project:
           - TraderEngine.API
           - TraderEngine.Web
-          - TraderEngine.Migration
     with:
       CSPROJ_NAME: ${{ matrix.project }}
       DOTNET_VERSION: 10

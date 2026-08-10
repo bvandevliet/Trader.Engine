@@ -14,5 +14,5 @@ public class SimulationDto
 
   public BalanceDto NewBalance { get; set; } = null!;
 
-  public List<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
+  public List<TargetAllocReqDto> TargetAllocs { get; set; } = null!;
 }

@@ -10,7 +10,7 @@ public class SimulationReqDto
   [Required]
   public ConfigReqDto Config { get; set; } = null!;
 
-  public IEnumerable<AbsAllocReqDto>? NewAbsAllocs { get; set; }
+  public IEnumerable<TargetAllocReqDto>? TargetAllocs { get; set; }
 
   public SimulationReqDto()
   {

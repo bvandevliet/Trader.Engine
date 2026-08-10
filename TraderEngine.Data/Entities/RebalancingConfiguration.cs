@@ -14,7 +14,7 @@ public class RebalancingConfiguration
 
   public decimal QuoteAllocation { get; set; }
 
-  public Dictionary<string, double> AltWeightingFactors { get; set; } = [];
+  public Dictionary<string, double> WeightingOverrides { get; set; } = [];
 
   public List<string> TagsToInclude { get; set; } = [];
 
@@ -26,9 +26,9 @@ public class RebalancingConfiguration
 
   public double NthRoot { get; set; }
 
-  public int MinimumDiffQuote { get; set; }
+  public int MinimumOrderSizeQuote { get; set; }
 
-  public double MinimumDiffAllocation { get; set; }
+  public double DriftThresholdPercent { get; set; }
 
   public bool AutomationEnabled { get; set; }
 
@@ -36,7 +36,7 @@ public class RebalancingConfiguration
 
   public int IntervalHours { get; set; }
 
-  public double CurrentAllocWeightingMult { get; set; }
+  public double HeldAssetBiasMult { get; set; }
 
   public DateTime? LastRebalance { get; set; }
 }

@@ -16,8 +16,8 @@ public class AutomationOrchestratorTests
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
-      MinimumDiffAllocation = 1,
+      MinimumOrderSizeQuote = 5,
+      DriftThresholdPercent = 1,
     };
 
     var simulated = new SimulationDto
@@ -48,8 +48,8 @@ public class AutomationOrchestratorTests
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 20,
-      MinimumDiffAllocation = 1,
+      MinimumOrderSizeQuote = 20,
+      DriftThresholdPercent = 1,
     };
 
     var simulated = new SimulationDto
@@ -82,13 +82,13 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void IsEligibleForRebalance_AllocDiffBelowMinimum_ReturnsFalse()
+  public void IsEligibleForRebalance_DriftBelowThreshold_ReturnsFalse()
   {
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 10,
-      MinimumDiffAllocation = 2,
+      MinimumOrderSizeQuote = 10,
+      DriftThresholdPercent = 2,
     };
 
     var simulated = new SimulationDto
@@ -126,8 +126,8 @@ public class AutomationOrchestratorTests
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 10,
-      MinimumDiffAllocation = 1,
+      MinimumOrderSizeQuote = 10,
+      DriftThresholdPercent = 1,
     };
 
     var simulated = new SimulationDto
@@ -169,7 +169,7 @@ public class AutomationOrchestratorTests
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -233,7 +233,7 @@ public class AutomationOrchestratorTests
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -303,7 +303,7 @@ public class AutomationOrchestratorTests
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -370,7 +370,7 @@ public class AutomationOrchestratorTests
     // tolerates exactly one kept allocation, so this is no longer flagged as non-contiguous.
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -435,12 +435,12 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_SmallestAllocationFullSell_IgnoresAllocationsBelowMinimumDiff_ReturnsFalse()
+  public void HasNonContiguousFullSellOrder_SmallestAllocationFullSell_IgnoresAllocationsBelowMinimumOrderSize_ReturnsFalse()
   {
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -512,12 +512,12 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_AllFullSellOrdersContiguous_IgnoresAllocationsBelowMinimumDiff_ReturnsFalse()
+  public void HasNonContiguousFullSellOrder_AllFullSellOrdersContiguous_IgnoresAllocationsBelowMinimumOrderSize_ReturnsFalse()
   {
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -595,12 +595,12 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_NonContiguousFullSell_IgnoresAllocationsBelowMinimumDiff_ReturnsTrue()
+  public void HasNonContiguousFullSellOrder_NonContiguousFullSell_IgnoresAllocationsBelowMinimumOrderSize_ReturnsTrue()
   {
     // Arrange
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -672,7 +672,7 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_SmallestFullSellThenSingleKeptAllocation_IgnoresAllocationsBelowMinimumDiff_ToleratedReturnsFalse()
+  public void HasNonContiguousFullSellOrder_SmallestFullSellThenSingleKeptAllocation_IgnoresAllocationsBelowMinimumOrderSize_ToleratedReturnsFalse()
   {
     // Arrange
     // Same as the non-dust variant, plus a dust LTC full sell that must be ignored entirely.
@@ -680,7 +680,7 @@ public class AutomationOrchestratorTests
     // by the skip allowance (1).
     var configReqDto = new ConfigReqDto
     {
-      MinimumDiffQuote = 5,
+      MinimumOrderSizeQuote = 5,
     };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
@@ -765,7 +765,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // Only ADA (smaller) is kept while ETH (larger) is fully sold — a single kept allocation
     // sits within the skip allowance (1) and must not trigger the protective gate.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketEth = new MarketReqDto("EUR", "ETH");
     var marketAda = new MarketReqDto("EUR", "ADA");
@@ -799,7 +799,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // BNB and ADA (both smaller) are kept while ETH (larger) is fully sold — two kept
     // allocations exceed the skip allowance (1), so the gate must fire.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketEth = new MarketReqDto("EUR", "ETH");
     var marketAda = new MarketReqDto("EUR", "ADA");
@@ -837,7 +837,7 @@ public class AutomationOrchestratorTests
     // (2nd kept, cumulative total now exceeds the skip allowance), BTC is fully sold.
     // The allowance is a running budget across the whole walk — it is not reset after being
     // spent once on an earlier, tolerated full sell.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -876,7 +876,7 @@ public class AutomationOrchestratorTests
   public void HasNonContiguousFullSellOrder_NoSellOrders_ReturnsFalse()
   {
     // Arrange
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -906,7 +906,7 @@ public class AutomationOrchestratorTests
   {
     // Arrange
     // Selling everything is contiguous by definition — no "kept" allocation creates a gap.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -943,7 +943,7 @@ public class AutomationOrchestratorTests
   {
     // Arrange
     // Only one allocation — nothing to be non-contiguous with.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketEth = new MarketReqDto("EUR", "ETH");
 
@@ -977,7 +977,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // ETH is being partially sold (order.Amount != allocation.Amount), so it does not
     // count as a full sell even though smaller allocations are kept.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1015,7 +1015,7 @@ public class AutomationOrchestratorTests
     // The smallest allocation (ADA) is partially reduced and the proceeds go to buying more ETH.
     // potentialGapFound is set when ADA is processed (it's not a full sell), but since no
     // allocation is fully sold, Any() never returns true — no false positive.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1053,7 +1053,7 @@ public class AutomationOrchestratorTests
     // ADA (smallest) is partially reduced — treated as "kept" because it's not a full sell.
     // ETH (larger) is fully sold alongside this. Only one allocation (ADA) is kept before the
     // full sell, which is within the skip allowance (1), so the gate does not fire.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1091,7 +1091,7 @@ public class AutomationOrchestratorTests
     // Both ADA and ETH (smaller) are partially reduced — both treated as "kept" because
     // neither is a full sell. BTC (largest) is fully sold. Two kept allocations exceed the
     // skip allowance (1), so the gate correctly fires.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1129,7 +1129,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // Every allocation has a partial sell order — none are fully sold.
     // potentialGapFound gets set but Any() never returns true.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1168,7 +1168,7 @@ public class AutomationOrchestratorTests
   {
     // Arrange
     // A buy order whose Amount matches the allocation Amount must not be treated as a full sell.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1209,7 +1209,7 @@ public class AutomationOrchestratorTests
     // two allocations in sorted order. Without the BaseSymbol != QuoteSymbol filter it would
     // be treated as a "kept" allocation, setting potentialGapFound=true — causing ETH being sold
     // to incorrectly return true. The filter must prevent this.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketEth = new MarketReqDto("EUR", "ETH");
     var marketQuote = new MarketReqDto("EUR", "EUR"); // quote self-pair
@@ -1244,7 +1244,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // EUR/EUR at 50 sits between ADA (15) and ETH (70) in the sorted order.
     // Selling the two smallest above-threshold allocations is contiguous — should return false.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1286,7 +1286,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // EUR/EUR at 50 sits between ADA (15) and ETH (70). Selling ETH while keeping ADA is
     // non-contiguous. The quote allocation must not interfere with gap detection.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1326,11 +1326,11 @@ public class AutomationOrchestratorTests
   public void HasNonContiguousFullSellOrder_DustBetweenAboveThresholdAllocations_ContiguousSell_ReturnsFalse()
   {
     // Arrange
-    // MinimumDiffQuote=25 makes BNB(10) and XRP(18) dust. ADA(30), ETH(70), BTC(100) are
+    // MinimumOrderSizeQuote=25 makes BNB(10) and XRP(18) dust. ADA(30), ETH(70), BTC(100) are
     // above-threshold. XRP(18) is numerically between BNB(10) and ADA(30) in sorted order,
     // sitting "between" allocations but must be excluded as dust.
     // Selling only ADA (smallest above-threshold) is contiguous — should return false.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1371,7 +1371,7 @@ public class AutomationOrchestratorTests
     // Same setup as above but ETH (70) is fully sold while ADA (30) is kept.
     // Dust allocations (BNB=10, XRP=18) must not affect gap detection. Only one above-minimum
     // allocation (ADA) is kept before the ETH full sell — tolerated by the skip allowance (1).
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1410,7 +1410,7 @@ public class AutomationOrchestratorTests
   {
     // Arrange
     // A dust allocation (XRP=18) has a full-sell order (exact amount match). Because it falls
-    // below MinimumDiffQuote=25 it is skipped entirely via `continue` — its sell order must
+    // below MinimumOrderSizeQuote=25 it is skipped entirely via `continue` — its sell order must
     // not set gapDetected or trigger an early return. The above-minimum allocations are all
     // kept, so no non-contiguous full sell exists.
     //
@@ -1418,7 +1418,7 @@ public class AutomationOrchestratorTests
     // inside the Any() lambda instead of being skipped. Because ascending sort guarantees dust
     // is processed before any above-minimum allocation can set potentialGapFound=true, both
     // implementations produce the same result. This test documents and guards that invariant.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1458,7 +1458,7 @@ public class AutomationOrchestratorTests
     // Dust allocation (XRP=18) has a full-sell order that must be ignored entirely. Only one
     // above-minimum allocation (ADA=30) is kept before ETH (70) is fully sold — tolerated by
     // the skip allowance (1), so the gate does not fire.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1498,7 +1498,7 @@ public class AutomationOrchestratorTests
     // Dust allocation (XRP=18) has a full-sell order that must be ignored entirely. Two
     // above-minimum allocations (ADA=30, SOL=45) are kept before ETH (70) is fully sold —
     // this exceeds the skip allowance (1), so the gate correctly fires.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 25 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 25 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1539,8 +1539,8 @@ public class AutomationOrchestratorTests
   public void HasNonContiguousFullSellOrder_OnlyDustAllocations_AllFullySold_ReturnsFalse()
   {
     // Arrange
-    // All allocations are below MinimumDiffQuote; none are meaningful enough for gap detection.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 50 };
+    // All allocations are below MinimumOrderSizeQuote; none are meaningful enough for gap detection.
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 50 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1580,7 +1580,7 @@ public class AutomationOrchestratorTests
     // quote filter. FET has an essentially zero AmountQuote and acts as dust.
     // When the rebalance only generates buy orders to deploy the added EUR, no full sell is
     // involved and the method must return false.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 10 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 10 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1664,7 +1664,7 @@ public class AutomationOrchestratorTests
     // The user experienced this as a "false positive" — the rebalance intent was legitimate, but
     // the safety check fires because the design cannot distinguish between an intentional market-cap
     // driven full sell and an erroneous one. This test documents the root cause.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 10 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 10 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");
@@ -1734,7 +1734,7 @@ public class AutomationOrchestratorTests
     // Arrange
     // EUR/EUR at 50 sits between ADA (15) and ETH (70). LTC (1) is dust. Both must be excluded
     // while gap detection still fires because ADA (15) is kept and ETH (70) is fully sold.
-    var configReqDto = new ConfigReqDto { MinimumDiffQuote = 5 };
+    var configReqDto = new ConfigReqDto { MinimumOrderSizeQuote = 5 };
 
     var marketBtc = new MarketReqDto("EUR", "BTC");
     var marketEth = new MarketReqDto("EUR", "ETH");

@@ -9,7 +9,7 @@ using TraderEngine.Common.Tests.Exchanges;
 namespace TraderEngine.Common.Tests.Services;
 
 /// <summary>
-/// Covers <see cref="RebalancingService.Rebalance(Exchanges.IExchange, ConfigReqDto, IEnumerable{AbsAllocReqDto}, Balance?, string)"/>,
+/// Covers <see cref="RebalancingService.Rebalance(Exchanges.IExchange, ConfigReqDto, IEnumerable{TargetAllocReqDto}, Balance?, string)"/>,
 /// i.e. the core rebalance logic that computes allocation diffs against target percentages and
 /// sells overages before buying underages. Uses <see cref="MockExchange"/> so orders actually
 /// mutate the given <see cref="Balance"/>, allowing assertions on both the returned orders and
@@ -51,8 +51,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .5m),
-      new AbsAllocReqDto(_eth, .5m),
+      new TargetAllocReqDto(_btc, .5m),
+      new TargetAllocReqDto(_eth, .5m),
     };
 
     // Act
@@ -90,8 +90,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .5m),
-      new AbsAllocReqDto(_eth, .5m),
+      new TargetAllocReqDto(_btc, .5m),
+      new TargetAllocReqDto(_eth, .5m),
     };
 
     var config = new ConfigReqDto { UseLimitOrders = true };
@@ -121,8 +121,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .5m),
-      new AbsAllocReqDto(_eth, .5m),
+      new TargetAllocReqDto(_btc, .5m),
+      new TargetAllocReqDto(_eth, .5m),
     };
 
     // Act
@@ -141,7 +141,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance);
 
-    var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -166,7 +166,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance, minOrderSize: 5);
 
-    var targets = new[] { new AbsAllocReqDto(_eth, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_eth, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -203,8 +203,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_eur, .5m),
-      new AbsAllocReqDto(_btc, .5m),
+      new TargetAllocReqDto(_eur, .5m),
+      new TargetAllocReqDto(_btc, .5m),
     };
 
     // Act
@@ -229,7 +229,7 @@ public class RebalancingServiceTests
 
     var config = new ConfigReqDto { QuoteAllocation = 20 };
 
-    var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, config, targets, curBalance);
@@ -257,7 +257,7 @@ public class RebalancingServiceTests
 
     var config = new ConfigReqDto { QuoteTakeout = 300 };
 
-    var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, config, targets, curBalance);
@@ -287,8 +287,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_ada, .5m) { MarketStatus = MarketStatus.Trading },
-      new AbsAllocReqDto(new MarketReqDto("EUR", "XYZ"), .5m) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_ada, .5m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(new MarketReqDto("EUR", "XYZ"), .5m) { MarketStatus = MarketStatus.Halted },
     };
 
     // Act
@@ -315,8 +315,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .5m) { MarketStatus = MarketStatus.Halted },
-      new AbsAllocReqDto(_eth, .5m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_btc, .5m) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_eth, .5m) { MarketStatus = MarketStatus.Trading },
     };
 
     // Act
@@ -345,9 +345,9 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .5m) { MarketStatus = MarketStatus.Halted },
-      new AbsAllocReqDto(_eth, .3m) { MarketStatus = MarketStatus.Trading },
-      new AbsAllocReqDto(_ada, .2m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_btc, .5m) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_eth, .3m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_ada, .2m) { MarketStatus = MarketStatus.Trading },
     };
 
     // Act
@@ -387,8 +387,8 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .03m),
-      new AbsAllocReqDto(_eth, .97m),
+      new TargetAllocReqDto(_btc, .03m),
+      new TargetAllocReqDto(_eth, .97m),
     };
 
     // Act
@@ -418,7 +418,7 @@ public class RebalancingServiceTests
   {
     // Arrange
     // QuoteAllocation = 100 makes quoteRelAlloc clamp to exactly 1, hitting the explicit
-    // div == 0 special case in GetAllocationQuoteDiffs (totalAbsAlloc forced to 0) rather than
+    // div == 0 special case in GetAllocationQuoteDrifts (totalTargetWeight forced to 0) rather than
     // dividing by zero. Every target's relative allocation becomes 0, so everything held gets
     // sold down to cash regardless of what's targeted.
     var curBalance = new Balance("EUR");
@@ -429,7 +429,7 @@ public class RebalancingServiceTests
 
     var config = new ConfigReqDto { QuoteAllocation = 100 };
 
-    var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, config, targets, curBalance);
@@ -454,7 +454,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance);
 
-    var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -479,7 +479,7 @@ public class RebalancingServiceTests
     // QuoteAllocation = 95 -> relAlloc = 0.05 -> target = 5 (of a 100 total) -> remaining = 5.
     var config = new ConfigReqDto { QuoteAllocation = 95 };
 
-    var targets = new[] { new AbsAllocReqDto(_btc, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, config, targets, curBalance);
@@ -506,7 +506,7 @@ public class RebalancingServiceTests
     var exchange = new NullDecimalsExchange("EUR", minOrderSize: 5, makerFee: 0, takerFee: 0, curBalance);
 
     // BTC is absent from the target list -> full liquidation via the dust branch.
-    var targets = new[] { new AbsAllocReqDto(_eth, 1m) };
+    var targets = new[] { new TargetAllocReqDto(_eth, 1m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -536,10 +536,10 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_eur, .05m),
-      new AbsAllocReqDto(_btc, .40m),
-      new AbsAllocReqDto(_eth, .30m),
-      new AbsAllocReqDto(_ada, .25m),
+      new TargetAllocReqDto(_eur, .05m),
+      new TargetAllocReqDto(_btc, .40m),
+      new TargetAllocReqDto(_eth, .30m),
+      new TargetAllocReqDto(_ada, .25m),
     };
 
     // Act

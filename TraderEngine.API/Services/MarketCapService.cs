@@ -43,7 +43,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       });
   }
 
-  public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
+  public async Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
   {
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
@@ -70,7 +70,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Determine weighting.
       .Select(marketCapDataDto =>
       {
-        var hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
+        var hasWeighting = configReqDto.WeightingOverrides.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
         var isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
         var finalWeighting = hasWeighting ? weighting : 1;
 
@@ -79,7 +79,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
           MarketCapDataDto = marketCapDataDto,
           HasWeighting = hasWeighting,
           Weighting = finalWeighting,
-          OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.CurrentAllocWeightingMult : 1),
+          OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.HeldAssetBiasMult : 1),
         };
       })
 
@@ -96,18 +96,18 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Select(marketCap => new
       {
         MarketCap = marketCap,
-        AbsAllocDto = new AbsAllocReqDto()
+        TargetAllocDto = new TargetAllocReqDto()
         {
           Market = marketCap.MarketCapDataDto.Market,
-          AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+          TargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
         },
-        OrderByAbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+        OrderByTargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
       })
 
       // Sort by weighted Market Cap EMA value.
-      .OrderByDescending(alloc => alloc.OrderByAbsAlloc)
+      .OrderByDescending(alloc => alloc.OrderByTargetWeight)
 
       // Return absolute allocations.
-      .Select(alloc => alloc.AbsAllocDto);
+      .Select(alloc => alloc.TargetAllocDto);
   }
 }

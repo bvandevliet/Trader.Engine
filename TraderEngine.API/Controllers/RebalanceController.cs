@@ -63,16 +63,16 @@ public class RebalanceController : ControllerBase
 
     var balance = balanceResult.Value!;
 
-    var newAbsAllocs = simulationReqDto.NewAbsAllocs ??
-      await _marketCapService().BalancedAbsAllocs(_quoteSymbol, simulationReqDto.Config, balance.Allocations.Select(alloc => alloc.Market).ToList());
+    var rawTargetAllocs = simulationReqDto.TargetAllocs ??
+      await _marketCapService().BalancedTargetAllocs(_quoteSymbol, simulationReqDto.Config, balance.Allocations.Select(alloc => alloc.Market).ToList());
 
-    if (null == newAbsAllocs)
+    if (null == rawTargetAllocs)
     {
       return NotFound("No recent market cap records found.");
     }
 
     // Filter for assets that are potentially tradable.
-    var absAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, newAbsAllocs, simulationReqDto.Config.TopRankingCount);
+    var targetAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, rawTargetAllocs, simulationReqDto.Config.TopRankingCount);
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
@@ -82,13 +82,13 @@ public class RebalanceController : ControllerBase
     var simExchange = new SimExchange(exchange, balance);
 
     // Await for the task to complete.
-    var absAllocs = await absAllocsTask;
+    var targetAllocs = await targetAllocsTask;
 
     // Simulate rebalance. SimExchange/MockExchange resolve a Limit order's price from the cached
     // allocation price (no real order book lookup) and fill it instantly at the maker rate, so
     // UseLimitOrders is honored here too — the preview's estimated fees stay accurate without
     // ever touching a real API for a placement that will never actually rest.
-    var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, absAllocs, balance, source);
+    var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, targetAllocs, balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance(credentials);
@@ -98,7 +98,7 @@ public class RebalanceController : ControllerBase
     {
       Config = simulationReqDto.Config,
       Orders = orders,
-      NewAbsAllocs = absAllocs,
+      TargetAllocs = targetAllocs,
       CurBalance = curBalanceDto,
       NewBalance = newBalanceDto,
     });
@@ -118,11 +118,11 @@ public class RebalanceController : ControllerBase
     var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Filter for assets that are potentially tradable.
-    var absAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials, rebalanceReqDto.NewAbsAllocs, rebalanceReqDto.Config.TopRankingCount);
+    var targetAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials, rebalanceReqDto.TargetAllocs, rebalanceReqDto.Config.TopRankingCount);
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
-    var orders = await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, absAllocs, null, source);
+    var orders = await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, targetAllocs, null, source);
 
     // Persisted here rather than left to the caller (TraderEngine.Web used to set this only after
     // a successful round trip): the rebalance has already run for real by this point regardless of

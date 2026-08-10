@@ -62,11 +62,11 @@
                 Default is 1, set to 0 to exclude the asset (e.g. shitcoins).
             </p>
             <div id="weighting-rows">
-                @for (var i = 0; i < Model.WeightingAssets.Count; i++)
+                @for (var i = 0; i < Model.OverrideAssets.Count; i++)
                 {
                     <div class="input-group mb-2 weighting-row">
-                        <input type="text" name="WeightingAssets" value="@Model.WeightingAssets[i]" class="form-control" placeholder="Asset symbol" />
-                        <input type="number" name="WeightingValues" value="@Model.WeightingValues[i]" class="form-control" min="0" step="0.01" placeholder="Weighting" />
+                        <input type="text" name="OverrideAssets" value="@Model.OverrideAssets[i]" class="form-control" placeholder="Asset symbol" />
+                        <input type="number" name="OverrideWeights" value="@Model.OverrideWeights[i]" class="form-control" min="0" step="0.01" placeholder="Weight" />
                         <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
                     </div>
                 }

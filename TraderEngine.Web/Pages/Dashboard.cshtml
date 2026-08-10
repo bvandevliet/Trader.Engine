@@ -88,8 +88,8 @@
                         <input asp-for="Config.QuoteAllocation" type="number" class="form-control config-input mt-auto" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.CurrentAllocWeightingMult" class="form-label" title="@Html.DescriptionFor(m => m.Config.CurrentAllocWeightingMult)"></label>
-                        <input asp-for="Config.CurrentAllocWeightingMult" type="number" class="form-control config-input mt-auto" data-config-field="currentAllocWeightingMult" min="1" step="0.01" />
+                        <label asp-for="Config.HeldAssetBiasMult" class="form-label" title="@Html.DescriptionFor(m => m.Config.HeldAssetBiasMult)"></label>
+                        <input asp-for="Config.HeldAssetBiasMult" type="number" class="form-control config-input mt-auto" data-config-field="heldAssetBiasMult" min="1" step="0.01" />
                     </div>
                 </div>
 
@@ -106,15 +106,15 @@
 
                 <div class="row mb-3">
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.MinimumDiffQuote" class="form-label" title="@Html.DescriptionFor(m => m.Config.MinimumDiffQuote)">@Html.DisplayNameFor(m => m.Config.MinimumDiffQuote) [<span class="quote-symbol"></span>]</label>
-                        <input asp-for="Config.MinimumDiffQuote" class="form-control config-input mt-auto" data-config-field="minimumDiffQuote" min="0" step="1" data-no-resim />
+                        <label asp-for="Config.MinimumOrderSizeQuote" class="form-label" title="@Html.DescriptionFor(m => m.Config.MinimumOrderSizeQuote)">@Html.DisplayNameFor(m => m.Config.MinimumOrderSizeQuote) [<span class="quote-symbol"></span>]</label>
+                        <input asp-for="Config.MinimumOrderSizeQuote" class="form-control config-input mt-auto" data-config-field="minimumOrderSizeQuote" min="0" step="1" data-no-resim />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.MinimumDiffAllocation" class="form-label d-flex justify-content-between" title="@Html.DescriptionFor(m => m.Config.MinimumDiffAllocation)">
-                            <span>@Html.DisplayNameFor(m => m.Config.MinimumDiffAllocation)</span>
-                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="tracking-error-quote"></span>)</span>
+                        <label asp-for="Config.DriftThresholdPercent" class="form-label d-flex justify-content-between" title="@Html.DescriptionFor(m => m.Config.DriftThresholdPercent)">
+                            <span>@Html.DisplayNameFor(m => m.Config.DriftThresholdPercent)</span>
+                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="drift-threshold-quote"></span>)</span>
                         </label>
-                        <input asp-for="Config.MinimumDiffAllocation" type="number" class="form-control config-input mt-auto" data-config-field="minimumDiffAllocation" min="0" max="100" step="0.1" data-no-resim />
+                        <input asp-for="Config.DriftThresholdPercent" type="number" class="form-control config-input mt-auto" data-config-field="driftThresholdPercent" min="0" max="100" step="0.1" data-no-resim />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
                         <label asp-for="Config.IntervalHours" class="form-label" title="@Html.DescriptionFor(m => m.Config.IntervalHours)">@Html.DisplayNameFor(m => m.Config.IntervalHours)</label>

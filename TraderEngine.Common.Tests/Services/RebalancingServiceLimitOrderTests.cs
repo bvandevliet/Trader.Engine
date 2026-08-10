@@ -69,7 +69,7 @@ public class RebalancingServiceLimitOrderTests
   }
 
   [TestMethod]
-  public async Task Rebalance_AbsAllocOverload_UseLimitOrdersEnabled_ConstructsLimitOrders()
+  public async Task Rebalance_TargetAllocOverload_UseLimitOrdersEnabled_ConstructsLimitOrders()
   {
     // Arrange
     // BTC (300/400 = 75%) is overweight against its 50% target; ETH (100/400 = 25%) is
@@ -128,8 +128,8 @@ public class RebalancingServiceLimitOrderTests
 
     var targets = new[]
     {
-      new AbsAllocReqDto(_btc, .5m),
-      new AbsAllocReqDto(eth, .5m),
+      new TargetAllocReqDto(_btc, .5m),
+      new TargetAllocReqDto(eth, .5m),
     };
 
     var config = new ConfigReqDto { UseLimitOrders = true };

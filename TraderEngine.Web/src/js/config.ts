@@ -72,13 +72,13 @@ function buildWeightingRow (): HTMLDivElement
 
   const assetInput = document.createElement('input');
   assetInput.type = 'text';
-  assetInput.name = 'WeightingAssets';
+  assetInput.name = 'OverrideAssets';
   assetInput.className = 'form-control';
   assetInput.placeholder = 'Asset symbol';
 
   const weightingInput = document.createElement('input');
   weightingInput.type = 'number';
-  weightingInput.name = 'WeightingValues';
+  weightingInput.name = 'OverrideWeights';
   weightingInput.value = '1';
   weightingInput.className = 'form-control';
   weightingInput.min = '0';

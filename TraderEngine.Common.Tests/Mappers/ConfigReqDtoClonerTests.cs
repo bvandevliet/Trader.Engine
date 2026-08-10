@@ -29,24 +29,24 @@ public class ConfigReqDtoClonerTests
     // The bug UseDeepCloning guards against: a MemberwiseClone shallow copy would share these
     // Dictionary/List references between source and clone, so mutating one mutates both.
     var source = new ConfigReqDto();
-    source.AltWeightingFactors["BTC"] = 1.5;
+    source.WeightingOverrides["BTC"] = 1.5;
     source.TagsToInclude.Add("layer1");
     source.TagsToIgnore.Add("meme");
 
     // Act
     var clone = source.DeepClone();
-    clone.AltWeightingFactors["BTC"] = 99;
-    clone.AltWeightingFactors["ETH"] = 2;
+    clone.WeightingOverrides["BTC"] = 99;
+    clone.WeightingOverrides["ETH"] = 2;
     clone.TagsToInclude.Add("added-to-clone-only");
     clone.TagsToIgnore.Clear();
 
     // Assert
-    Assert.AreNotSame(source.AltWeightingFactors, clone.AltWeightingFactors);
+    Assert.AreNotSame(source.WeightingOverrides, clone.WeightingOverrides);
     Assert.AreNotSame(source.TagsToInclude, clone.TagsToInclude);
     Assert.AreNotSame(source.TagsToIgnore, clone.TagsToIgnore);
 
-    Assert.AreEqual(1.5, source.AltWeightingFactors["BTC"]);
-    Assert.IsFalse(source.AltWeightingFactors.ContainsKey("ETH"));
+    Assert.AreEqual(1.5, source.WeightingOverrides["BTC"]);
+    Assert.IsFalse(source.WeightingOverrides.ContainsKey("ETH"));
     Assert.AreEqual(1, source.TagsToInclude.Count);
     Assert.AreEqual(2, source.TagsToIgnore.Count); // Default-seeded "stablecoin" + "meme".
     Assert.AreEqual(0, clone.TagsToIgnore.Count); // Cleared on the clone only.

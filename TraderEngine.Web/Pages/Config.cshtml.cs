@@ -28,10 +28,10 @@ public class ConfigModel : TraderEnginePageModelBase
   public List<string> TagsToIgnore { get; set; } = [];
 
   [BindProperty]
-  public List<string> WeightingAssets { get; set; } = [];
+  public List<string> OverrideAssets { get; set; } = [];
 
   [BindProperty]
-  public List<double> WeightingValues { get; set; } = [];
+  public List<double> OverrideWeights { get; set; } = [];
 
   public async Task OnGetAsync()
   {
@@ -40,8 +40,8 @@ public class ConfigModel : TraderEnginePageModelBase
 
     TagsToInclude = config.TagsToInclude;
     TagsToIgnore = config.TagsToIgnore;
-    WeightingAssets = config.AltWeightingFactors.Keys.ToList();
-    WeightingValues = config.AltWeightingFactors.Values.ToList();
+    OverrideAssets = config.WeightingOverrides.Keys.ToList();
+    OverrideWeights = config.WeightingOverrides.Values.ToList();
   }
 
   public async Task<IActionResult> OnPostAsync()
@@ -121,10 +121,10 @@ public class ConfigModel : TraderEnginePageModelBase
       .OrderBy(tag => tag, StringComparer.Ordinal)
       .ToList();
 
-    var pairCount = Math.Min(WeightingAssets.Count, WeightingValues.Count);
+    var pairCount = Math.Min(OverrideAssets.Count, OverrideWeights.Count);
 
-    config.AltWeightingFactors = Enumerable.Range(0, pairCount)
-      .Select(i => (Asset: WeightingAssets[i].Trim().ToUpperInvariant(), Weighting: WeightingValues[i]))
+    config.WeightingOverrides = Enumerable.Range(0, pairCount)
+      .Select(i => (Asset: OverrideAssets[i].Trim().ToUpperInvariant(), Weighting: OverrideWeights[i]))
       .Where(pair => pair.Asset.Length > 0)
       .GroupBy(pair => pair.Asset)
       .ToDictionary(group => group.Key, group => Math.Max(0, group.Last().Weighting))
