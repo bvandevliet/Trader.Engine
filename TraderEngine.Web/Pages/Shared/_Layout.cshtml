@@ -46,7 +46,7 @@
                             @if (User.IsInRole(Roles.Admin))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link" asp-area="" asp-page="/Admin/Users">Users</a>
+                                    <a class="nav-link" asp-area="" asp-page="/Admin/Users" nav-link-match="Prefix">Users</a>
                                 </li>
                             }
                         </ul>
