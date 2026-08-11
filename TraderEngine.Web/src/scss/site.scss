@@ -115,8 +115,8 @@ a,
 }
 
 .navbar-nav .nav-link.active {
-  color: var(--bs-primary);
-  box-shadow: 0 -1px 0 0 var(--bs-primary) inset;
+  color: rgba(var(--bs-link-color-rgb));
+  box-shadow: 0 -1px 0 0 rgba(var(--bs-link-color-rgb)) inset;
 }
 
 .nav.nav-pills .nav-link {
