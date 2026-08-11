@@ -42,7 +42,7 @@ public class ConfigReqDto
   [Display(Name = "Enable automation", Description = "Automatically perform portfolio rebalance when conditions are met.")]
   public bool AutomationEnabled { get; set; } = false;
 
-  [Display(Name = "Use limit orders", Description = "Place limit orders at the best bid/ask to reduce fees, falling back to a market order for any unfilled remainder.")]
+  [Display(Name = "Use limit orders", Description = "Place limit orders at the best bid/ask to reduce fees, falling back to a market order for any unfilled remainder. Note that it may take longer to fill limit orders than market orders.")]
   public bool UseLimitOrders { get; set; } = false;
 
   [Display(Name = "Interval [hrs]", Description = "Minimum time interval between automated rebalance executions.")]
