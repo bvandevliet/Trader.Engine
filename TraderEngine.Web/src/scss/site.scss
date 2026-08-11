@@ -173,3 +173,9 @@ a,
 .form-floating>.form-control:focus::placeholder {
   text-align: start;
 }
+
+// === Tooltips (see TagHelpers/InfoTooltipTagHelper.cs) ===
+
+[data-bs-toggle="tooltip"] {
+  cursor: help;
+}
