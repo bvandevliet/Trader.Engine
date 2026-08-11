@@ -14,7 +14,7 @@
             <legend class="card-title h5">Tags to include</legend>
             <p class="text-muted small">
                 Tag regex patterns to explicitly include.<br />
-                Only assets that have one or more tags matching any of these patterns will be included in your portfolio, unless an alternative weighting is set for an asset.<br />
+                Only assets that have one or more tags matching any of these patterns will be included in your portfolio, unless a weighting override is set for an asset.<br />
                 If empty, all assets are included.
             </p>
             <div id="tags-to-include-rows">
@@ -37,7 +37,7 @@
             <legend class="card-title h5">Tags to ignore</legend>
             <p class="text-muted small">
                 Tag regex patterns to explicitly exclude.<br />
-                Assets that have one or more tags matching any of these patterns will never be included in your portfolio, unless an alternative weighting is set for an asset.
+                Assets that have one or more tags matching any of these patterns will never be included in your portfolio, unless a weighting override is set for an asset.
             </p>
             <div id="tags-to-ignore-rows">
                 @foreach (var tag in Model.TagsToIgnore)
@@ -56,9 +56,9 @@
 
     <section class="card mb-3">
         <fieldset class="card-body">
-            <legend class="card-title h5">Alternative asset allocation weighting factors</legend>
+            <legend class="card-title h5">Per-asset weighting overrides</legend>
             <p class="text-muted small">
-                To configure, specify the asset symbol in the left field (e.g. BTC) and its weighting factor in the right field.<br />
+                To configure, specify the asset symbol in the left field (e.g. BTC) and its override weight in the right field.<br />
                 Default is 1, set to 0 to exclude the asset (e.g. shitcoins).
             </p>
             <div id="weighting-rows">

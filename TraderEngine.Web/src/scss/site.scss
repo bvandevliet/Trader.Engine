@@ -1,6 +1,16 @@
+// 1. Functions first, so color/SVG helpers are available below.
 @import "../../node_modules/bootstrap/scss/functions";
+
+// 2. Default variable overrides — must precede the `variables`/`variables-dark`
+//    imports below, otherwise maps derived from them (e.g. $theme-colors, and
+//    therefore the --bs-primary etc. custom properties) lock in Bootstrap's
+//    stock values instead of ours. See https://getbootstrap.com/docs/5.3/customize/sass/
+
+// 3. Now pull in Bootstrap's own variables (picks up our overrides above).
 @import "../../node_modules/bootstrap/scss/variables";
 @import "../../node_modules/bootstrap/scss/variables-dark";
+
+// 4. Overrides that depend on values from step 3.
 
 $h1-font-size: $font-size-base * 1.5;
 $h2-font-size: $font-size-base * 1.4;
@@ -18,6 +28,7 @@ $input-btn-padding-y: .20em;
 $input-btn-padding-x-lg: .60em;
 $input-btn-padding-y-lg: .35em;
 
+// 5. Remainder of Bootstrap.
 @import "../../node_modules/bootstrap/scss/bootstrap";
 @import "../../node_modules/bootstrap-icons/font/bootstrap-icons";
 
@@ -95,6 +106,23 @@ a,
 
 .vstack {
   @extend .gap-3;
+}
+
+// === Navigation ===
+
+.navbar {
+  @extend .border-bottom; // same as footer, for visual balance
+}
+
+.navbar-nav .nav-link.active {
+  color: var(--bs-primary);
+  box-shadow: 0 -1px 0 0 var(--bs-primary) inset;
+}
+
+.nav.nav-pills .nav-link {
+  @extend .btn-sm;
+  --bs-nav-link-padding-x: var(--bs-btn-padding-x);
+  --bs-nav-link-padding-y: var(--bs-btn-padding-y);
 }
 
 // === Loading overlay (see shared/loading-overlay.ts) ===
