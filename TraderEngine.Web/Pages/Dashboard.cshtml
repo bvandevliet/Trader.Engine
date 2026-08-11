@@ -112,7 +112,7 @@
                     <div class="col-md-4 d-flex flex-column">
                         <label asp-for="Config.MinimumDiffAllocation" class="form-label d-flex justify-content-between" title="@Html.DescriptionFor(m => m.Config.MinimumDiffAllocation)">
                             <span>@Html.DisplayNameFor(m => m.Config.MinimumDiffAllocation)</span>
-                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="drift-threshold-quote"></span>)</span>
+                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="tracking-error-quote"></span>)</span>
                         </label>
                         <input asp-for="Config.MinimumDiffAllocation" type="number" class="form-control config-input mt-auto" data-config-field="minimumDiffAllocation" min="0" max="100" step="0.1" data-no-resim />
                     </div>
