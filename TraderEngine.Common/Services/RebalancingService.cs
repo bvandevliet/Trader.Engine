@@ -224,7 +224,7 @@ public class RebalancingService : IRebalancingService
     {
       _logger.LogWarning(ex,
         "Failed to determine a limit price for market {Market} on exchange {Exchange} — falling back to a market order directly.",
-        orderReq.Market, exchange.GetType().Name);
+        orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       var marketOrder = await PlaceAndVerifySingleOrder(
         exchange, credentials, ToMarketOrder(orderReq), source, cancel: true);
@@ -395,7 +395,7 @@ public class RebalancingService : IRebalancingService
       {
         _logger.LogError(
           "Failed to place order for market {Market} on exchange {Exchange}: {ErrorCode} {Summary}",
-          orderReq.Market, exchange.GetType().Name, result.ErrorCode, result.Summary);
+          orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name, result.ErrorCode, result.Summary.SanitizeForLog());
 
         return result.Value ?? NewFailedOrder(orderReq);
       }
@@ -404,7 +404,7 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.", orderReq.Market, exchange.GetType().Name);
+      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.", orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       return NewFailedOrder(orderReq);
     }
@@ -415,7 +415,7 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.", order.Id, order.Market, exchange.GetType().Name);
+      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.", order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       // Return the last known state rather than the placement failure,
       // since the order itself was successfully placed.
@@ -473,7 +473,7 @@ public class RebalancingService : IRebalancingService
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id, order.Market, exchange.GetType().Name);
+        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
       }
 
     return order;

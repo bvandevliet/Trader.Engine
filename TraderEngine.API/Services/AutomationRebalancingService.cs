@@ -46,9 +46,9 @@ public sealed class AutomationRebalancingService : BackgroundService
 
           await emailNotification.SendWorkerException(DateTime.UtcNow, ex);
         }
-        catch (Exception emailEx)
+        catch (Exception notifyEx)
         {
-          _logger.LogCritical(emailEx, "Error while sending worker exception notification.");
+          _logger.LogCritical(notifyEx, "Error while sending worker exception notification.");
         }
       }
     }

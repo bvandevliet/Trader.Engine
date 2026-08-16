@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using TraderEngine.Data;
 using TraderEngine.Data.Constants;
 using TraderEngine.Data.Entities;
+using TraderEngine.Web.Extensions;
 using TraderEngine.Web.Models;
 
 namespace TraderEngine.Web.Pages.Admin;
@@ -38,6 +39,8 @@ public class UsersModel : TraderEnginePageModelBase
       pageNumber = 1;
     else
       searchString = currentFilter;
+
+    searchString = searchString.SanitizeSearchFilter();
 
     CurrentFilter = searchString;
 

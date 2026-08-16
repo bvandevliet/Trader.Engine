@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using TraderEngine.Data.Constants;
 using TraderEngine.Data.Entities;
+using TraderEngine.Web.Extensions;
 using TraderEngine.Web.Models;
 
 namespace TraderEngine.Web.Pages.Admin;
@@ -46,14 +47,14 @@ public class EditUserModel : TraderEnginePageModelBase
     Input.Email = user.Email ?? string.Empty;
     Input.DisplayName = user.DisplayName;
     Input.AssignedRoles = (await UserManager.GetRolesAsync(user)).ToList();
-    CurrentFilter = currentFilter;
+    CurrentFilter = currentFilter.SanitizeSearchFilter();
 
     return Page();
   }
 
   public async Task<IActionResult> OnPostAsync(string? currentFilter)
   {
-    CurrentFilter = currentFilter;
+    CurrentFilter = currentFilter.SanitizeSearchFilter();
 
     var user = await UserManager.FindByIdAsync(Id.ToString());
     if (user is null)
@@ -161,6 +162,6 @@ public class EditUserModel : TraderEnginePageModelBase
 
     TempData["Notice"] = $"User \"{Input.UserName}\" updated.";
 
-    return RedirectToPage("/Admin/Users", new { currentFilter });
+    return RedirectToPage("/Admin/Users", new { currentFilter = CurrentFilter });
   }
 }

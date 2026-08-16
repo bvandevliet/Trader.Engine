@@ -10,6 +10,13 @@ namespace TraderEngine.API.Services;
 
 public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 {
+  /// <summary>
+  /// Upper bound on a single tag-regex match against a single (short) tag string — user-authored
+  /// patterns (<see cref="ConfigReqDto.TagsToInclude"/>/<see cref="ConfigReqDto.TagsToIgnore"/>)
+  /// could otherwise hang this shared service process via catastrophic backtracking.
+  /// </summary>
+  private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromMilliseconds(250);
+
   private readonly ILogger<MarketCapService> _logger;
   private readonly IMarketCapInternalRepository _marketCapInternalRepo;
 
@@ -55,12 +62,16 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       return null;
     }
 
+    // Patterns are user-authored regex by design (see ConfigModel.ValidateTagPatterns), so they
+    // can't be Regex.Escape()'d without breaking that feature. A bounded match timeout instead
+    // guards against a catastrophic-backtracking pattern hanging this shared service process
+    // (ReDoS) — CodeQL's cs/regex-injection flags any Regex built from unescaped user input.
     var includeTagsPattern = configReqDto.TagsToInclude.Any() ?
       string.Join('|', configReqDto.TagsToInclude.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$")) : ".*";
-    var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase);
+    var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
     var ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
-    var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase);
+    var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
     currentAssets = currentAssets?.Select(a => a.DeepClone()).ToList();
 
@@ -87,10 +98,10 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Where(marketCap => marketCap.Weighting > 0)
 
       // Handle included tags, but if asset has a weighting configured explicitly, that takes precedence.
-      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => includeTagsRegex.IsMatch(tag)))
+      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(includeTagsRegex, tag)))
 
       // Handle ignored tags, but if asset has a weighting configured explicitly, that takes precedence.
-      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoreTagsRegex.IsMatch(tag)))
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(ignoreTagsRegex, tag)))
 
       // Apply weighting and dampening.
       .Select(marketCap => new
@@ -109,5 +120,25 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
       // Return absolute allocations.
       .Select(alloc => alloc.TargetAllocDto);
+  }
+
+  /// <summary>
+  /// Wraps <see cref="Regex.IsMatch(string)"/> so a single user-authored tag pattern timing out
+  /// against one tag (see <see cref="RegexMatchTimeout"/>) is treated as a non-match rather than
+  /// throwing and aborting the whole allocation calculation for every other asset/tag.
+  /// </summary>
+  private bool SafeIsMatch(Regex regex, string input)
+  {
+    try
+    {
+      return regex.IsMatch(input);
+    }
+    catch (RegexMatchTimeoutException ex)
+    {
+      _logger.LogWarning(ex, "Tag regex {Pattern} timed out matching against {Tag}; treating as no match.",
+        regex.ToString().SanitizeForLog(), input.SanitizeForLog());
+
+      return false;
+    }
   }
 }
