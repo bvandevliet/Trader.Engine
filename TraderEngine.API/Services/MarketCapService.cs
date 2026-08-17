@@ -98,10 +98,15 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Where(marketCap => marketCap.Weighting > 0)
 
       // Handle included tags, but if asset has a weighting configured explicitly, that takes precedence.
-      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(includeTagsRegex, tag)))
+      // A timed-out pattern counts as a non-match here — fails this asset out of the "included" set
+      // rather than letting an unevaluated pattern wave it through.
+      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(includeTagsRegex, tag, matchOnTimeout: false)))
 
       // Handle ignored tags, but if asset has a weighting configured explicitly, that takes precedence.
-      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(ignoreTagsRegex, tag)))
+      // A timed-out pattern counts as a match here (i.e. ignored) for the same reason: when a tag
+      // can't be safely evaluated, exclude the asset rather than risk holding something the user
+      // explicitly asked to keep out (e.g. a stablecoin/meme tag).
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(ignoreTagsRegex, tag, matchOnTimeout: true)))
 
       // Apply weighting and dampening.
       .Select(marketCap => new
@@ -124,10 +129,12 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 
   /// <summary>
   /// Wraps <see cref="Regex.IsMatch(string)"/> so a single user-authored tag pattern timing out
-  /// against one tag (see <see cref="RegexMatchTimeout"/>) is treated as a non-match rather than
-  /// throwing and aborting the whole allocation calculation for every other asset/tag.
+  /// against one tag (see <see cref="RegexMatchTimeout"/>) is caught rather than throwing and
+  /// aborting the whole allocation calculation for every other asset/tag. <paramref name="matchOnTimeout"/>
+  /// lets each call site pick the fail-safe direction for its own filter — always toward excluding
+  /// the asset from consideration, never toward silently including one the user didn't ask for.
   /// </summary>
-  private bool SafeIsMatch(Regex regex, string input)
+  private bool SafeIsMatch(Regex regex, string input, bool matchOnTimeout)
   {
     try
     {
@@ -135,10 +142,10 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     }
     catch (RegexMatchTimeoutException ex)
     {
-      _logger.LogWarning(ex, "Tag regex {Pattern} timed out matching against {Tag}; treating as no match.",
-        regex.ToString().SanitizeForLog(), input.SanitizeForLog());
+      _logger.LogWarning(ex, "Tag regex {Pattern} timed out matching against {Tag}; treating as {Result}.",
+        regex.ToString().SanitizeForLog(), input.SanitizeForLog(), matchOnTimeout ? "a match" : "no match");
 
-      return false;
+      return matchOnTimeout;
     }
   }
 }
