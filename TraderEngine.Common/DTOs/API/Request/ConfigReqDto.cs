@@ -13,7 +13,7 @@ public class ConfigReqDto
   public decimal QuoteAllocation { get; set; } = 0;
 
   //[Range(0, 10)]
-  public Dictionary<string, double> AltWeightingFactors { get; set; } = [];
+  public Dictionary<string, double> WeightingOverrides { get; set; } = [];
 
   public List<string> TagsToInclude { get; set; } = [];
 
@@ -33,16 +33,16 @@ public class ConfigReqDto
 
   [Display(Name = "Min order size", Description = "The minimum order size in quote required to trigger an automated rebalance.")]
   [Range(0, int.MaxValue)]
-  public int MinimumDiffQuote { get; set; } = 5;
+  public int MinimumOrderSizeQuote { get; set; } = 5;
 
   [Display(Name = "Drift [%]", Description = "Minimum portfolio drift required to trigger an automated rebalance.")]
   [Range(0, 100)]
-  public double MinimumDiffAllocation { get; set; } = 1;
+  public double DriftThresholdPercent { get; set; } = 1;
 
   [Display(Name = "Enable automation", Description = "Automatically perform portfolio rebalance when conditions are met.")]
   public bool AutomationEnabled { get; set; } = false;
 
-  [Display(Name = "Use limit orders", Description = "Place limit orders at the best bid/ask to reduce fees, falling back to a market order for any unfilled remainder.")]
+  [Display(Name = "Use limit orders", Description = "Place limit orders at the best bid/ask to reduce fees, falling back to a market order for any unfilled remainder. Note that it may take longer to fill limit orders than market orders.")]
   public bool UseLimitOrders { get; set; } = false;
 
   [Display(Name = "Interval [hrs]", Description = "Minimum time interval between automated rebalance executions.")]
@@ -51,7 +51,7 @@ public class ConfigReqDto
 
   [Display(Name = "Held-asset bias mult", Description = "Selection-ranking multiplier applied to currently-held assets. Values above 1 bias toward retaining current holdings, reducing churn on borderline-ranked assets without distorting their computed weights.")]
   [Range(1, double.MaxValue)]
-  public double CurrentAllocWeightingMult { get; set => field = Math.Max(1, value); } = 1.05;
+  public double HeldAssetBiasMult { get; set => field = Math.Max(1, value); } = 1.05;
 
   public DateTime? LastRebalance { get; set; } = null;
 }

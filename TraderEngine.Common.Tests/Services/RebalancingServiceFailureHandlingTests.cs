@@ -9,7 +9,7 @@ using TraderEngine.Common.Tests.Exchanges;
 namespace TraderEngine.Common.Tests.Services;
 
 /// <summary>
-/// Covers how <see cref="RebalancingService.Rebalance(Exchanges.IExchange, ConfigReqDto, IEnumerable{AbsAllocReqDto}, Balance?, string)"/>
+/// Covers how <see cref="RebalancingService.Rebalance(Exchanges.IExchange, ConfigReqDto, IEnumerable{TargetAllocReqDto}, Balance?, string)"/>
 /// behaves when placing or verifying an individual order fails — a real-money system must not
 /// let one bad order silently discard the results of every other order in the same batch, nor
 /// crash with an unhandled exception.
@@ -51,7 +51,7 @@ public class RebalancingServiceFailureHandlingTests
     var (exchange, curBalance) = NewScenario();
     exchange.FailNewOrderWithNoPayload("BTC");
 
-    var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -78,7 +78,7 @@ public class RebalancingServiceFailureHandlingTests
     var (exchange, curBalance) = NewScenario();
     exchange.FailNewOrderWithFailedOrderPayload("BTC", _btc);
 
-    var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -102,7 +102,7 @@ public class RebalancingServiceFailureHandlingTests
     var (exchange, curBalance) = NewScenario();
     exchange.ThrowOnNewOrder("BTC");
 
-    var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -128,7 +128,7 @@ public class RebalancingServiceFailureHandlingTests
     var (exchange, curBalance) = NewScenario();
     exchange.SucceedThenThrowOnPoll("BTC", _btc);
 
-    var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -153,7 +153,7 @@ public class RebalancingServiceFailureHandlingTests
     var (exchange, curBalance) = NewScenario();
     exchange.FailNewOrderWithNoPayload("ETH");
 
-    var targets = new[] { new AbsAllocReqDto(_btc, .5m), new AbsAllocReqDto(_eth, .5m) };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m) };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);

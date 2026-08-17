@@ -20,7 +20,7 @@ public interface IExchangeOrderNotifications
 
   /// <summary>
   /// Begins a session that keeps a push-notification connection open for the duration of one
-  /// <see cref="Services.RebalancingService.Rebalance(IExchange, ExchangeCredentials, DTOs.API.Request.ConfigReqDto, IEnumerable{DTOs.API.Request.AbsAllocReqDto}, Models.Balance?, string)"/>
+  /// <see cref="Services.RebalancingService.Rebalance(IExchange, ExchangeCredentials, DTOs.API.Request.ConfigReqDto, IEnumerable{DTOs.API.Request.TargetAllocReqDto}, Models.Balance?, string)"/>
   /// call, so back-to-back <see cref="WaitForOrderEndedAsync"/> calls for multiple orders in that
   /// run share one connection instead of each independently acquiring one. Disposing the returned
   /// session releases the connection for reuse or teardown; never throws, since a session that

@@ -27,93 +27,93 @@ public class RebalancingService : IRebalancingService
     _defaultVerifyChecks = fillWaitTimeoutSeconds;
   }
 
-  private class AllocDiffReqDto : AllocationDto
+  private class AllocDriftReqDto : AllocationDto
   {
-    public decimal AmountQuoteDiff { get; set; }
+    public decimal AmountQuoteDrift { get; set; }
 
-    public AllocDiffReqDto(
+    public AllocDriftReqDto(
       MarketReqDto market,
       decimal price,
       decimal amount,
-      decimal amountQuoteDiff)
+      decimal amountQuoteDrift)
     {
       Market = market;
       Price = price;
       Amount = amount;
       AmountQuote = price * amount;
-      AmountQuoteDiff = amountQuoteDiff;
+      AmountQuoteDrift = amountQuoteDrift;
     }
   }
 
-  public async Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, AbsAllocReqDto absAlloc)
+  public async Task<TargetAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, TargetAllocReqDto targetAlloc)
   {
     // Get market data for the asset and update market status.
-    if (absAlloc.MarketStatus == MarketStatus.Unknown)
+    if (targetAlloc.MarketStatus == MarketStatus.Unknown)
     {
-      var marketDto = new MarketReqDto(exchange.QuoteSymbol, absAlloc.Market.BaseSymbol);
+      var marketDto = new MarketReqDto(exchange.QuoteSymbol, targetAlloc.Market.BaseSymbol);
 
       var marketData = await exchange.GetMarket(credentials, marketDto);
 
-      absAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
+      targetAlloc.MarketStatus = marketData?.Status ?? MarketStatus.Unknown;
     }
 
-    return absAlloc;
+    return targetAlloc;
   }
 
-  public async Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount)
+  public async Task<List<TargetAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, int topRankingCount)
   {
-    var absAllocsList = new List<AbsAllocReqDto>();
+    var targetAllocsList = new List<TargetAllocReqDto>();
 
-    foreach (var absAlloc in absAllocs)
+    foreach (var targetAlloc in targetAllocs)
     {
-      var absAllocUpdated = await FetchMarketStatus(exchange, credentials, absAlloc);
+      var targetAllocUpdated = await FetchMarketStatus(exchange, credentials, targetAlloc);
 
-      if (absAlloc.MarketStatus != MarketStatus.Unknown)
+      if (targetAlloc.MarketStatus != MarketStatus.Unknown)
       {
         // Expecting the collection to be already ordered by market cap.
         topRankingCount--;
-        absAllocsList.Add(absAllocUpdated);
+        targetAllocsList.Add(targetAllocUpdated);
       }
 
       if (topRankingCount <= 0)
         break;
     }
 
-    return absAllocsList;
+    return targetAllocsList;
   }
 
   /// <summary>
-  /// Get current deviation in quote currency when comparing absolute new allocations in
-  /// <paramref name="newAbsAllocs"/> against current allocations in <paramref name="curBalance"/>.
+  /// Get current drift in quote currency when comparing target allocations in
+  /// <paramref name="targetAllocs"/> against current allocations in <paramref name="curBalance"/>.
   /// </summary>
   /// <param name="exchange"></param>
-  /// <param name="newAbsAllocs"></param>
+  /// <param name="targetAllocs"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
-  /// <returns>Collection of current <see cref="Allocation"/>s and their deviation in quote currency.</returns>
-  private static IEnumerable<AllocDiffReqDto> GetAllocationQuoteDiffs(
-    IExchange exchange, IEnumerable<AbsAllocReqDto> newAbsAllocs, ConfigReqDto config, Balance curBalance)
+  /// <returns>Collection of current <see cref="Allocation"/>s and their drift in quote currency.</returns>
+  private static IEnumerable<AllocDriftReqDto> GetAllocationQuoteDrifts(
+    IExchange exchange, IEnumerable<TargetAllocReqDto> targetAllocs, ConfigReqDto config, Balance curBalance)
   {
     // Absolute asset allocations to be used for rebalancing.
-    List<AbsAllocReqDto> newAbsAllocsList = new();
+    List<TargetAllocReqDto> targetAllocsList = new();
 
     // Sum of all absolute allocation values.
-    var totalAbsAlloc =
-      newAbsAllocs
+    var totalTargetWeight =
+      targetAllocs
 
       // Filter for tradable assets.
-      .Where(absAlloc => absAlloc.MarketStatus is MarketStatus.Trading
-      || null != curBalance.GetAllocation(absAlloc.Market.BaseSymbol))
+      .Where(targetAlloc => targetAlloc.MarketStatus is MarketStatus.Trading
+      || null != curBalance.GetAllocation(targetAlloc.Market.BaseSymbol))
 
       // Filter for quote currency.
-      .Where(absAlloc => absAlloc.Market.QuoteSymbol.Equals(exchange.QuoteSymbol))
+      .Where(targetAlloc => targetAlloc.Market.QuoteSymbol.Equals(exchange.QuoteSymbol))
 
       // Sum of all absolute allocation values.
-      .Sum(absAlloc =>
+      .Sum(targetAlloc =>
       {
-        newAbsAllocsList.Add(absAlloc);
+        targetAllocsList.Add(targetAlloc);
 
-        return absAlloc.AbsAlloc;
+        return targetAlloc.TargetWeight;
       });
 
     // Relative quote allocation (including takeout).
@@ -123,31 +123,31 @@ public class RebalancingService : IRebalancingService
     // Scale total sum of absolute allocation values to account for relative quote allocation.
     var div = 1 - quoteRelAlloc;
     if (div == 0)
-      totalAbsAlloc = 0;
+      totalTargetWeight = 0;
     else
-      totalAbsAlloc /= div;
+      totalTargetWeight /= div;
 
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
-    //newAbsAllocsList.Add(new AbsAllocReqDto(exchange.QuoteSymbol, totalAbsAlloc * quoteRelAlloc));
+    //targetAllocsList.Add(new TargetAllocReqDto(exchange.QuoteSymbol, totalTargetWeight * quoteRelAlloc));
 
     // Loop through current allocations and determine quote diffs.
     foreach (var curAlloc in curBalance.Allocations)
     {
       // Find associated absolute allocation.
-      var newAbsAlloc = newAbsAllocsList
-        .FindAndRemove(absAlloc => absAlloc.Market.Equals(curAlloc.Market));
+      var targetAlloc = targetAllocsList
+        .FindAndRemove(targetAlloc => targetAlloc.Market.Equals(curAlloc.Market));
 
       // Skip if not tradable.
-      if (null != newAbsAlloc && newAbsAlloc.MarketStatus is not MarketStatus.Trading)
+      if (null != targetAlloc && targetAlloc.MarketStatus is not MarketStatus.Trading)
         continue;
 
       // Determine relative allocation.
-      var relAlloc = totalAbsAlloc == 0 || newAbsAlloc == null ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
+      var relAlloc = totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight;
 
       // Determine new quote amount.
       var newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
-      yield return new AllocDiffReqDto(
+      yield return new AllocDriftReqDto(
         curAlloc.Market,
         curAlloc.Price,
         curAlloc.Amount,
@@ -155,20 +155,20 @@ public class RebalancingService : IRebalancingService
     }
 
     // Loop through remaining absolute asset allocations and determine yet missing quote diffs.
-    foreach (var newAbsAlloc in newAbsAllocsList)
+    foreach (var targetAlloc in targetAllocsList)
     {
       // Skip if not tradable.
-      if (newAbsAlloc.MarketStatus is not MarketStatus.Trading)
+      if (targetAlloc.MarketStatus is not MarketStatus.Trading)
         continue;
 
       // Determine relative allocation.
-      var relAlloc = totalAbsAlloc == 0 ? 0 : newAbsAlloc.AbsAlloc / totalAbsAlloc;
+      var relAlloc = totalTargetWeight == 0 ? 0 : targetAlloc.TargetWeight / totalTargetWeight;
 
       // Determine new quote amount.
       var newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
 
-      yield return new AllocDiffReqDto(
-        newAbsAlloc.Market,
+      yield return new AllocDriftReqDto(
+        targetAlloc.Market,
         0,
         0,
         -newAmountQuote);
@@ -224,7 +224,7 @@ public class RebalancingService : IRebalancingService
     {
       _logger.LogWarning(ex,
         "Failed to determine a limit price for market {Market} on exchange {Exchange} — falling back to a market order directly.",
-        orderReq.Market, exchange.GetType().Name);
+        orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       var marketOrder = await PlaceAndVerifySingleOrder(
         exchange, credentials, ToMarketOrder(orderReq), source, cancel: true);
@@ -395,7 +395,7 @@ public class RebalancingService : IRebalancingService
       {
         _logger.LogError(
           "Failed to place order for market {Market} on exchange {Exchange}: {ErrorCode} {Summary}",
-          orderReq.Market, exchange.GetType().Name, result.ErrorCode, result.Summary);
+          orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name, result.ErrorCode, result.Summary.SanitizeForLog());
 
         return result.Value ?? NewFailedOrder(orderReq);
       }
@@ -404,7 +404,7 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.", orderReq.Market, exchange.GetType().Name);
+      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.", orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       return NewFailedOrder(orderReq);
     }
@@ -415,7 +415,7 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.", order.Id, order.Market, exchange.GetType().Name);
+      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.", order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       // Return the last known state rather than the placement failure,
       // since the order itself was successfully placed.
@@ -473,25 +473,25 @@ public class RebalancingService : IRebalancingService
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id, order.Market, exchange.GetType().Name);
+        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
       }
 
     return order;
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
+  /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="targetAllocs"/>.
   /// Completes when verified that all triggered sell orders are ended.
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="credentials"></param>
-  /// <param name="newAbsAllocs"></param>
+  /// <param name="targetAllocs"></param>
   /// <param name="source"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> SellOveragesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, string source, ConfigReqDto config, Balance? curBalance)
   {
     if (null == curBalance)
     {
@@ -500,36 +500,36 @@ public class RebalancingService : IRebalancingService
     }
 
     var orders =
-      GetAllocationQuoteDiffs(exchange, newAbsAllocs, config, curBalance)
+      GetAllocationQuoteDrifts(exchange, targetAllocs, config, curBalance)
 
       // We can't trade quote currency for quote currency.
-      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
+      .Where(allocDrift => !allocDrift.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Positive quote differences refer to oversized allocations.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff > 0)
+      .Where(allocDrift => allocDrift.AmountQuoteDrift > 0)
 
       // Construct sell order.
-      .Select(allocDiff =>
+      .Select(allocDrift =>
       {
         var order = new OrderReqDto()
         {
-          Market = allocDiff.Market,
+          Market = allocDrift.Market,
           Side = OrderSide.Sell,
           Type = config.UseLimitOrders ? OrderType.Limit : OrderType.Market,
         };
 
         // Prevent dust.
-        if (allocDiff.AmountQuote - allocDiff.AmountQuoteDiff < exchange.MinOrderSizeInQuote)
+        if (allocDrift.AmountQuote - allocDrift.AmountQuoteDrift < exchange.MinOrderSizeInQuote)
         {
           // Honor decimals precision for the amount of this asset.
-          var assetData = exchange.GetAsset(credentials, allocDiff.Market.BaseSymbol).GetAwaiter().GetResult();
+          var assetData = exchange.GetAsset(credentials, allocDrift.Market.BaseSymbol).GetAwaiter().GetResult();
           var decimals = assetData?.Decimals;
 
-          order.Amount = decimals is not int ? allocDiff.Amount : TruncateToDecimals(allocDiff.Amount, (int)decimals);
+          order.Amount = decimals is not int ? allocDrift.Amount : TruncateToDecimals(allocDrift.Amount, (int)decimals);
         }
         else
         {
-          order.AmountQuote = allocDiff.AmountQuoteDiff;
+          order.AmountQuote = allocDrift.AmountQuoteDrift;
         }
 
         return order;
@@ -580,18 +580,18 @@ public class RebalancingService : IRebalancingService
   }
 
   /// <summary>
-  /// Buy to increase undersized <see cref="Allocation"/>s in order for those to meet <paramref name="newAbsAllocs"/>.
+  /// Buy to increase undersized <see cref="Allocation"/>s in order for those to meet <paramref name="targetAllocs"/>.
   /// Completes when all triggered buy orders are posted.
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="credentials"></param>
-  /// <param name="newAbsAllocs"></param>
+  /// <param name="targetAllocs"></param>
   /// <param name="source"></param>
   /// <param name="config"></param>
   /// <param name="curBalance"></param>
   /// <returns></returns>
   private async Task<OrderDto[]> BuyUnderagesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> newAbsAllocs, string source, ConfigReqDto config, Balance? curBalance)
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, string source, ConfigReqDto config, Balance? curBalance)
   {
     if (null == curBalance)
     {
@@ -600,21 +600,21 @@ public class RebalancingService : IRebalancingService
     }
 
     var orders =
-      GetAllocationQuoteDiffs(exchange, newAbsAllocs, config, curBalance)
+      GetAllocationQuoteDrifts(exchange, targetAllocs, config, curBalance)
 
       // We can't trade quote currency for quote currency.
-      .Where(allocDiff => !allocDiff.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
+      .Where(allocDrift => !allocDrift.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Negative quote differences refer to undersized allocations.
-      .Where(allocDiff => allocDiff.AmountQuoteDiff < 0)
+      .Where(allocDrift => allocDrift.AmountQuoteDrift < 0)
 
       // Construct buy order.
-      .Select(allocDiff => new OrderReqDto()
+      .Select(allocDrift => new OrderReqDto()
       {
-        Market = allocDiff.Market,
+        Market = allocDrift.Market,
         Side = OrderSide.Buy,
         Type = config.UseLimitOrders ? OrderType.Limit : OrderType.Market,
-        AmountQuote = Math.Abs(allocDiff.AmountQuoteDiff),
+        AmountQuote = Math.Abs(allocDrift.AmountQuoteDrift),
       });
 
     return await BuyUnderagesAndVerify(exchange, credentials, orders, source, curBalance);
@@ -705,7 +705,7 @@ public class RebalancingService : IRebalancingService
     IExchange exchange,
     ExchangeCredentials credentials,
     ConfigReqDto config,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
+    IEnumerable<TargetAllocReqDto> targetAllocs,
     Balance? curBalance = null,
     string source = "API")
   {
@@ -717,14 +717,14 @@ public class RebalancingService : IRebalancingService
     _ = await exchange.CancelAllOpenOrders(credentials);
 
     // Make sure all market statuses of eligible assets are known.
-    var absAllocList = await GetTopRankingAllocs(exchange, credentials, newAbsAllocs, config.TopRankingCount);
+    var targetAllocList = await GetTopRankingAllocs(exchange, credentials, targetAllocs, config.TopRankingCount);
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
-    var sellResults = await SellOveragesAndVerify(exchange, credentials, absAllocList, source, config, curBalance);
+    var sellResults = await SellOveragesAndVerify(exchange, credentials, targetAllocList, source, config, curBalance);
 
     // Then buy to increase undersized allocations.
-    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, absAllocList, source, config, curBalance: null);
+    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, targetAllocList, source, config, curBalance: null);
 
     // Combined results.
     var orderResults = new OrderDto[sellResults.Length + buyResults.Length];

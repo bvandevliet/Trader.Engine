@@ -128,7 +128,7 @@ public class DashboardModel : TraderEnginePageModelBase
     // this form never edits — only the RebalanceReqDto-mirroring fields above are user input here.
     var existing = await _configRepository.GetConfig(user.Id);
     config.LastRebalance = existing.LastRebalance;
-    config.AltWeightingFactors = existing.AltWeightingFactors;
+    config.WeightingOverrides = existing.WeightingOverrides;
     config.TagsToInclude = existing.TagsToInclude;
     config.TagsToIgnore = existing.TagsToIgnore;
 
@@ -209,7 +209,7 @@ public class DashboardModel : TraderEnginePageModelBase
   {
     public ConfigReqDto Config { get; set; } = null!;
 
-    public List<AbsAllocReqDto> NewAbsAllocs { get; set; } = [];
+    public List<TargetAllocReqDto> TargetAllocs { get; set; } = [];
   }
 
   /// <summary>
@@ -226,7 +226,7 @@ public class DashboardModel : TraderEnginePageModelBase
       var credentials = await GetCredentialsOrThrow(user.Id);
 
       var orders = await _apiClient.Rebalance(
-        user, _exchangeName, Source, new RebalanceReqDto(credentials, request.Config, request.NewAbsAllocs), ct);
+        user, _exchangeName, Source, new RebalanceReqDto(credentials, request.Config, request.TargetAllocs), ct);
 
       // LastRebalance is persisted server-side by TraderEngine.API's RebalanceController itself,
       // right after the rebalance actually runs — not here, since this line would never run (and

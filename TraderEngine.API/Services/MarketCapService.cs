@@ -10,6 +10,13 @@ namespace TraderEngine.API.Services;
 
 public class MarketCapService : MarketCapHandlingBase, IMarketCapService
 {
+  /// <summary>
+  /// Upper bound on a single tag-regex match against a single (short) tag string — user-authored
+  /// patterns (<see cref="ConfigReqDto.TagsToInclude"/>/<see cref="ConfigReqDto.TagsToIgnore"/>)
+  /// could otherwise hang this shared service process via catastrophic backtracking.
+  /// </summary>
+  private static readonly TimeSpan RegexMatchTimeout = TimeSpan.FromMilliseconds(250);
+
   private readonly ILogger<MarketCapService> _logger;
   private readonly IMarketCapInternalRepository _marketCapInternalRepo;
 
@@ -43,7 +50,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       });
   }
 
-  public async Task<IEnumerable<AbsAllocReqDto>?> BalancedAbsAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
+  public async Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
   {
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
@@ -55,12 +62,16 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       return null;
     }
 
+    // Patterns are user-authored regex by design (see ConfigModel.ValidateTagPatterns), so they
+    // can't be Regex.Escape()'d without breaking that feature. A bounded match timeout instead
+    // guards against a catastrophic-backtracking pattern hanging this shared service process
+    // (ReDoS) — CodeQL's cs/regex-injection flags any Regex built from unescaped user input.
     var includeTagsPattern = configReqDto.TagsToInclude.Any() ?
       string.Join('|', configReqDto.TagsToInclude.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$")) : ".*";
-    var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase);
+    var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
     var ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
-    var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase);
+    var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
     currentAssets = currentAssets?.Select(a => a.DeepClone()).ToList();
 
@@ -70,7 +81,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       // Determine weighting.
       .Select(marketCapDataDto =>
       {
-        var hasWeighting = configReqDto.AltWeightingFactors.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
+        var hasWeighting = configReqDto.WeightingOverrides.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
         var isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
         var finalWeighting = hasWeighting ? weighting : 1;
 
@@ -79,7 +90,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
           MarketCapDataDto = marketCapDataDto,
           HasWeighting = hasWeighting,
           Weighting = finalWeighting,
-          OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.CurrentAllocWeightingMult : 1),
+          OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.HeldAssetBiasMult : 1),
         };
       })
 
@@ -87,27 +98,54 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Where(marketCap => marketCap.Weighting > 0)
 
       // Handle included tags, but if asset has a weighting configured explicitly, that takes precedence.
-      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => includeTagsRegex.IsMatch(tag)))
+      // A timed-out pattern counts as a non-match here — fails this asset out of the "included" set
+      // rather than letting an unevaluated pattern wave it through.
+      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(includeTagsRegex, tag, matchOnTimeout: false)))
 
       // Handle ignored tags, but if asset has a weighting configured explicitly, that takes precedence.
-      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => ignoreTagsRegex.IsMatch(tag)))
+      // A timed-out pattern counts as a match here (i.e. ignored) for the same reason: when a tag
+      // can't be safely evaluated, exclude the asset rather than risk holding something the user
+      // explicitly asked to keep out (e.g. a stablecoin/meme tag).
+      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(ignoreTagsRegex, tag, matchOnTimeout: true)))
 
       // Apply weighting and dampening.
       .Select(marketCap => new
       {
         MarketCap = marketCap,
-        AbsAllocDto = new AbsAllocReqDto()
+        TargetAllocDto = new TargetAllocReqDto()
         {
           Market = marketCap.MarketCapDataDto.Market,
-          AbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+          TargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
         },
-        OrderByAbsAlloc = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
+        OrderByTargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
       })
 
       // Sort by weighted Market Cap EMA value.
-      .OrderByDescending(alloc => alloc.OrderByAbsAlloc)
+      .OrderByDescending(alloc => alloc.OrderByTargetWeight)
 
       // Return absolute allocations.
-      .Select(alloc => alloc.AbsAllocDto);
+      .Select(alloc => alloc.TargetAllocDto);
+  }
+
+  /// <summary>
+  /// Wraps <see cref="Regex.IsMatch(string)"/> so a single user-authored tag pattern timing out
+  /// against one tag (see <see cref="RegexMatchTimeout"/>) is caught rather than throwing and
+  /// aborting the whole allocation calculation for every other asset/tag. <paramref name="matchOnTimeout"/>
+  /// lets each call site pick the fail-safe direction for its own filter — always toward excluding
+  /// the asset from consideration, never toward silently including one the user didn't ask for.
+  /// </summary>
+  private bool SafeIsMatch(Regex regex, string input, bool matchOnTimeout)
+  {
+    try
+    {
+      return regex.IsMatch(input);
+    }
+    catch (RegexMatchTimeoutException ex)
+    {
+      _logger.LogWarning(ex, "Tag regex {Pattern} timed out matching against {Tag}; treating as {Result}.",
+        regex.ToString().SanitizeForLog(), input.SanitizeForLog(), matchOnTimeout ? "a match" : "no match");
+
+      return matchOnTimeout;
+    }
   }
 }

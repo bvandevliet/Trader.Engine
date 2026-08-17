@@ -23,10 +23,10 @@ public class RebalancingServiceTopRankingTests
     var exchange = new ScriptedExchange();
     exchange.SetMarketStatus("BTC", MarketStatus.Trading);
 
-    var absAlloc = new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m);
+    var targetAlloc = new TargetAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m);
 
     // Act
-    var result = await _service.FetchMarketStatus(exchange, _credentials, absAlloc);
+    var result = await _service.FetchMarketStatus(exchange, _credentials, targetAlloc);
 
     // Assert
     Assert.AreEqual(MarketStatus.Trading, result.MarketStatus);
@@ -38,17 +38,17 @@ public class RebalancingServiceTopRankingTests
   {
     // Arrange
     var exchange = new ScriptedExchange();
-    // Configured to Trading, but the absAlloc already carries a Halted status —
+    // Configured to Trading, but the targetAlloc already carries a Halted status —
     // GetMarket must not be consulted, so this configuration must be ignored.
     exchange.SetMarketStatus("BTC", MarketStatus.Trading);
 
-    var absAlloc = new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m)
+    var targetAlloc = new TargetAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m)
     {
       MarketStatus = MarketStatus.Halted,
     };
 
     // Act
-    var result = await _service.FetchMarketStatus(exchange, _credentials, absAlloc);
+    var result = await _service.FetchMarketStatus(exchange, _credentials, targetAlloc);
 
     // Assert
     Assert.AreEqual(MarketStatus.Halted, result.MarketStatus);
@@ -63,10 +63,10 @@ public class RebalancingServiceTopRankingTests
     // exchange that has no data for this market at all.
     var exchange = new ScriptedExchange();
 
-    var absAlloc = new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m);
+    var targetAlloc = new TargetAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m);
 
     // Act
-    var result = await _service.FetchMarketStatus(exchange, _credentials, absAlloc);
+    var result = await _service.FetchMarketStatus(exchange, _credentials, targetAlloc);
 
     // Assert
     Assert.AreEqual(MarketStatus.Unknown, result.MarketStatus);
@@ -89,17 +89,17 @@ public class RebalancingServiceTopRankingTests
     exchange.SetMarketStatus("SOL", MarketStatus.Trading);
     exchange.SetMarketStatus("XRP", MarketStatus.Trading);
 
-    var absAllocs = new[]
+    var targetAllocs = new[]
     {
-      new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .3m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "ETH"), .3m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "ADA"), .2m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "SOL"), .1m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "XRP"), .1m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "BTC"), .3m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "ETH"), .3m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "ADA"), .2m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "SOL"), .1m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "XRP"), .1m),
     };
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, _credentials, absAllocs, topRankingCount: 3);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, targetAllocs, topRankingCount: 3);
 
     // Assert
     CollectionAssert.AreEqual(
@@ -119,16 +119,16 @@ public class RebalancingServiceTopRankingTests
     exchange.SetMarketStatus("ADA", MarketStatus.Trading);
     exchange.SetMarketStatus("SOL", MarketStatus.Trading);
 
-    var absAllocs = new[]
+    var targetAllocs = new[]
     {
-      new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .4m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "ETH"), .3m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "ADA"), .2m),
-      new AbsAllocReqDto(new MarketReqDto("EUR", "SOL"), .1m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "BTC"), .4m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "ETH"), .3m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "ADA"), .2m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "SOL"), .1m),
     };
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, _credentials, absAllocs, topRankingCount: 3);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, targetAllocs, topRankingCount: 3);
 
     // Assert
     CollectionAssert.AreEqual(
@@ -145,14 +145,14 @@ public class RebalancingServiceTopRankingTests
     var exchange = new ScriptedExchange();
     exchange.SetMarketStatus("ETH", MarketStatus.Trading);
 
-    var absAllocs = new[]
+    var targetAllocs = new[]
     {
-      new AbsAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m) { MarketStatus = MarketStatus.Trading },
-      new AbsAllocReqDto(new MarketReqDto("EUR", "ETH"), .5m),
+      new TargetAllocReqDto(new MarketReqDto("EUR", "BTC"), .5m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(new MarketReqDto("EUR", "ETH"), .5m),
     };
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, _credentials, absAllocs, topRankingCount: 10);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, targetAllocs, topRankingCount: 10);
 
     // Assert
     CollectionAssert.AreEqual(new[] { "BTC", "ETH" }, result.Select(a => a.Market.BaseSymbol).ToList());
@@ -167,7 +167,7 @@ public class RebalancingServiceTopRankingTests
     var exchange = new ScriptedExchange();
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, _credentials, Array.Empty<AbsAllocReqDto>(), topRankingCount: 10);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, Array.Empty<TargetAllocReqDto>(), topRankingCount: 10);
 
     // Assert
     Assert.AreEqual(0, result.Count);

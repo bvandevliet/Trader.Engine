@@ -9,7 +9,7 @@ public static class DataProtectionExtensions
 {
   /// <summary>
   /// Resolves <c>DataProtection:KeyRingPath</c> the same way for every host that shares the key
-  /// ring (TraderEngine.API, TraderEngine.Web, TraderEngine.Migration) — defaults to a "secrets"
+  /// ring (TraderEngine.API, TraderEngine.Web) — defaults to a "secrets"
   /// folder next to the executable when unset, passes an absolute path through unchanged, or
   /// resolves a relative path against <paramref name="contentRootPath"/>. Keeping this in one
   /// place prevents the three hosts from silently drifting apart on how the path is derived,

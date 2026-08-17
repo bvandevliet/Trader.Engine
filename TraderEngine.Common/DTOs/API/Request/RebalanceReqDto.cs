@@ -5,7 +5,7 @@ namespace TraderEngine.Common.DTOs.API.Request;
 public class RebalanceReqDto : SimulationReqDto
 {
   [Required]
-  public new IEnumerable<AbsAllocReqDto> NewAbsAllocs { get; set; } = null!;
+  public new IEnumerable<TargetAllocReqDto> TargetAllocs { get; set; } = null!;
 
   public RebalanceReqDto()
   {
@@ -14,10 +14,10 @@ public class RebalanceReqDto : SimulationReqDto
   public RebalanceReqDto(
     ApiCredReqDto exchangeApiCred,
     ConfigReqDto config,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs)
+    IEnumerable<TargetAllocReqDto> targetAllocs)
   {
     ExchangeApiCred = exchangeApiCred;
     Config = config;
-    NewAbsAllocs = newAbsAllocs;
+    TargetAllocs = targetAllocs;
   }
 }

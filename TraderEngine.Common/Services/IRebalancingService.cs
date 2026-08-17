@@ -8,23 +8,23 @@ namespace TraderEngine.Common.Services;
 public interface IRebalancingService
 {
   /// <summary>
-  /// Try update unknown market status in <paramref name="absAlloc"/>.
+  /// Try update unknown market status in <paramref name="targetAlloc"/>.
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="credentials"></param>
-  /// <param name="absAlloc"></param>
-  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns>
-  public Task<AbsAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, AbsAllocReqDto absAlloc);
+  /// <param name="targetAlloc"></param>
+  /// <returns>Collection of updated <see cref="TargetAllocReqDto"/>s.</returns>
+  public Task<TargetAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, TargetAllocReqDto targetAlloc);
 
   /// <summary>
-  /// Get the top ranking assets in <paramref name="absAllocs"/> for this exchange.
+  /// Get the top ranking assets in <paramref name="targetAllocs"/> for this exchange.
   /// </summary>
   /// <param name="exchange"></param>
   /// <param name="credentials"></param>
-  /// <param name="absAllocs"></param>
+  /// <param name="targetAllocs"></param>
   /// <param name="topRankingCount"></param>
-  /// <returns>Collection of updated <see cref="AbsAllocReqDto"/>s.</returns>
-  public Task<List<AbsAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<AbsAllocReqDto> absAllocs, int topRankingCount);
+  /// <returns>Collection of updated <see cref="TargetAllocReqDto"/>s.</returns>
+  public Task<List<TargetAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, int topRankingCount);
 
   /// <summary>
   /// A task that will complete when verified that the given <paramref name="order"/> has ended.
@@ -52,14 +52,14 @@ public interface IRebalancingService
   /// and fills it instantly, so a preview's estimated fees correctly reflect the maker rate
   /// without ever needing a real order book lookup.
   /// </param>
-  /// <param name="newAbsAllocs"></param>
+  /// <param name="targetAllocs"></param>
   /// <param name="curBalance"></param>
   /// <param name="source"></param>
   public Task<OrderDto[]> Rebalance(
     IExchange exchange,
     ExchangeCredentials credentials,
     ConfigReqDto config,
-    IEnumerable<AbsAllocReqDto> newAbsAllocs,
+    IEnumerable<TargetAllocReqDto> targetAllocs,
     Balance? curBalance = null,
     string source = "API");
 

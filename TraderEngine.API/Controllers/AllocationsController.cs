@@ -55,16 +55,16 @@ public class AllocationsController : ControllerBase
   }
 
   [HttpPost("balanced")]
-  public async Task<ActionResult<List<AbsAllocReqDto>>> BalancedAbsAllocs(ConfigReqDto configReqDto)
+  public async Task<ActionResult<List<TargetAllocReqDto>>> BalancedTargetAllocs(ConfigReqDto configReqDto)
   {
     _logger.LogTrace(
-      "Handling BalancedAbsAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+      "Handling BalancedTargetAllocs request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
-    var absAllocs = await _marketCapService()
-      .BalancedAbsAllocs(_quoteSymbol, configReqDto);
+    var targetAllocs = await _marketCapService()
+      .BalancedTargetAllocs(_quoteSymbol, configReqDto);
 
-    return absAllocs == null
+    return targetAllocs == null
       ? NotFound("No recent market cap records found.")
-      : Ok(absAllocs);
+      : Ok(targetAllocs);
   }
 }

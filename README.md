@@ -32,19 +32,12 @@ docker compose --env-file .env.example --env-file .env up -d
 
 Uses each project's production `Dockerfile`, which expects a prior `dotnet publish -c Release` (this is what CI does before building the image).
 
-**One-shot WordPress → Postgres migration (on demand only, never runs otherwise):**
-
-```
-docker compose --env-file .env.example --env-file .env -f docker-compose.yml -f docker-compose.migrate.yml run --rm traderengine.migration
-```
-
 ### File reference
 
 | File | Purpose | Used by |
 |---|---|---|
 | `docker-compose.yml` | Base service definitions (Postgres, API, Web) — source of truth for production. | All scenarios |
 | `docker-compose.debug.yml` | Exposes Postgres on `localhost:5432`; redirects the API/Web build to `Dockerfile.debug` with the build context widened to the repo root. Not auto-loaded by a plain `docker compose` invocation. | Manually via `-f`, or by `docker-compose.dcproj` via `AdditionalComposeFilePaths` |
-| `docker-compose.migrate.yml` | Defines `traderengine.migration`, gated behind the `migrate` profile so it never starts by accident. Deliberately **not** referenced by `docker-compose.dcproj` in any way — VS's F5 flow expects a container for every service in whatever files it loads, regardless of `profiles:`, so wiring this in would break F5 the same way the old `docker` profile did. | Manually via `-f`, on demand only |
 | `docker-compose.dcproj` | Visual Studio's Docker Compose project — wires up `docker-compose.yml` + `docker-compose.debug.yml` + env files for one-click F5. | Visual Studio only |
 | `TraderEngine.API/Dockerfile`, `TraderEngine.Web/Dockerfile` | Production images: thin, expect a prebuilt `bin/Release/.../publish`. | Production deploys, CI |
 | `TraderEngine.API/Dockerfile.debug`, `TraderEngine.Web/Dockerfile.debug` | Self-contained: build from source inside the image. VS Fast Mode only. | `docker-compose.debug.yml` only |

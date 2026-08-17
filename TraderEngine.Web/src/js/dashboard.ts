@@ -21,9 +21,9 @@ interface BalanceDto {
   amountQuoteTotal: number;
 }
 
-interface AbsAllocDto {
+interface TargetAllocDto {
   market: MarketDto;
-  absAlloc: number;
+  targetWeight: number;
   marketStatus: string;
 }
 
@@ -37,7 +37,7 @@ interface SimulationDto {
   totalFee: number;
   curBalance: BalanceDto;
   newBalance: BalanceDto;
-  newAbsAllocs: AbsAllocDto[];
+  targetAllocs: TargetAllocDto[];
 }
 
 interface InitDto {
@@ -72,7 +72,7 @@ const saveBtn = form.querySelector<HTMLButtonElement>('button[type=\'submit\']')
 const rebalanceNowBtn = document.getElementById('rebalance-now-btn') as HTMLButtonElement;
 const expectedFeeEl = document.getElementById('expected-fee')!;
 const lastRebalanceEl = document.getElementById('last-rebalance')!;
-const trackingErrorEl = document.getElementById('tracking-error-quote')!;
+const driftThresholdEl = document.getElementById('drift-threshold-quote')!;
 const portfolioTableBody = document.querySelector('#portfolio-table tbody')!;
 const portfolioTableOverlay = attachLoadingOverlay(document.getElementById('portfolio-table-wrapper')!);
 const balanceSummaryOverlay = attachLoadingOverlay(document.getElementById('balance-summary-wrapper')!);
@@ -160,8 +160,8 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): 
       const balValue = balByAsset.get(baseSymbol)?.amountQuote ?? 0;
       const curAlloc = curBalance.amountQuoteTotal === 0 ? 0 : (100 * curValue) / curBalance.amountQuoteTotal;
       const balAlloc = newBalance.amountQuoteTotal === 0 ? 0 : (100 * balValue) / newBalance.amountQuoteTotal;
-      const quoteDiff = balValue - curValue;
-      const allocDiff = balAlloc - curAlloc;
+      const quoteDrift = balValue - curValue;
+      const allocDrift = balAlloc - curAlloc;
       // eslint-disable-next-line func-style
       const diffClass = (n: number) => (n >= 0 ? 'text-end text-success' : 'text-end text-danger');
       // eslint-disable-next-line func-style
@@ -174,23 +174,23 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): 
       addCell(row, numberFormat(curAlloc), 'text-end');
       addCell(row, numberFormat(balValue), 'text-end');
       addCell(row, numberFormat(balAlloc), 'text-end');
-      addCell(row, quoteDiff === 0 ? '' : `${sign(quoteDiff)}${numberFormat(quoteDiff)}`, diffClass(quoteDiff));
-      addCell(row, quoteDiff === 0 ? '' : `${sign(allocDiff)}${numberFormat(allocDiff)}`, diffClass(allocDiff));
+      addCell(row, quoteDrift === 0 ? '' : `${sign(quoteDrift)}${numberFormat(quoteDrift)}`, diffClass(quoteDrift));
+      addCell(row, quoteDrift === 0 ? '' : `${sign(allocDrift)}${numberFormat(allocDrift)}`, diffClass(allocDrift));
 
       return row;
     }),
   );
 }
 
-function updateTrackingErrorQuote (): void
+function updateDriftThresholdQuote (): void
 {
   if (!lastSimulation) { return; }
 
-  const minimumDiffAllocationInput = form.querySelector<HTMLInputElement>('[data-config-field=\'minimumDiffAllocation\']')!;
-  const minimumDiffAllocation = parseFloat(minimumDiffAllocationInput.value || '0');
-  const quote = (minimumDiffAllocation / 100) * lastSimulation.curBalance.amountQuoteTotal;
+  const driftThresholdPercentInput = form.querySelector<HTMLInputElement>('[data-config-field=\'driftThresholdPercent\']')!;
+  const driftThresholdPercent = parseFloat(driftThresholdPercentInput.value || '0');
+  const quote = (driftThresholdPercent / 100) * lastSimulation.curBalance.amountQuoteTotal;
 
-  trackingErrorEl.textContent = numberFormat(quote);
+  driftThresholdEl.textContent = numberFormat(quote);
 }
 
 // Shared by init() and simulate() — both end up rendering a freshly (re)fetched simulation the
@@ -201,7 +201,7 @@ function applySimulation (simulation: SimulationDto): void
 
   renderPortfolioTable(simulation.curBalance, simulation.newBalance);
   expectedFeeEl.textContent = numberFormat(simulation.totalFee);
-  updateTrackingErrorQuote();
+  updateDriftThresholdQuote();
 }
 
 // Shared by every handler that calls postJson() — ApiError carries the server's own message
@@ -387,7 +387,7 @@ form.querySelectorAll<HTMLInputElement>('.config-input').forEach(input =>
 {
   input.addEventListener('input', () =>
   {
-    updateTrackingErrorQuote();
+    updateDriftThresholdQuote();
 
     if (input.dataset.noResim !== undefined) { return; }
 
@@ -407,7 +407,7 @@ rebalanceNowBtn.addEventListener('click', () =>
     if (!confirm('This will perform a portfolio rebalance.\nAre you sure?')) { return; }
 
     if (
-      lastSimulation.newAbsAllocs.length === 0
+      lastSimulation.targetAllocs.length === 0
       && !confirm('Allowing the rebalance will result in a portfolio with zero assets.\nAre you sure?')
     )
     {
@@ -427,7 +427,7 @@ rebalanceNowBtn.addEventListener('click', () =>
       // separate /dashboard/currentbalance round-trip needed to refresh these two.
       const { currentBalance } = await postJson<{ currentBalance: BalanceDto }>('/dashboard/rebalancenow', {
         config: buildConfigFromForm(),
-        newAbsAllocs: lastSimulation.newAbsAllocs,
+        targetAllocs: lastSimulation.targetAllocs,
       });
 
       renderPortfolioTable(currentBalance, lastSimulation.newBalance);
@@ -445,7 +445,7 @@ rebalanceNowBtn.addEventListener('click', () =>
       rebalanceNowBtn.classList.remove('loading');
       portfolioTableOverlay.hide();
 
-      // Deliberately left disabled after a successful rebalance — lastSimulation.newAbsAllocs
+      // Deliberately left disabled after a successful rebalance — lastSimulation.targetAllocs
       // now describes trades that were just executed, so clicking again immediately would replay
       // a stale target. Only a fresh resimulate (the next config input change) re-enables it. On
       // failure nothing changed, so it's safe to let the user retry right away.
@@ -454,5 +454,5 @@ rebalanceNowBtn.addEventListener('click', () =>
   })();
 });
 
-updateTrackingErrorQuote();
+updateDriftThresholdQuote();
 init().then(() => setTimeout(pollBalanceLoop, POLL_INTERVAL_MS));

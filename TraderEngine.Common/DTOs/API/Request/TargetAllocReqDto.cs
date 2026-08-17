@@ -3,25 +3,25 @@ using TraderEngine.Common.Enums;
 
 namespace TraderEngine.Common.DTOs.API.Request;
 
-public class AbsAllocReqDto
+public class TargetAllocReqDto
 {
   [Required]
   public MarketReqDto Market { get; set; } = null!;
 
   [Required]
-  public decimal AbsAlloc { get; set; }
+  public decimal TargetWeight { get; set; }
 
   public MarketStatus MarketStatus { get; set; } = MarketStatus.Unknown;
 
-  public AbsAllocReqDto()
+  public TargetAllocReqDto()
   {
   }
 
   /// <param name="market"><inheritdoc cref="BaseSymbol"/></param>
-  /// <param name="absAlloc"><inheritdoc cref="AbsAlloc"/></param>
-  public AbsAllocReqDto(MarketReqDto market, decimal absAlloc)
+  /// <param name="targetAlloc"><inheritdoc cref="TargetWeight"/></param>
+  public TargetAllocReqDto(MarketReqDto market, decimal targetAlloc)
   {
     Market = market;
-    AbsAlloc = absAlloc;
+    TargetWeight = targetAlloc;
   }
 }

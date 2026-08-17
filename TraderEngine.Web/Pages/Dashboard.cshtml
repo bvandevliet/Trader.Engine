@@ -65,31 +65,49 @@
 
                 <div class="row mb-3">
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.TopRankingCount" class="form-label" title="@Html.DescriptionFor(m => m.Config.TopRankingCount)"></label>
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.TopRankingCount" class="form-label mb-0"></label>
+                            <info-tooltip asp-for="Config.TopRankingCount" />
+                        </div>
                         <input asp-for="Config.TopRankingCount" class="form-control config-input mt-auto" data-config-field="topRankingCount" min="0" max="100" step="1" />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.Smoothing" class="form-label" title="@Html.DescriptionFor(m => m.Config.Smoothing)"></label>
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.Smoothing" class="form-label mb-0"></label>
+                            <info-tooltip asp-for="Config.Smoothing" />
+                        </div>
                         <input asp-for="Config.Smoothing" class="form-control config-input mt-auto" data-config-field="smoothing" min="1" max="72" step="1" />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.NthRoot" class="form-label" title="@Html.DescriptionFor(m => m.Config.NthRoot)"></label>
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.NthRoot" class="form-label mb-0"></label>
+                            <info-tooltip asp-for="Config.NthRoot" />
+                        </div>
                         <input asp-for="Config.NthRoot" type="number" class="form-control config-input mt-auto" data-config-field="nthRoot" min="1" max="25" step="0.1" />
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.QuoteTakeout" class="form-label" title="@Html.DescriptionFor(m => m.Config.QuoteTakeout)">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span class="quote-symbol"></span>]</label>
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.QuoteTakeout" class="form-label mb-0">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span class="quote-symbol"></span>]</label>
+                            <info-tooltip asp-for="Config.QuoteTakeout" />
+                        </div>
                         <input asp-for="Config.QuoteTakeout" type="number" class="form-control config-input mt-auto" data-config-field="quoteTakeout" min="0" step="1" />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.QuoteAllocation" class="form-label" title="@Html.DescriptionFor(m => m.Config.QuoteAllocation)"></label>
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.QuoteAllocation" class="form-label mb-0"></label>
+                            <info-tooltip asp-for="Config.QuoteAllocation" />
+                        </div>
                         <input asp-for="Config.QuoteAllocation" type="number" class="form-control config-input mt-auto" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.CurrentAllocWeightingMult" class="form-label" title="@Html.DescriptionFor(m => m.Config.CurrentAllocWeightingMult)"></label>
-                        <input asp-for="Config.CurrentAllocWeightingMult" type="number" class="form-control config-input mt-auto" data-config-field="currentAllocWeightingMult" min="1" step="0.01" />
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.HeldAssetBiasMult" class="form-label mb-0"></label>
+                            <info-tooltip asp-for="Config.HeldAssetBiasMult" />
+                        </div>
+                        <input asp-for="Config.HeldAssetBiasMult" type="number" class="form-control config-input mt-auto" data-config-field="heldAssetBiasMult" min="1" step="0.01" />
                     </div>
                 </div>
 
@@ -97,7 +115,7 @@
                     <div class="col-md">
                         <div class="form-check">
                             <input asp-for="Config.UseLimitOrders" class="form-check-input config-input" data-config-field="useLimitOrders" />
-                            <label asp-for="Config.UseLimitOrders" class="form-check-label" title="@Html.DescriptionFor(m => m.Config.UseLimitOrders)">@Html.DisplayNameFor(m => m.Config.UseLimitOrders) <span class="badge bg-warning text-dark" title="This feature is new and has not been extensively battle-tested yet.">Experimental</span></label>
+                            <label asp-for="Config.UseLimitOrders" class="form-check-label"></label><info-tooltip asp-for="Config.UseLimitOrders" />
                         </div>
                     </div>
                 </div>
@@ -106,18 +124,27 @@
 
                 <div class="row mb-3">
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.MinimumDiffQuote" class="form-label" title="@Html.DescriptionFor(m => m.Config.MinimumDiffQuote)">@Html.DisplayNameFor(m => m.Config.MinimumDiffQuote) [<span class="quote-symbol"></span>]</label>
-                        <input asp-for="Config.MinimumDiffQuote" class="form-control config-input mt-auto" data-config-field="minimumDiffQuote" min="0" step="1" data-no-resim />
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.MinimumOrderSizeQuote" class="form-label mb-0">@Html.DisplayNameFor(m => m.Config.MinimumOrderSizeQuote) [<span class="quote-symbol"></span>]</label>
+                            <info-tooltip asp-for="Config.MinimumOrderSizeQuote" />
+                        </div>
+                        <input asp-for="Config.MinimumOrderSizeQuote" class="form-control config-input mt-auto" data-config-field="minimumOrderSizeQuote" min="0" step="1" data-no-resim />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.MinimumDiffAllocation" class="form-label d-flex justify-content-between" title="@Html.DescriptionFor(m => m.Config.MinimumDiffAllocation)">
-                            <span>@Html.DisplayNameFor(m => m.Config.MinimumDiffAllocation)</span>
-                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="tracking-error-quote"></span>)</span>
-                        </label>
-                        <input asp-for="Config.MinimumDiffAllocation" type="number" class="form-control config-input mt-auto" data-config-field="minimumDiffAllocation" min="0" max="100" step="0.1" data-no-resim />
+                        <div class="form-label d-flex justify-content-between align-items-center mb-2">
+                            <span class="d-flex align-items-center">
+                                <label asp-for="Config.DriftThresholdPercent" class="mb-0"></label>
+                                <info-tooltip asp-for="Config.DriftThresholdPercent" />
+                            </span>
+                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="drift-threshold-quote"></span>)</span>
+                        </div>
+                        <input asp-for="Config.DriftThresholdPercent" type="number" class="form-control config-input mt-auto" data-config-field="driftThresholdPercent" min="0" max="100" step="0.1" data-no-resim />
                     </div>
                     <div class="col-md-4 d-flex flex-column">
-                        <label asp-for="Config.IntervalHours" class="form-label" title="@Html.DescriptionFor(m => m.Config.IntervalHours)">@Html.DisplayNameFor(m => m.Config.IntervalHours)</label>
+                        <div class="d-flex align-items-center mb-2">
+                            <label asp-for="Config.IntervalHours" class="form-label mb-0"></label>
+                            <info-tooltip asp-for="Config.IntervalHours" />
+                        </div>
                         <input asp-for="Config.IntervalHours" class="form-control config-input mt-auto" data-config-field="intervalHours" min="1" max="672" step="1" data-no-resim />
                     </div>
                 </div>
@@ -126,7 +153,7 @@
                     <div class="col-md">
                         <div class="form-check mb-0">
                             <input asp-for="Config.AutomationEnabled" class="form-check-input config-input" data-config-field="automationEnabled" data-no-resim />
-                            <label asp-for="Config.AutomationEnabled" class="form-check-label" title="@Html.DescriptionFor(m => m.Config.AutomationEnabled)">@Html.DisplayNameFor(m => m.Config.AutomationEnabled)</label>
+                            <label asp-for="Config.AutomationEnabled" class="form-check-label"></label><info-tooltip asp-for="Config.AutomationEnabled" />
                         </div>
                     </div>
                 </div>
