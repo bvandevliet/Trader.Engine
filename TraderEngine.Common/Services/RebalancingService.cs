@@ -285,7 +285,13 @@ public class RebalancingService : IRebalancingService
     if (remainingAmountQuote < exchange.MinOrderSizeInQuote)
     {
       if (orderReq.Side != OrderSide.Sell)
+      {
+        _logger.LogInformation(
+          "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
+          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
+
         return [limitOrder];
+      }
 
       // Honor decimals precision for the amount of this asset.
       var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
@@ -653,7 +659,17 @@ public class RebalancingService : IRebalancingService
       .Where(buyOrder => !buyOrder.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
 
       // Check if reached minimum order size.
-      .Where(buyOrder => buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
+      .Where(buyOrder =>
+      {
+        if (buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
+          return true;
+
+        _logger.LogInformation(
+          "Skipping buy order for market {Market}: {AmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}.",
+          buyOrder.Market.ToString().SanitizeForLog(), buyOrder.AmountQuote, exchange.MinOrderSizeInQuote);
+
+        return false;
+      })
 
       // Sum of all negative quote differences.
       .Sum(buyOrder =>
@@ -673,30 +689,86 @@ public class RebalancingService : IRebalancingService
     // rates) absorbs that lag; a zero-fee exchange (e.g. in tests) sees no change in behavior.
     var availableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
 
-    // Multiplication ratio to avoid potentially oversized buy order sizes.
+    // Multiplication ratio to avoid potentially oversized buy order sizes. Divided by
+    // (1 + TakerFee) so the trade-value-only sum this caps at leaves room for every leg's own fee
+    // (reserved per-leg below) to still fit inside `availableWithFeeBuffer` once summed — sizing
+    // the ratio against `availableWithFeeBuffer` directly would double-reserve the fee (once here,
+    // again per leg below), guaranteeing the ledger runs dry before the last leg(s) get their fair
+    // share whenever scaling is actually needed.
     var ratio = totalBuy == 0 ? 0 :
-      Math.Min(totalBuy, availableWithFeeBuffer) / totalBuy;
+      Math.Min(totalBuy, availableWithFeeBuffer / (1 + exchange.TakerFee)) / totalBuy;
+
+    if (ratio < 1)
+      _logger.LogInformation(
+        "Scaling {BuyOrderCount} buy orders by a ratio of {Ratio} (available {AvailableWithFeeBuffer}, total requested {TotalBuy}) for exchange {Exchange}.",
+        buyOrders.Count, ratio, availableWithFeeBuffer, totalBuy, exchange.GetType().Name);
+
+    // In-process running ledger, decremented as each leg claims its own share — this is what
+    // actually closes the race: every leg below is scaled by the SAME `ratio` (preserving
+    // proportional fairness across legs when funds fall short), but a leg's claim is additionally
+    // clamped to whatever this ledger still has left AT THE MOMENT IT CLAIMS, rather than trusting
+    // that the batch-wide ratio alone guarantees no overlap. The exchange's real balance is never
+    // re-queried mid-batch; this ledger is the authority instead.
+    var remainingBudget = availableWithFeeBuffer;
+
+    // The lock below is a correctness guarantee, not a workaround for measured contention: within
+    // Task.WhenAll(IEnumerable<Task>), each `async` selector below runs synchronously up to its
+    // first genuine await (the placement call inside PlaceAndVerifyOrder), so in practice these
+    // claims already execute one at a time, in order, before any leg's HTTP response can resume it
+    // — but that relies on an enumeration-order implementation detail this lock makes explicit and
+    // future-proof instead of implicit.
+    var budgetLock = new object();
 
     // The buy task loop, diffs are already filtered ..
     var results = await Task.WhenAll(
       buyOrders
 
-      // Scale to avoid potentially oversized buy order size,
-      // and round to avoid potentially invalid amount quote.
-      .Select(buyOrder =>
+      // Claim this leg's share from the shared ledger, then place (and verify) only what was
+      // actually claimed. A limit order that falls back to market yields two entries; everything
+      // else yields exactly one; a leg that couldn't claim enough to reach the exchange minimum
+      // yields none.
+      .Select(async buyOrder =>
       {
-        buyOrder.AmountQuote *= ratio;
-        buyOrder.AmountQuote = RoundAmountQuote((decimal)buyOrder.AmountQuote!, OrderSide.Buy);
+        decimal claimed;
 
-        return buyOrder;
-      })
+        lock (budgetLock)
+        {
+          var requested = (decimal)buyOrder.AmountQuote! * ratio;
 
-      // Check if still reached minimum order size.
-      .Where(buyOrder => buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
+          // `availableWithFeeBuffer` reserves headroom for ONE risk: the snapshot balance still
+          // reflecting gross, pre-fee sell proceeds. It says nothing about each buy leg's own
+          // trading fee, which Bitvavo charges in quote currency IN ADDITION to the trade value
+          // (feeCurrency == quote symbol for an EUR-quoted market) — a real, certain cost, not a
+          // timing artifact. Dividing by (1 + TakerFee) reserves that fee out of this leg's own
+          // claim rather than leaving it to be silently absorbed by whatever's left in the shared
+          // ledger once every other leg has also claimed.
+          var maxAffordable = Math.Max(0, remainingBudget) / (1 + exchange.TakerFee);
 
-      // Buy, then verify the buy order ended. A limit order that falls back to market
-      // yields two entries; everything else yields exactly one.
-      .Select(buyOrder => PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false)));
+          // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never
+          // reclaim back into the fee headroom already reserved above.
+          claimed = RoundAmountQuote(Math.Min(requested, maxAffordable), OrderSide.Buy);
+
+          // Only debit the ledger for a claim that will actually be spent. A claim that rounds
+          // below the exchange minimum is never placed (see the check below), so decrementing here
+          // regardless would burn budget nothing was actually spent on, needlessly starving legs
+          // processed after this one.
+          if (claimed >= exchange.MinOrderSizeInQuote)
+            remainingBudget -= claimed * (1 + exchange.TakerFee);
+        }
+
+        if (claimed < exchange.MinOrderSizeInQuote)
+        {
+          _logger.LogInformation(
+            "Dropping buy order for market {Market}: could only claim {Claimed} of the exchange minimum {MinOrderSizeInQuote} from the remaining budget.",
+            buyOrder.Market.ToString().SanitizeForLog(), claimed, exchange.MinOrderSizeInQuote);
+
+          return [];
+        }
+
+        buyOrder.AmountQuote = claimed;
+
+        return await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
+      }));
 
     return results.SelectMany(orderResults => orderResults).ToArray();
   }

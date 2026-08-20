@@ -26,6 +26,7 @@ public class RebalancingServiceTests
   private static readonly MarketReqDto _btc = new("EUR", "BTC");
   private static readonly MarketReqDto _eth = new("EUR", "ETH");
   private static readonly MarketReqDto _ada = new("EUR", "ADA");
+  private static readonly MarketReqDto _sol = new("EUR", "SOL");
 
   private static MockExchange NewExchange(
     Balance curBalance, decimal minOrderSize = 1, decimal makerFee = 0, decimal takerFee = 0)
@@ -366,6 +367,197 @@ public class RebalancingServiceTests
     Assert.AreEqual(21.42m, ada.AmountQuoteFilled);
 
     Assert.AreEqual(800m, curBalance.GetAllocation("BTC")!.AmountQuote);
+  }
+
+  [TestMethod]
+  public async Task Rebalance_BuyRatioScaling_WithTakerFee_ReservesEachLegsOwnFeeFromItsOwnClaim()
+  {
+    // Arrange
+    // Same shape as Rebalance_BuyRatioScaling_ProportionallyScalesMultipleBuyOrdersWhenQuoteInsufficient,
+    // but with a non-zero TakerFee. Bitvavo charges a buy order's fee in quote currency IN ADDITION
+    // to its trade value, drawn from the same EUR pool — so once the batch-wide ratio has already
+    // scaled ETH and ADA's combined trade values down to fit the available-with-buffer pool, there
+    // is nothing left over to also cover their own fees. The running ledger this test exercises
+    // closes that gap per leg, in claim order: ETH (processed first) claims its full ratio-scaled
+    // share since there's room; ADA (processed second) then finds less left in the ledger than its
+    // own ratio-scaled share, because ETH's claim already reserved its own fee out of the shared
+    // pool, so ADA's claim is clamped further, below what the naive ratio-only maths would give it.
+    var curBalance = new Balance("EUR");
+    curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 50));
+    curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 800));
+    curBalance.TryAddAllocation(new Allocation(_eth, price: 1, amount: 100));
+    curBalance.TryAddAllocation(new Allocation(_ada, price: 1, amount: 50));
+
+    var exchange = NewExchange(curBalance, minOrderSize: 1, makerFee: 0, takerFee: 0.0025m);
+
+    var targets = new[]
+    {
+      new TargetAllocReqDto(_btc, .5m) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_eth, .3m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_ada, .2m) { MarketStatus = MarketStatus.Trading },
+    };
+
+    // Act
+    var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
+
+    // Assert
+    Assert.AreEqual(2, orders.Length);
+
+    var eth = orders.Single(o => o.Market.BaseSymbol == "ETH");
+    var ada = orders.Single(o => o.Market.BaseSymbol == "ADA");
+
+    // ratio = min(350, 49.875 / 1.0025) / 350 already reserves each leg's own fee inside the
+    // ratio itself, so both legs claim their full ratio-scaled share unclamped by the ledger.
+    Assert.AreEqual(28.42m, eth.AmountQuoteFilled);
+    Assert.AreEqual(21.32m, ada.AmountQuoteFilled);
+
+    // The invariant the ledger enforces: no combination of trade value + each leg's own taker fee
+    // ever draws more than the 50 EUR that was actually available before either order was placed.
+    var totalDrawnIncludingFees = orders.Sum(o => o.AmountQuoteFilled * (1 + exchange.TakerFee));
+    Assert.IsTrue(totalDrawnIncludingFees <= 50m);
+  }
+
+  [TestMethod]
+  public async Task Rebalance_BuyLedgerClamp_DropsLegEntirelyWhenClaimFallsBelowMinimum()
+  {
+    // Arrange
+    // BTC is frozen (Halted, held, weighted to soak up the rest of the normalization total) so it
+    // generates no order of its own regardless of its target. Target weights are set equal to the
+    // exact desired quote amounts for two brand-new (not currently held) positions — with
+    // totalTargetWeight equal to curBalance.AmountQuoteTotal (810), each target's relative
+    // allocation collapses to exactly its own weight — so ETH's drift is exactly 195 and ADA's is
+    // exactly 5. Against only 10 EUR available, the ratio scales both down proportionally, but
+    // ADA's already-small share shrinks further still once ETH's own reserved fee is taken out of
+    // the shared ledger first (ETH is processed first) — enough to push what's left for ADA under
+    // MinOrderSizeInQuote entirely, not just smaller.
+    var curBalance = new Balance("EUR");
+    curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 10));
+    curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 800));
+
+    var exchange = NewExchange(curBalance, minOrderSize: 1, makerFee: 0, takerFee: 0.0025m);
+
+    var targets = new[]
+    {
+      new TargetAllocReqDto(_btc, 610m) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_eth, 195m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_ada, 5m) { MarketStatus = MarketStatus.Trading },
+    };
+
+    // Act
+    var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
+
+    // Assert
+    Assert.AreEqual(1, orders.Length); // ADA claimed too little to clear the exchange minimum.
+
+    var eth = orders.Single(o => o.Market.BaseSymbol == "ETH");
+    Assert.AreEqual(9.7m, eth.AmountQuoteFilled);
+
+    CollectionAssert.DoesNotContain(orders.Select(o => o.Market.BaseSymbol).ToList(), "ADA");
+  }
+
+  [TestMethod]
+  public async Task Rebalance_BuyLedgerClamp_DroppedLegDoesNotStarveLaterLegs()
+  {
+    // Arrange
+    // Three buy legs, processed in order ETH (drops below minimum after scaling), ADA (large,
+    // dominant), SOL (small, survives). ETH's dropped claim must never actually be debited from
+    // the shared ledger — the whole point of the regression this guards: a dropped leg's claim
+    // used to be subtracted from the ledger regardless of whether its order was ever placed,
+    // silently starving whichever leg came after it. SOL's expected claim below is computed via
+    // the exact same formula production uses (an independent "fair share" oracle), so any future
+    // leak — this one or the double fee-reservation one ratio itself now guards against — would
+    // show up as SOL claiming strictly less than its true fair share, not just as a pass/fail flip.
+    var curBalance = new Balance("EUR");
+    curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 50));
+    curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 800));
+
+    var exchange = NewExchange(curBalance, minOrderSize: 5, makerFee: 0, takerFee: 0.0025m);
+
+    const decimal ethRaw = 10m;
+    const decimal adaRaw = 100m;
+    const decimal solRaw = 14m;
+    var totalQuote = curBalance.AmountQuoteTotal;
+    var btcWeight = totalQuote - ethRaw - adaRaw - solRaw;
+
+    var targets = new[]
+    {
+      new TargetAllocReqDto(_btc, btcWeight) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_eth, ethRaw) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_ada, adaRaw) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_sol, solRaw) { MarketStatus = MarketStatus.Trading },
+    };
+
+    // Independently-computed expected values, mirroring BuyUnderagesAndVerify's own formula.
+    var availableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+    var totalBuy = ethRaw + adaRaw + solRaw;
+    var ratio = Math.Min(totalBuy, availableWithFeeBuffer / (1 + exchange.TakerFee)) / totalBuy;
+    var expectedEth = Math.Floor(ethRaw * ratio * 100) / 100;
+    var expectedAda = Math.Floor(adaRaw * ratio * 100) / 100;
+    var expectedSol = Math.Floor(solRaw * ratio * 100) / 100;
+
+    Assert.IsTrue(expectedEth < 5m, "Test setup assumption: ETH's scaled claim must fall below the exchange minimum.");
+    Assert.IsTrue(expectedSol >= 5m, "Test setup assumption: SOL's fair, unclamped claim must clear the exchange minimum.");
+
+    // Act
+    var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
+
+    // Assert
+    Assert.AreEqual(2, orders.Length); // ETH dropped; ADA and SOL both placed.
+
+    CollectionAssert.DoesNotContain(orders.Select(o => o.Market.BaseSymbol).ToList(), "ETH");
+
+    var ada = orders.Single(o => o.Market.BaseSymbol == "ADA");
+    var sol = orders.Single(o => o.Market.BaseSymbol == "SOL");
+
+    Assert.AreEqual(expectedAda, ada.AmountQuoteFilled);
+    Assert.AreEqual(expectedSol, sol.AmountQuoteFilled); // Untouched by ETH's dropped, never-spent claim.
+  }
+
+  [TestMethod]
+  public async Task Rebalance_BuyRatioScaling_ThreeEquallySizedLegs_AllReceiveEqualFairShare()
+  {
+    // Arrange
+    // Three equally-sized buy legs (ETH, ADA, SOL each wanting 40) against 100 EUR available.
+    // `ratio` itself already reserves each leg's own fee (divided by 1 + TakerFee before capping
+    // the trade-value sum), so all three should claim the exact same fair, unclamped share — the
+    // per-leg ledger should have nothing left to do here. This guards against the ratio and the
+    // per-leg ledger reservation double-counting the fee (once in `ratio`, again per leg), which
+    // would otherwise make whichever leg is processed last (SOL here) absorb the accumulated fee
+    // reservations of every prior leg and get needlessly shorted purely due to enumeration order.
+    var curBalance = new Balance("EUR");
+    curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 100));
+    curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 800));
+    curBalance.TryAddAllocation(new Allocation(_eth, price: 1, amount: 100));
+    curBalance.TryAddAllocation(new Allocation(_ada, price: 1, amount: 100));
+    curBalance.TryAddAllocation(new Allocation(_sol, price: 1, amount: 100));
+
+    var exchange = NewExchange(curBalance, minOrderSize: 1, makerFee: 0, takerFee: 0.0025m);
+
+    var targets = new[]
+    {
+      new TargetAllocReqDto(_btc, .4m) { MarketStatus = MarketStatus.Halted },
+      new TargetAllocReqDto(_eth, .2m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_ada, .2m) { MarketStatus = MarketStatus.Trading },
+      new TargetAllocReqDto(_sol, .2m) { MarketStatus = MarketStatus.Trading },
+    };
+
+    // Act
+    var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
+
+    // Assert
+    Assert.AreEqual(3, orders.Length);
+
+    var eth = orders.Single(o => o.Market.BaseSymbol == "ETH");
+    var ada = orders.Single(o => o.Market.BaseSymbol == "ADA");
+    var sol = orders.Single(o => o.Market.BaseSymbol == "SOL");
+
+    // All three equal, and unclamped by the ledger regardless of processing order.
+    Assert.AreEqual(33.16m, eth.AmountQuoteFilled);
+    Assert.AreEqual(33.16m, ada.AmountQuoteFilled);
+    Assert.AreEqual(33.16m, sol.AmountQuoteFilled);
+
+    var totalDrawnIncludingFees = orders.Sum(o => o.AmountQuoteFilled * (1 + exchange.TakerFee));
+    Assert.IsTrue(totalDrawnIncludingFees <= 100m);
   }
 
   // ── Dust and minimum order size interactions ────────────────────────────────
