@@ -518,7 +518,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   public async Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
   {
     using var request = CreateRequestMsg(
-      credentials, HttpMethod.Delete, $"order?orderId={orderId}&market={market}");
+      credentials, HttpMethod.Delete, $"order?orderId={orderId}&market={market}&operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
 
     using var response = await _httpClient.SendAsync(request);
 

@@ -30,6 +30,8 @@ internal sealed class ScriptedExchange : IExchange
 
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];
 
+  private readonly Dictionary<string, decimal> _minOrderSizesInBase = [];
+
   private readonly Dictionary<string, BestBidAskDto> _bestBidAsks = [];
 
   /// <summary>
@@ -66,6 +68,16 @@ internal sealed class ScriptedExchange : IExchange
   public void SetMarketStatus(string baseSymbol, MarketStatus status)
   {
     _marketStatuses[baseSymbol] = status;
+  }
+
+  /// <summary>
+  /// Configures <see cref="GetMarket"/> to report <paramref name="minOrderSizeInBase"/> as the
+  /// per-market minimum base-asset order size for <paramref name="baseSymbol"/>. A symbol with no
+  /// configured value defaults to 0 (no base-asset floor beyond <see cref="MinOrderSizeInQuote"/>).
+  /// </summary>
+  public void SetMinOrderSizeInBase(string baseSymbol, decimal minOrderSizeInBase)
+  {
+    _minOrderSizesInBase[baseSymbol] = minOrderSizeInBase;
   }
 
   /// <summary>
@@ -112,8 +124,11 @@ internal sealed class ScriptedExchange : IExchange
   {
     GetMarketCalls.Add(market.BaseSymbol);
 
-    return Task.FromResult(_marketStatuses.TryGetValue(market.BaseSymbol, out var status)
-      ? new MarketDataDto { Status = status }
+    var hasStatus = _marketStatuses.TryGetValue(market.BaseSymbol, out var status);
+    var hasMinOrderSizeInBase = _minOrderSizesInBase.TryGetValue(market.BaseSymbol, out var minOrderSizeInBase);
+
+    return Task.FromResult(hasStatus || hasMinOrderSizeInBase
+      ? new MarketDataDto { Status = status, MinOrderSizeInBase = minOrderSizeInBase }
       : null);
   }
 

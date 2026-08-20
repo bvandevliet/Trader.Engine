@@ -337,6 +337,36 @@ public class RebalancingServiceLimitOrderTests
     Assert.AreEqual(1, exchange.NewOrderCalls.Count); // Only the original limit order.
   }
 
+  /// <summary>
+  /// Regresses a live incident: a 30.811819 ADA sell (~€5.12 at the time, above the €5
+  /// MinOrderSizeInQuote floor) was rejected outright by Bitvavo (errorCode 212) because the
+  /// market's own minOrderInBaseAsset floor was higher than that quote-value check alone could
+  /// catch. Mirrors that shape: an order whose Amount clears MinOrderSizeInQuote but falls short
+  /// of the market's own base-asset minimum must be dropped before ever reaching the exchange.
+  /// </summary>
+  [TestMethod]
+  public async Task Rebalance_LimitOrderAmountBelowMarketMinBaseSize_IsDropped_NoOrderPlaced()
+  {
+    // Arrange
+    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 5 };
+    exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
+    exchange.SetMinOrderSizeInBase("BTC", minOrderSizeInBase: 1); // Higher than the 0.9 this order resolves to.
+
+    var orders = new[]
+    {
+      // 0.9 BTC @ 100 bid = 90 EUR, comfortably above MinOrderSizeInQuote, but below the
+      // market's own 1 BTC minimum base-asset size.
+      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Limit, Amount = 0.9m },
+    };
+
+    // Act
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert
+    Assert.AreEqual(0, results.Length);
+    Assert.AreEqual(0, exchange.NewOrderCalls.Count);
+  }
+
   [TestMethod]
   public async Task Rebalance_NoBestBidAskAvailable_FallsBackToMarketDirectly()
   {

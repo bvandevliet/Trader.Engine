@@ -51,6 +51,30 @@ public class BitvavoExchangeCancelOrderTests
     Assert.Contains("order?orderId=abc-123&market=BTC-EUR", handler.LastRequest.RequestUri!.PathAndQuery);
   }
 
+  /// <summary>
+  /// Bitvavo's DELETE /order endpoint rejects a cancel request with errorCode 203
+  /// ("operatorId parameter is required") when this is omitted — confirmed live via
+  /// production logs where every single-order cancel failed outright, leaving the order's
+  /// held balance never released. <see cref="BitvavoExchange.CancelAllOpenOrders"/> already
+  /// includes it; this locks the single-order path in line with that.
+  /// </summary>
+  [TestMethod]
+  public async Task CancelOrder_IncludesOperatorIdInRequest()
+  {
+    // Arrange
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.OK,
+      """{"orderId":"abc-123","market":"BTC-EUR","status":"canceled","side":"sell","orderType":"market"}""");
+
+    var exchange = NewExchange(handler);
+
+    // Act
+    _ = await exchange.CancelOrder(_credentials, "abc-123", new MarketReqDto("EUR", "BTC"), source: "API");
+
+    // Assert
+    Assert.IsNotNull(handler.LastRequest);
+    Assert.Contains($"operatorId={"trader.api".GetHashCode()}", handler.LastRequest.RequestUri!.PathAndQuery);
+  }
+
   [TestMethod]
   public async Task CancelOrder_ExchangeReturnsError_ReturnsNull_DoesNotThrow()
   {

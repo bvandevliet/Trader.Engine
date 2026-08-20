@@ -247,6 +247,24 @@ public class RebalancingService : IRebalancingService
     if (limitAmount <= 0)
       return [];
 
+    // Bitvavo enforces a per-market minimum base-asset quantity (minOrderInBaseAsset) IN ADDITION
+    // to the flat quote-value minimum (exchange.MinOrderSizeInQuote) checked elsewhere — a
+    // sell/buy amount can clear the quote-value floor yet still be rejected outright (errorCode
+    // 212) if the market's own base-asset floor is higher for that asset at the current price.
+    // Confirmed live: a 30.811819 ADA sell (~€5.12, above the €5 quote minimum) was rejected this
+    // way. Checked here, right after Amount is finalized, since that's the only point this
+    // service knows the exact base-asset quantity a limit order will actually request.
+    var limitMarketData = await exchange.GetMarket(credentials, orderReq.Market);
+
+    if (limitMarketData?.MinOrderSizeInBase is decimal minOrderSizeInBase && limitAmount < minOrderSizeInBase)
+    {
+      _logger.LogInformation(
+        "Dropping {Side} order for market {Market}: amount {LimitAmount} is below the exchange's minimum base-asset order size of {MinOrderSizeInBase}.",
+        orderReq.Side, orderReq.Market.ToString().SanitizeForLog(), limitAmount, minOrderSizeInBase);
+
+      return [];
+    }
+
     var limitReq = new OrderReqDto()
     {
       Market = orderReq.Market,
