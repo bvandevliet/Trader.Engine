@@ -66,4 +66,11 @@ public class OrderDto : OrderReqDto
 
   [JsonIgnore]
   public bool HasEnded => Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;
+
+  public override string ToString()
+  {
+    var superseded = IsSuperseded ? " (superseded)" : "";
+
+    return $"{Market} {Side} {Type}{superseded}: {Status}, filled {AmountFilled} ({AmountQuoteFilled} {Market.QuoteSymbol})";
+  }
 }

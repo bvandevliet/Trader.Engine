@@ -186,7 +186,7 @@ td+td {
     $"We will try again within an hour.</p>" +
     $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
     $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
-    $"<pre>{string.Join("</pre><pre>", (object[]?)ordersAttempted ?? [])}</pre>" +
+    $"<pre>{string.Join("</pre><pre>", (ordersAttempted ?? []).Select(order => HttpUtility.HtmlEncode(order.ToString())))}</pre>" +
     $"<p>This email was automatically generated. Happy trading!" +
     $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
