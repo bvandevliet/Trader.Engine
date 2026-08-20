@@ -94,84 +94,55 @@ public class RebalancingService : IRebalancingService
   private static IEnumerable<AllocDriftReqDto> GetAllocationQuoteDrifts(
     IExchange exchange, IEnumerable<TargetAllocReqDto> targetAllocs, ConfigReqDto config, Balance curBalance)
   {
-    // Absolute asset allocations to be used for rebalancing.
-    List<TargetAllocReqDto> targetAllocsList = new();
-
-    // Sum of all absolute allocation values.
-    var totalTargetWeight =
-      targetAllocs
-
-      // Filter for tradable assets.
+    // Eligible targets: tradable, or already held (so an untradeable position we currently hold
+    // is still recognized below and left alone, rather than treated as "not targeted at all" and
+    // fully sold off) — denominated in this exchange's quote currency. Keyed by market instead of
+    // linearly scanned per current allocation below.
+    var targetAllocsByMarket = targetAllocs
       .Where(targetAlloc => targetAlloc.MarketStatus is MarketStatus.Trading
-      || null != curBalance.GetAllocation(targetAlloc.Market.BaseSymbol))
-
-      // Filter for quote currency.
+        || null != curBalance.GetAllocation(targetAlloc.Market.BaseSymbol))
       .Where(targetAlloc => targetAlloc.Market.QuoteSymbol.Equals(exchange.QuoteSymbol))
+      .ToDictionary(targetAlloc => targetAlloc.Market);
 
-      // Sum of all absolute allocation values.
-      .Sum(targetAlloc =>
-      {
-        targetAllocsList.Add(targetAlloc);
-
-        return targetAlloc.TargetWeight;
-      });
+    var totalTargetWeight = targetAllocsByMarket.Values.Sum(targetAlloc => targetAlloc.TargetWeight);
 
     // Relative quote allocation (including takeout).
     var quoteRelAlloc = curBalance.AmountQuoteTotal == 0 ? 0 : Math.Max(0, Math.Min(1,
       config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Scale total sum of absolute allocation values to account for relative quote allocation.
-    var div = 1 - quoteRelAlloc;
-    if (div == 0)
-      totalTargetWeight = 0;
-    else
-      totalTargetWeight /= div;
-
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
-    //targetAllocsList.Add(new TargetAllocReqDto(exchange.QuoteSymbol, totalTargetWeight * quoteRelAlloc));
+    var div = 1 - quoteRelAlloc;
+    totalTargetWeight = div == 0 ? 0 : totalTargetWeight / div;
 
-    // Loop through current allocations and determine quote diffs.
-    foreach (var curAlloc in curBalance.Allocations)
+    decimal newAmountQuote(TargetAllocReqDto? targetAlloc) =>
+      (totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight) * curBalance.AmountQuoteTotal;
+
+    // Every market either currently held or targeted — the full set this diff needs to cover, in
+    // one pass instead of "current allocations, then whichever targets weren't already matched".
+    var markets = curBalance.Allocations.Select(alloc => alloc.Market).Union(targetAllocsByMarket.Keys);
+
+    foreach (var market in markets)
     {
-      // Find associated absolute allocation.
-      var targetAlloc = targetAllocsList
-        .FindAndRemove(targetAlloc => targetAlloc.Market.Equals(curAlloc.Market));
+      var curAlloc = curBalance.GetAllocation(market.BaseSymbol);
+      targetAllocsByMarket.TryGetValue(market, out var targetAlloc);
 
-      // Skip if not tradable.
-      if (null != targetAlloc && targetAlloc.MarketStatus is not MarketStatus.Trading)
-        continue;
+      if (curAlloc != null)
+      {
+        // Currently held, with a known but untradeable target: leave it alone.
+        if (targetAlloc != null && targetAlloc.MarketStatus is not MarketStatus.Trading)
+          continue;
 
-      // Determine relative allocation.
-      var relAlloc = totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight;
+        yield return new AllocDriftReqDto(curAlloc.Market, curAlloc.Price, curAlloc.Amount, curAlloc.AmountQuote - newAmountQuote(targetAlloc));
+      }
+      else
+      {
+        // Never held, and its only target is untradeable: nothing to buy into.
+        if (targetAlloc!.MarketStatus is not MarketStatus.Trading)
+          continue;
 
-      // Determine new quote amount.
-      var newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
-
-      yield return new AllocDriftReqDto(
-        curAlloc.Market,
-        curAlloc.Price,
-        curAlloc.Amount,
-        curAlloc.AmountQuote - newAmountQuote);
-    }
-
-    // Loop through remaining absolute asset allocations and determine yet missing quote diffs.
-    foreach (var targetAlloc in targetAllocsList)
-    {
-      // Skip if not tradable.
-      if (targetAlloc.MarketStatus is not MarketStatus.Trading)
-        continue;
-
-      // Determine relative allocation.
-      var relAlloc = totalTargetWeight == 0 ? 0 : targetAlloc.TargetWeight / totalTargetWeight;
-
-      // Determine new quote amount.
-      var newAmountQuote = relAlloc * curBalance.AmountQuoteTotal;
-
-      yield return new AllocDriftReqDto(
-        targetAlloc.Market,
-        0,
-        0,
-        -newAmountQuote);
+        yield return new AllocDriftReqDto(targetAlloc.Market, 0, 0, -newAmountQuote(targetAlloc));
+      }
     }
   }
 
@@ -791,6 +762,22 @@ public class RebalancingService : IRebalancingService
     return results.SelectMany(orderResults => orderResults).ToArray();
   }
 
+  /// <summary>
+  /// Begins the push-notification session (if the exchange supports one) and clears any open
+  /// orders standing in the way, shared setup for both <see cref="Rebalance"/> overloads.
+  /// </summary>
+  private static async Task<IAsyncDisposable> BeginRebalanceAsync(IExchange exchange, ExchangeCredentials credentials)
+  {
+    var session = exchange is IExchangeOrderNotifications pushExchange
+      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
+      : NoOpAsyncDisposable.Instance;
+
+    // Clear the path ..
+    _ = await exchange.CancelAllOpenOrders(credentials);
+
+    return session;
+  }
+
   public async Task<OrderDto[]> Rebalance(
     IExchange exchange,
     ExchangeCredentials credentials,
@@ -799,12 +786,7 @@ public class RebalancingService : IRebalancingService
     Balance? curBalance = null,
     string source = "API")
   {
-    await using var orderNotificationSession = exchange is IExchangeOrderNotifications pushExchange
-      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
-      : NoOpAsyncDisposable.Instance;
-
-    // Clear the path ..
-    _ = await exchange.CancelAllOpenOrders(credentials);
+    await using var orderNotificationSession = await BeginRebalanceAsync(exchange, credentials);
 
     // Make sure all market statuses of eligible assets are known.
     var targetAllocList = await GetTopRankingAllocs(exchange, credentials, targetAllocs, config.TopRankingCount);
@@ -813,16 +795,11 @@ public class RebalancingService : IRebalancingService
     // so we have sufficient quote currency available to buy with.
     var sellResults = await SellOveragesAndVerify(exchange, credentials, targetAllocList, source, config, curBalance);
 
-    // Then buy to increase undersized allocations.
+    // Then buy to increase undersized allocations, re-fetching the balance fresh (curBalance:
+    // null) so buy sizing reflects what the sells above actually freed up, not a pre-sell snapshot.
     var buyResults = await BuyUnderagesAndVerify(exchange, credentials, targetAllocList, source, config, curBalance: null);
 
-    // Combined results.
-    var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
-
-    Array.Copy(sellResults, 0, orderResults, 0, sellResults.Length);
-    Array.Copy(buyResults, 0, orderResults, sellResults.Length, buyResults.Length);
-
-    return orderResults;
+    return [.. sellResults, .. buyResults];
   }
 
   public async Task<OrderDto[]> Rebalance(
@@ -831,12 +808,7 @@ public class RebalancingService : IRebalancingService
     IEnumerable<OrderReqDto> orders,
     string source = "API")
   {
-    await using var orderNotificationSession = exchange is IExchangeOrderNotifications pushExchange
-      ? await pushExchange.BeginOrderNotificationSessionAsync(credentials)
-      : NoOpAsyncDisposable.Instance;
-
-    // Clear the path ..
-    _ = await exchange.CancelAllOpenOrders(credentials);
+    await using var orderNotificationSession = await BeginRebalanceAsync(exchange, credentials);
 
     // Sell pieces of oversized allocations first,
     // so we have sufficient quote currency available to buy with.
@@ -845,12 +817,6 @@ public class RebalancingService : IRebalancingService
     // Then buy to increase undersized allocations.
     var buyResults = await BuyUnderagesAndVerify(exchange, credentials, orders, source);
 
-    // Combined results.
-    var orderResults = new OrderDto[sellResults.Length + buyResults.Length];
-
-    Array.Copy(sellResults, 0, orderResults, 0, sellResults.Length);
-    Array.Copy(buyResults, 0, orderResults, sellResults.Length, buyResults.Length);
-
-    return orderResults;
+    return [.. sellResults, .. buyResults];
   }
 }
