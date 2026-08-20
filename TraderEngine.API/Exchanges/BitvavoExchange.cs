@@ -257,53 +257,132 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
   }
 
+  // RebalancingService.GetTopRankingAllocs calls GetMarket once per candidate market's status
+  // check, sequentially, in a tight loop right at the start of a rebalance run — without this
+  // cache, that's one HTTP call per candidate, back to back. Caching the *entire* market list
+  // behind the first call collapses that whole burst into one bulk call, transparently to every
+  // caller — no signature changes, no caller needs to know this happens.
+  //
+  // The TTL is deliberately short — long enough to cover that one burst (dozens of sequential
+  // calls easily complete within a couple of seconds), but short enough to have already expired
+  // by the time PlaceLimitThenFallback checks a BUY leg's minimum base-asset size: sells are
+  // placed and fully verified (up to a 60s fill-wait each) before any buy leg is even sized, so a
+  // buy-side check always re-fetches live data rather than trusting a stale status/minimum from
+  // before the sell phase ran. MarketStatus in particular gates real trading decisions (a stale
+  // "Trading" read could misclassify a newly-halted market as eligible), so this is a deliberate
+  // freshness/efficiency trade-off, not just an arbitrary number.
+  private static readonly TimeSpan _marketDataCacheTtl = TimeSpan.FromSeconds(10);
+
+  /// <summary>
+  /// Immutable so a whole (data, expiry) pair is always swapped into <see cref="_marketDataCache"/>
+  /// atomically as one reference — two separate fields updated individually would let a reader
+  /// observe a "torn" combination (new data paired with a stale expiry, or vice versa) without an
+  /// explicit memory barrier on every read, which a plain field read doesn't provide.
+  /// </summary>
+  private sealed record MarketDataCacheEntry(IReadOnlyDictionary<MarketReqDto, MarketDataDto> Data, DateTimeOffset ExpiresAt);
+
+  private readonly SemaphoreSlim _marketDataCacheLock = new(1, 1);
+
+  // volatile: GetMarket's fast path reads this without taking _marketDataCacheLock, so this needs
+  // acquire/release semantics to guarantee a reader sees a fully-published entry from another
+  // thread's refresh, not a torn or stale one.
+  private volatile MarketDataCacheEntry? _marketDataCache;
+
   public async Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
   {
-    using var request = CreateRequestMsg(
-      credentials, HttpMethod.Get, $"markets?market={market}");
+    var allMarkets = await GetCachedMarketsAsync(credentials);
+
+    if (allMarkets is null)
+      return null;
+
+    // A market absent from the full list means the same thing Bitvavo's single-market endpoint
+    // used to report as errorCode 205 ("market not found"): not a hard failure, just unavailable.
+    return allMarkets.TryGetValue(market, out var data)
+      ? data
+      : new MarketDataDto { Status = MarketStatus.Unavailable };
+  }
+
+  private async Task<IReadOnlyDictionary<MarketReqDto, MarketDataDto>?> GetCachedMarketsAsync(ExchangeCredentials credentials)
+  {
+    if (_marketDataCache is { } cached && DateTimeOffset.UtcNow < cached.ExpiresAt)
+      return cached.Data;
+
+    await _marketDataCacheLock.WaitAsync();
+    try
+    {
+      // Re-check: a concurrent caller may have already refreshed it while this one was waiting.
+      if (_marketDataCache is { } stillCached && DateTimeOffset.UtcNow < stillCached.ExpiresAt)
+        return stillCached.Data;
+
+      var fetched = await FetchAllMarketsAsync(credentials);
+
+      // Don't cache a failure — the next call should retry, not keep silently failing for the
+      // rest of the TTL window.
+      if (fetched is null)
+        return null;
+
+      _marketDataCache = new MarketDataCacheEntry(fetched, DateTimeOffset.UtcNow + _marketDataCacheTtl);
+
+      return fetched;
+    }
+    finally
+    {
+      _marketDataCacheLock.Release();
+    }
+  }
+
+  /// <summary>
+  /// Fetches Bitvavo's unfiltered <c>GET /markets</c> (no <c>market=</c> query param), which
+  /// returns data for every market in one call, rather than the N calls a per-market
+  /// <see cref="GetMarket"/> loop over N markets would cost.
+  /// </summary>
+  private async Task<IReadOnlyDictionary<MarketReqDto, MarketDataDto>?> FetchAllMarketsAsync(ExchangeCredentials credentials)
+  {
+    using var request = CreateRequestMsg(credentials, HttpMethod.Get, "markets");
 
     using var response = await _httpClient.SendAsync(request);
 
     if (!response.IsSuccessStatusCode)
     {
-      try
-      {
-        var error = await response.Content.DeserializeAsync<JsonObject>();
-
-        if (error?["errorCode"]?.ToString() == "205")
-        {
-          return new MarketDataDto()
-          {
-            Status = MarketStatus.Unavailable,
-          };
-        }
-      }
-      catch (Exception ex)
-      {
-        _logger.LogError(ex, "Failed to deserialize Bitvavo get market error response: {Content}", await response.Content.ReadAsStringAsync());
-      }
-
-      _logger.LogError("Failed to get market from Bitvavo. {url} returned {code} {reason} with response: {response}",
+      _logger.LogError("Failed to get markets from Bitvavo. {url} returned {code} {reason} with response: {response}",
         request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
       return null;
     }
 
-    BitvavoMarketDataDto? result;
+    List<BitvavoMarketDataDto>? result;
     try
     {
-      result = await response.Content.DeserializeAsync<BitvavoMarketDataDto>();
+      result = await response.Content.DeserializeAsync<List<BitvavoMarketDataDto>>();
 
       if (null == result)
-        throw new Exception("Bitvavo get market response was empty or null.");
+        throw new Exception("Bitvavo get markets response was empty or null.");
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo get market response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get markets response: {Content}", await response.Content.ReadAsStringAsync());
       throw;
     }
 
-    return ApiMapper.MapMarketData(result);
+    var marketData = new Dictionary<MarketReqDto, MarketDataDto>();
+
+    foreach (var entry in result)
+    {
+      // Entries with no "market" field (shouldn't happen on the unfiltered endpoint, but the
+      // field is optional on the DTO since the single-market GetMarket response never had one)
+      // can't be keyed, so they're skipped rather than crashing the whole batch over one entry.
+      if (entry.Market is not { } marketSymbol)
+        continue;
+
+      var parts = marketSymbol.Split('-', StringSplitOptions.TrimEntries);
+
+      if (parts.Length != 2)
+        continue;
+
+      marketData[new MarketReqDto(parts[1], parts[0])] = ApiMapper.MapMarketData(entry);
+    }
+
+    return marketData;
   }
 
   public async Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)

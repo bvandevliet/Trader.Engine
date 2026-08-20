@@ -14,6 +14,11 @@ internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string r
 
   public string? LastRequestBody { get; private set; }
 
+  /// <summary>
+  /// Number of requests handled so far, for asserting a caller made (or didn't make) a repeat call.
+  /// </summary>
+  public int RequestCount { get; private set; }
+
   private (string Name, string Value)[] _responseHeaders = [];
 
   /// <summary>
@@ -27,6 +32,7 @@ internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string r
 
   protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
   {
+    RequestCount++;
     LastRequest = request;
     LastRequestBody = request.Content != null
       ? await request.Content.ReadAsStringAsync(cancellationToken)
