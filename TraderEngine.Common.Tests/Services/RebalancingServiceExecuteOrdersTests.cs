@@ -127,6 +127,43 @@ public class RebalancingServiceExecuteOrdersTests
     Assert.AreEqual(3m, results[0].Amount);
   }
 
+  [TestMethod]
+  public async Task Rebalance_GivenOrders_BuyUnderfundedByDustSellEstimateBlindSpot_RecoveredByRetryAfterReconciliation()
+  {
+    // Arrange
+    // Regression test for a real-world bug: this overload has no drift/target-weight context, so
+    // its upfront funding estimate (used only to precompute a fair ratio) is blind to Amount-only
+    // dust sells (no AmountQuote to read) — here that blind spot makes the estimate look like 0
+    // available, even though the sell is about to fully fund the buy. Without a retry, the buy's
+    // ratio-scaled claim (0 * ratio = 0) would be dropped permanently, leaving the buy's target
+    // short and the sell's real proceeds sitting unspent as leftover EUR — exactly what was
+    // observed in production before the retry-after-reconciliation fix.
+    var curBalance = new Balance("EUR");
+    curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 0));
+    curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 100));
+
+    var exchange = new MockExchange("EUR", 5, 0, 0, curBalance);
+
+    var orders = new[]
+    {
+      // Dust/full-liquidation sell: Amount-based, no AmountQuote, invisible to the estimate.
+      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 100 },
+      // Just above the exchange minimum — would be dropped by a ratio of 0, but the sell's real
+      // 100 EUR proceeds easily cover it once reconciled.
+      new OrderReqDto { Market = _eth, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 6 },
+    };
+
+    // Act
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert
+    Assert.AreEqual(2, results.Length);
+
+    var eth = results.Single(o => o.Market.BaseSymbol == "ETH");
+    Assert.AreEqual(OrderSide.Buy, eth.Side);
+    Assert.AreEqual(6m, eth.AmountQuoteFilled);
+  }
+
   /// <summary>
   /// Thin <see cref="MockExchange"/> spy that counts <see cref="CancelAllOpenOrders"/> calls.
   /// Uses the same base-class-hiding pattern as the production <see cref="SimExchange"/>.

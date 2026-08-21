@@ -580,7 +580,9 @@ public class RebalancingService : IRebalancingService
   /// rather than gating the entire buy phase on every sell finishing first. Each sell leg deposits
   /// its own exchange-settled net proceeds into the ledger as soon as it resolves; each buy leg
   /// claims its (upfront ratio-scaled) share from the ledger, starting as soon as enough has
-  /// actually landed rather than waiting for the slowest sell in the batch.
+  /// actually landed rather than waiting for the slowest sell in the batch. Any leg dropped in that
+  /// first pass gets one retry, for its full unscaled target, once the ledger's final reconciled
+  /// total is known — see the retry block below.
   /// </summary>
   private async Task<OrderDto[]> ExecuteInterleaved(
     IExchange exchange, ExchangeCredentials credentials,
@@ -624,50 +626,7 @@ public class RebalancingService : IRebalancingService
         buyOrders.Count, ratio, projectedAvailable, totalBuy, exchange.GetType().Name);
 
     var buyTasks = buyOrders
-      .Select(async buyOrder =>
-      {
-        var tradeValueTarget = (decimal)buyOrder.AmountQuote! * ratio;
-
-        // Bitvavo charges a buy order's fee in quote currency IN ADDITION to its trade value, so
-        // the ledger is claimed against (and settled in) full-cost units (trade value + this leg's
-        // own fee), not trade value alone — otherwise a leg's own fee would silently draw down
-        // whatever's left for legs claiming after it, rather than being reserved out of its own share.
-        var fullCostRequested = tradeValueTarget * (1 + exchange.TakerFee);
-        var minFullCost = exchange.MinOrderSizeInQuote * (1 + exchange.TakerFee);
-
-        var claimedFullCost = await ledger.ClaimAsync(fullCostRequested, minFullCost);
-
-        if (claimedFullCost <= 0)
-          return [];
-
-        // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never
-        // reclaim back into the fee headroom already reserved above.
-        var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + exchange.TakerFee), OrderSide.Buy);
-
-        OrderDto[] results;
-
-        if (claimedTradeValue < exchange.MinOrderSizeInQuote)
-        {
-          _logger.LogInformation(
-            "Dropping buy order for market {Market}: could only claim {Claimed} of the exchange minimum {MinOrderSizeInQuote} from the available budget.",
-            buyOrder.Market.ToString().SanitizeForLog(), claimedTradeValue, exchange.MinOrderSizeInQuote);
-
-          results = [];
-        }
-        else
-        {
-          buyOrder.AmountQuote = claimedTradeValue;
-
-          results = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
-        }
-
-        // Whatever wasn't actually spent (2-decimal rounding remainder, a dropped/failed leg, or a
-        // partial fill) goes back to the pool rather than evaporating from the ledger unspent.
-        var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid);
-        ledger.Settle(claimedFullCost, actuallySpent);
-
-        return results;
-      })
+      .Select(buyOrder => ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote! * ratio, source))
       .ToList();
 
     var buysCompletion = Task.WhenAll(buyTasks);
@@ -682,7 +641,80 @@ public class RebalancingService : IRebalancingService
 
     await Task.WhenAll(sellsCompletion, buysCompletion, reconcileTask);
 
-    return [.. sellsCompletion.Result.SelectMany(r => r), .. buysCompletion.Result.SelectMany(r => r)];
+    var buyResults = buysCompletion.Result;
+
+    // Any leg that came back empty (dropped for insufficient funds, or PlaceLimitThenFallback
+    // declined to place anything for its own reasons) gets exactly one retry, for its FULL
+    // unscaled target rather than the ratio-scaled one — `buyOrder.AmountQuote` was only ever
+    // overwritten on a successful claim above, so it's still the original request here. This is
+    // the actual safety net against the upfront ratio being an ESTIMATE (see above): if that
+    // estimate undershot reality and a leg's ratio-scaled claim fell just under the exchange
+    // minimum even though the account could genuinely afford its full target once every sell had
+    // truly settled, this recovers it instead of leaving it dropped and the shortfall sitting
+    // unspent as leftover quote currency. Runs strictly after reconcileTask above, so the ledger
+    // already knows its final, reconciled total; ClaimAsync resolves immediately either way.
+    var retryOrders = buyOrders
+      .Zip(buyResults, (order, results) => (order, results))
+      .Where(pair => pair.results.Length == 0)
+      .Select(pair => pair.order)
+      .ToList();
+
+    var retryResults = retryOrders.Count == 0
+      ? []
+      : await Task.WhenAll(retryOrders.Select(buyOrder =>
+          ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote!, source)));
+
+    return [.. sellsCompletion.Result.SelectMany(r => r), .. buyResults.SelectMany(r => r), .. retryResults.SelectMany(r => r)];
+  }
+
+  /// <summary>
+  /// Claims <paramref name="tradeValueTarget"/> (in trade-value terms) from <paramref name="ledger"/>
+  /// and places (and verifies) a buy order for whatever was actually claimed, if enough cleared the
+  /// exchange minimum. Always reports the outcome back via <see cref="BudgetLedger.Settle"/>.
+  /// </summary>
+  private async Task<OrderDto[]> ClaimAndPlaceBuy(
+    BudgetLedger ledger, IExchange exchange, ExchangeCredentials credentials,
+    OrderReqDto buyOrder, decimal tradeValueTarget, string source)
+  {
+    // Bitvavo charges a buy order's fee in quote currency IN ADDITION to its trade value, so the
+    // ledger is claimed against (and settled in) full-cost units (trade value + this leg's own
+    // fee), not trade value alone — otherwise a leg's own fee would silently draw down whatever's
+    // left for legs claiming after it, rather than being reserved out of its own share.
+    var fullCostRequested = tradeValueTarget * (1 + exchange.TakerFee);
+    var minFullCost = exchange.MinOrderSizeInQuote * (1 + exchange.TakerFee);
+
+    var claimedFullCost = await ledger.ClaimAsync(fullCostRequested, minFullCost);
+
+    if (claimedFullCost <= 0)
+      return [];
+
+    // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never reclaim
+    // back into the fee headroom already reserved above.
+    var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + exchange.TakerFee), OrderSide.Buy);
+
+    OrderDto[] results;
+
+    if (claimedTradeValue < exchange.MinOrderSizeInQuote)
+    {
+      _logger.LogInformation(
+        "Dropping buy order for market {Market}: could only claim {Claimed} of the exchange minimum {MinOrderSizeInQuote} from the available budget.",
+        buyOrder.Market.ToString().SanitizeForLog(), claimedTradeValue, exchange.MinOrderSizeInQuote);
+
+      results = [];
+    }
+    else
+    {
+      buyOrder.AmountQuote = claimedTradeValue;
+
+      results = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
+    }
+
+    // Whatever wasn't actually spent (2-decimal rounding remainder, a dropped/failed leg, or a
+    // partial fill) goes back to the pool rather than evaporating from the ledger unspent.
+    var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid);
+    ledger.Settle(claimedFullCost, actuallySpent);
+
+    return results;
   }
 
   /// <summary>
