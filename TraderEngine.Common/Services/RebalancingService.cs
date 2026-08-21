@@ -579,15 +579,15 @@ public class RebalancingService : IRebalancingService
   /// Runs every sell and buy leg of a rebalance run concurrently against a shared <see cref="BudgetLedger"/>,
   /// rather than gating the entire buy phase on every sell finishing first. Each sell leg deposits
   /// its own exchange-settled net proceeds into the ledger as soon as it resolves; each buy leg
-  /// claims its (upfront ratio-scaled) share from the ledger, starting as soon as enough has
-  /// actually landed rather than waiting for the slowest sell in the batch. Any leg dropped in that
-  /// first pass gets one retry, for its full unscaled target, once the ledger's final reconciled
-  /// total is known — see the retry block below.
+  /// requests its own full, unscaled target from the ledger, starting as soon as enough has
+  /// actually landed rather than waiting for the slowest sell in the batch. There is no upfront
+  /// fairness estimate here: <see cref="BudgetLedger"/> itself only ever scales a claim down once
+  /// it knows the account's true final total (see <see cref="BudgetLedger.Complete"/>), so a buy
+  /// leg can never be dropped over an inaccurate guess when the funds were genuinely there.
   /// </summary>
   private async Task<OrderDto[]> ExecuteInterleaved(
     IExchange exchange, ExchangeCredentials credentials,
-    List<OrderReqDto> sellOrders, List<OrderReqDto> buyOrders, string source, decimal initialAvailableWithFeeBuffer,
-    decimal projectedSellProceeds)
+    List<OrderReqDto> sellOrders, List<OrderReqDto> buyOrders, string source, decimal initialAvailableWithFeeBuffer)
   {
     var ledger = new BudgetLedger(initialAvailableWithFeeBuffer);
 
@@ -609,62 +609,37 @@ public class RebalancingService : IRebalancingService
 
     var sellsCompletion = Task.WhenAll(sellTasks);
 
-    var totalBuy = buyOrders.Sum(order => (decimal)order.AmountQuote!);
-
-    // Estimated only, purely to precompute a fair upfront scaling ratio for buy legs to claim
-    // against — the ledger's live claim-time clamp is what actually prevents overspend, regardless
-    // of how this estimate turns out; an inaccurate estimate only makes some legs wait a bit
-    // longer or claim a slightly different final share than a perfectly accurate one would.
-    var projectedAvailable = initialAvailableWithFeeBuffer + projectedSellProceeds;
-
-    var ratio = totalBuy == 0 ? 0 :
-      Math.Min(totalBuy, projectedAvailable / (1 + exchange.TakerFee)) / totalBuy;
-
-    if (ratio < 1)
-      _logger.LogInformation(
-        "Scaling {BuyOrderCount} buy orders by a ratio of {Ratio} (estimated available {ProjectedAvailable}, total requested {TotalBuy}) for exchange {Exchange}.",
-        buyOrders.Count, ratio, projectedAvailable, totalBuy, exchange.GetType().Name);
-
+    // Every leg requests its own full, unscaled target — see the type-level remarks on
+    // BudgetLedger for why there's no upfront ratio/estimate here.
     var buyTasks = buyOrders
-      .Select(buyOrder => ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote! * ratio, source))
+      .Select(buyOrder => ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote!, source))
       .ToList();
+
+    // Every buy leg above has now registered its claim (BudgetLedger.ClaimAsync registers
+    // synchronously, before its caller's first real await — see its own remarks), so it's safe to
+    // check, once, whether the pool already covers the whole batch together, without any single
+    // leg having had a chance to resolve alone first.
+    ledger.TryResolvePendingBatch();
 
     var buysCompletion = Task.WhenAll(buyTasks);
 
-    // Started only now, after buyTasks above has had a chance to run every leg's synchronous
-    // fast-path claim attempt first — for a fully synchronous exchange (e.g. in tests) with no
-    // sells to wait for, this reconciliation would otherwise run to completion (nothing to
-    // actually await) before any buy leg had even been constructed, marking the ledger complete
-    // prematurely and turning every leg's *first* claim attempt into a "grab whatever's left"
-    // free-for-all instead of each leg getting its own fair, ratio-scaled share first.
+    // Started only now, after buyTasks above has been materialized. This ordering is a genuine
+    // guarantee, not an incidental one that merely happens to hold for synchronous test doubles:
+    // BudgetLedger.ClaimAsync is itself a plain synchronous method (not `async`), so every claim's
+    // registration into the pending queue (or its immediate fast-path grant) completes synchronously
+    // the moment ClaimAndPlaceBuy calls it, before that call's first real `await` — meaning by the
+    // time `.ToList()` above finishes enumerating buyOrders, every leg is already registered with
+    // the ledger, regardless of how slow or fast the underlying exchange actually is. If reconcileTask
+    // were started first instead, and it happened to complete before any buy leg had registered
+    // (trivially true for a fully synchronous exchange with no sells to wait for), Complete() would
+    // fire against an empty pending queue, and every claim would then resolve individually via
+    // ClaimAsync's own post-Complete() branch instead of the fair, proportional split Complete()
+    // performs across whatever's actually pending, collapsing fairness into first-claimed-wins.
     var reconcileTask = ReconcileLedgerAfterSells(exchange, credentials, sellsCompletion, ledger);
 
     await Task.WhenAll(sellsCompletion, buysCompletion, reconcileTask);
 
-    var buyResults = buysCompletion.Result;
-
-    // Any leg that came back empty (dropped for insufficient funds, or PlaceLimitThenFallback
-    // declined to place anything for its own reasons) gets exactly one retry, for its FULL
-    // unscaled target rather than the ratio-scaled one — `buyOrder.AmountQuote` was only ever
-    // overwritten on a successful claim above, so it's still the original request here. This is
-    // the actual safety net against the upfront ratio being an ESTIMATE (see above): if that
-    // estimate undershot reality and a leg's ratio-scaled claim fell just under the exchange
-    // minimum even though the account could genuinely afford its full target once every sell had
-    // truly settled, this recovers it instead of leaving it dropped and the shortfall sitting
-    // unspent as leftover quote currency. Runs strictly after reconcileTask above, so the ledger
-    // already knows its final, reconciled total; ClaimAsync resolves immediately either way.
-    var retryOrders = buyOrders
-      .Zip(buyResults, (order, results) => (order, results))
-      .Where(pair => pair.results.Length == 0)
-      .Select(pair => pair.order)
-      .ToList();
-
-    var retryResults = retryOrders.Count == 0
-      ? []
-      : await Task.WhenAll(retryOrders.Select(buyOrder =>
-          ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote!, source)));
-
-    return [.. sellsCompletion.Result.SelectMany(r => r), .. buyResults.SelectMany(r => r), .. retryResults.SelectMany(r => r)];
+    return [.. sellsCompletion.Result.SelectMany(r => r), .. buysCompletion.Result.SelectMany(r => r)];
   }
 
   /// <summary>
@@ -802,17 +777,7 @@ public class RebalancingService : IRebalancingService
 
     var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
 
-    // Sourced from the drift itself (known exactly ahead of time, target-weight math already
-    // computed it), not from the resulting sell orders' own AmountQuote — a full-liquidation dust
-    // sell is placed by Amount instead (no AmountQuote at all), which would otherwise make an
-    // accurate, known proceeds figure look like a total unknown (silently collapsing the ratio to
-    // 0 even when funding is actually exactly sufficient).
-    var projectedSellProceeds = allocDrifts
-      .Where(allocDrift => !allocDrift.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
-      .Where(allocDrift => allocDrift.AmountQuoteDrift > 0)
-      .Sum(allocDrift => allocDrift.AmountQuoteDrift);
-
-    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer, projectedSellProceeds);
+    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
   }
 
   public async Task<OrderDto[]> Rebalance(
@@ -833,13 +798,6 @@ public class RebalancingService : IRebalancingService
 
     var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
 
-    // No drift/target-weight context here (orders are caller-supplied verbatim), so an
-    // Amount-only dust sell's proceeds are a genuine unknown at this point, unlike the
-    // TargetAllocReqDto-based overload above — accepted as a narrower, rarer blind spot for this
-    // path specifically, since it only affects the upfront fairness estimate (never overspend
-    // safety, which the ledger's live claim-time clamp still enforces regardless).
-    var projectedSellProceeds = sellOrders.Sum(order => order.AmountQuote ?? 0);
-
-    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer, projectedSellProceeds);
+    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
   }
 }
