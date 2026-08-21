@@ -49,6 +49,23 @@ public class TraderEngineApiClient : ITraderEngineApiClient
     return response;
   }
 
+  private async Task<HttpResponseMessage> GetAuthenticated(AppUser user, string requestUri, CancellationToken ct)
+  {
+    var (token, _) = _jwtTokenService.GenerateToken(user);
+
+    using var request = new HttpRequestMessage(HttpMethod.Get, requestUri)
+    {
+      Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+    };
+
+    var response = await _http.SendAsync(request, ct);
+
+    if (!response.IsSuccessStatusCode)
+      throw new TraderEngineApiException(response.StatusCode, await ReadErrorReason(response, ct));
+
+    return response;
+  }
+
   private static async Task<string> ReadErrorReason(HttpResponseMessage response, CancellationToken ct)
   {
     var rawBody = await response.Content.ReadAsStringAsync(ct);
@@ -99,5 +116,14 @@ public class TraderEngineApiClient : ITraderEngineApiClient
     var response = await PostAuthenticated(user, $"api/rebalance/{exchangeName}?source={Uri.EscapeDataString(source)}", request, ct);
 
     return (await response.Content.DeserializeAsync<OrderDto[]>(ct))!;
+  }
+
+  public async Task<Dictionary<string, string>> GetAssetNames(AppUser user, IEnumerable<string> baseSymbols, CancellationToken ct = default)
+  {
+    var query = string.Join('&', baseSymbols.Select(baseSymbol => $"baseSymbols={Uri.EscapeDataString(baseSymbol)}"));
+
+    var response = await GetAuthenticated(user, $"api/allocations/names?{query}", ct);
+
+    return (await response.Content.DeserializeAsync<Dictionary<string, string>>(ct))!;
   }
 }

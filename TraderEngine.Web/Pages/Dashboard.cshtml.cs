@@ -47,6 +47,29 @@ public class DashboardModel : TraderEnginePageModelBase
     ? DateTime.SpecifyKind(lastRebalance, DateTimeKind.Utc).ToString("o")
     : null;
 
+  /// <summary>
+  /// Fetches CoinMarketCap display names for every asset appearing in either side of a
+  /// simulation's portfolio table, for the dashboard's info tooltips. Never fails the caller: a
+  /// names lookup is a nice-to-have, not something that should turn a working simulation into an
+  /// error page if it happens to time out or the API rejects it.
+  /// </summary>
+  private async Task<Dictionary<string, string>> GetAssetNamesOrEmpty(AppUser user, SimulationDto simulation, CancellationToken ct)
+  {
+    var baseSymbols = simulation.CurBalance.Allocations
+      .Concat(simulation.NewBalance.Allocations)
+      .Select(alloc => alloc.Market.BaseSymbol)
+      .Distinct();
+
+    try
+    {
+      return await _apiClient.GetAssetNames(user, baseSymbols, ct);
+    }
+    catch (TraderEngineApiException)
+    {
+      return [];
+    }
+  }
+
   private async Task<ApiCredReqDto> GetCredentialsOrThrow(Guid userId)
   {
     var credentials = await _apiCredentialsRepository.GetApiCred(userId, _exchangeName);
@@ -168,10 +191,12 @@ public class DashboardModel : TraderEnginePageModelBase
 
       SimulationDto? simulation = null;
       string? simulationError = null;
+      Dictionary<string, string> assetNames = [];
 
       try
       {
         simulation = await simulationTask;
+        assetNames = await GetAssetNamesOrEmpty(user, simulation, ct);
       }
       catch (TraderEngineApiException ex)
       {
@@ -184,6 +209,7 @@ public class DashboardModel : TraderEnginePageModelBase
         totalWithdrawn = withdrawnTask.Result,
         simulation,
         simulationError,
+        assetNames,
       };
     });
   }
@@ -201,7 +227,10 @@ public class DashboardModel : TraderEnginePageModelBase
     {
       var credentials = await GetCredentialsOrThrow(user.Id);
 
-      return await _apiClient.SimulateRebalance(user, _exchangeName, Source, new SimulationReqDto(credentials, config), ct);
+      var simulation = await _apiClient.SimulateRebalance(user, _exchangeName, Source, new SimulationReqDto(credentials, config), ct);
+      var assetNames = await GetAssetNamesOrEmpty(user, simulation, ct);
+
+      return new { simulation, assetNames };
     });
   }
 

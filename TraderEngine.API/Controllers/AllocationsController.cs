@@ -67,4 +67,17 @@ public class AllocationsController : ControllerBase
       ? NotFound("No recent market cap records found.")
       : Ok(targetAllocs);
   }
+
+  /// <summary>
+  /// Gets CoinMarketCap display names for the given base symbols, for the dashboard's info
+  /// tooltips. Symbols with no recent market cap record are simply absent from the result.
+  /// </summary>
+  [HttpGet("names")]
+  public async Task<ActionResult<Dictionary<string, string>>> AssetNames([FromQuery] string[] baseSymbols)
+  {
+    _logger.LogTrace(
+      "Handling AssetNames request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
+
+    return Ok(await _marketCapService().GetAssetNames(_quoteSymbol, baseSymbols));
+  }
 }

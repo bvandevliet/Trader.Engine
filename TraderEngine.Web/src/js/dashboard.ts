@@ -1,3 +1,4 @@
+import { Tooltip } from 'bootstrap';
 import { ApiError, postJson } from './shared/api';
 import { numberFormat, quoteSymbolFor } from './shared/format';
 import { attachLoadingOverlay } from './shared/loading-overlay';
@@ -40,6 +41,10 @@ interface SimulationDto {
   targetAllocs: TargetAllocDto[];
 }
 
+// Base symbol -> CoinMarketCap display name (e.g. "BTC" -> "Bitcoin"), for the portfolio table's
+// info tooltips. Absent entries (symbol with no recent market cap record) simply get no tooltip.
+type AssetNames = Record<string, string>;
+
 interface InitDto {
   totalDeposited: number;
   totalWithdrawn: number;
@@ -47,6 +52,12 @@ interface InitDto {
   // ingested yet) — see OnPostInitAsync's per-leg error handling.
   simulation: SimulationDto | null;
   simulationError: string | null;
+  assetNames: AssetNames;
+}
+
+interface SimulateResponseDto {
+  simulation: SimulationDto;
+  assetNames: AssetNames;
 }
 
 const POLL_INTERVAL_MS = 5000;
@@ -61,6 +72,7 @@ const configTemplate: Record<string, unknown> = configInitEl?.textContent
   : {};
 
 let lastSimulation: SimulationDto | null = null;
+let lastAssetNames: AssetNames = {};
 
 // Kept from the initial /dashboard/init fetch so the balance poll loop (which only re-fetches
 // the current balance, not the totals) can keep recomputing cumulative/gain figures from it.
@@ -146,7 +158,27 @@ function addCell (row: HTMLTableRowElement, text: string, className?: string): v
   row.appendChild(cell);
 }
 
-function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): void
+// Mirrors the (i) icon markup InfoTooltipTagHelper renders server-side for static config fields
+// (see TagHelpers/InfoTooltipTagHelper.cs) — same classes/attributes, just built client-side since
+// the asset name behind it is only known once the simulation response comes back.
+function buildNameTooltip (name: string): HTMLElement
+{
+  const icon = document.createElement('i');
+
+  icon.className = 'bi bi-info-circle text-muted ms-1';
+  icon.setAttribute('data-bs-toggle', 'tooltip');
+  icon.setAttribute('tabindex', '0');
+  icon.title = name;
+
+  // site.ts only wires up tooltips present at initial page load; icons created afterwards (every
+  // portfolio table render) need their own Tooltip instance to become interactive.
+  // eslint-disable-next-line no-new
+  new Tooltip(icon);
+
+  return icon;
+}
+
+function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto, assetNames: AssetNames): void
 {
   const curByAsset = new Map(curBalance.allocations.map(alloc => [alloc.market.baseSymbol, alloc]));
   const balByAsset = new Map(newBalance.allocations.map(alloc => [alloc.market.baseSymbol, alloc]));
@@ -168,8 +200,16 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto): 
       const sign = (n: number) => (n >= 0 ? '+' : '');
 
       const row = document.createElement('tr');
+      const assetCell = document.createElement('td');
 
-      addCell(row, baseSymbol);
+      assetCell.append(baseSymbol);
+
+      const name = assetNames[baseSymbol];
+
+      if (name) { assetCell.append(buildNameTooltip(name)); }
+
+      row.appendChild(assetCell);
+
       addCell(row, numberFormat(curValue), 'text-end');
       addCell(row, numberFormat(curAlloc), 'text-end');
       addCell(row, numberFormat(balValue), 'text-end');
@@ -195,11 +235,12 @@ function updateDriftThresholdQuote (): void
 
 // Shared by init() and simulate() — both end up rendering a freshly (re)fetched simulation the
 // same way, just via different endpoints.
-function applySimulation (simulation: SimulationDto): void
+function applySimulation (simulation: SimulationDto, assetNames: AssetNames): void
 {
   lastSimulation = simulation;
+  lastAssetNames = assetNames;
 
-  renderPortfolioTable(simulation.curBalance, simulation.newBalance);
+  renderPortfolioTable(simulation.curBalance, simulation.newBalance, assetNames);
   expectedFeeEl.textContent = numberFormat(simulation.totalFee);
   updateDriftThresholdQuote();
 }
@@ -291,7 +332,7 @@ async function init (): Promise<void>
     if (initData.simulation)
     {
       renderBalanceSummary(initData.simulation.curBalance);
-      applySimulation(initData.simulation);
+      applySimulation(initData.simulation, initData.assetNames);
 
       rebalanceNowBtn.disabled = false;
     }
@@ -326,7 +367,9 @@ async function simulate (): Promise<void>
 
   try
   {
-    applySimulation(await postJson<SimulationDto>('/dashboard/simulate', buildConfigFromForm()));
+    const { simulation, assetNames } = await postJson<SimulateResponseDto>('/dashboard/simulate', buildConfigFromForm());
+
+    applySimulation(simulation, assetNames);
 
     rebalanceNowBtn.disabled = false;
   }
@@ -430,7 +473,7 @@ rebalanceNowBtn.addEventListener('click', () =>
         targetAllocs: lastSimulation.targetAllocs,
       });
 
-      renderPortfolioTable(currentBalance, lastSimulation.newBalance);
+      renderPortfolioTable(currentBalance, lastSimulation.newBalance, lastAssetNames);
       renderBalanceSummary(currentBalance);
       lastRebalanceEl.textContent = 'Just now';
       expectedFeeEl.textContent = numberFormat(0);

@@ -39,4 +39,14 @@ public interface IMarketCapInternalRepository
   /// <param name="hours"></param>
   /// <returns></returns>
   public Task<IEnumerable<IEnumerable<MarketCapDataDto>>> ListHistoricalMany(string quoteSymbol, int hours = 24);
+
+  /// <summary>
+  /// Gets the most recently known CoinMarketCap display name for each of the given <paramref name="baseSymbols"/>,
+  /// quoted in <paramref name="quoteSymbol"/>. Symbols with no recent record, or whose most recent
+  /// record predates the Name column being tracked, are simply absent from the result.
+  /// </summary>
+  /// <param name="quoteSymbol"></param>
+  /// <param name="baseSymbols"></param>
+  /// <returns></returns>
+  public Task<Dictionary<string, string>> GetLatestNames(string quoteSymbol, IEnumerable<string> baseSymbols);
 }

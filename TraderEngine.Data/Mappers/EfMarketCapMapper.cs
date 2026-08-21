@@ -21,6 +21,7 @@ public static partial class EfMarketCapMapper
     return new()
     {
       Market = new MarketReqDto(source.QuoteSymbol, source.BaseSymbol),
+      Name = source.Name,
       Price = source.Price,
       MarketCap = source.MarketCap,
       Tags = source.Tags,

@@ -9,6 +9,11 @@ public class MarketCapDataDto
   /// </summary>
   public MarketReqDto Market { get; set; } = null!;
 
+  /// <summary>
+  /// The asset's display name as reported by CoinMarketCap (e.g. "Bitcoin" for BTC).
+  /// </summary>
+  public string Name { get; set; } = string.Empty;
+
   public double Price { get; set; }
 
   public double MarketCap { get; set; }

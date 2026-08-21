@@ -26,4 +26,13 @@ public interface IMarketCapService
   /// <param name="currentAssets"></param>
   /// <returns></returns>
   public Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null);
+
+  /// <summary>
+  /// Gets the most recently known CoinMarketCap display name for each of the given <paramref name="baseSymbols"/>,
+  /// quoted in <paramref name="quoteSymbol"/>. Symbols with no recent market cap record are simply absent from the result.
+  /// </summary>
+  /// <param name="quoteSymbol"></param>
+  /// <param name="baseSymbols"></param>
+  /// <returns></returns>
+  public Task<Dictionary<string, string>> GetAssetNames(string quoteSymbol, IEnumerable<string> baseSymbols);
 }

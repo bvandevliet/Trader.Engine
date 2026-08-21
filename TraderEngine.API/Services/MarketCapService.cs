@@ -130,6 +130,11 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Select(alloc => alloc.TargetAllocDto);
   }
 
+  public Task<Dictionary<string, string>> GetAssetNames(string quoteSymbol, IEnumerable<string> baseSymbols)
+  {
+    return _marketCapInternalRepo.GetLatestNames(quoteSymbol, baseSymbols);
+  }
+
   /// <summary>
   /// Wraps <see cref="Regex.IsMatch(string)"/> so a single user-authored tag pattern timing out
   /// against one tag (see <see cref="RegexMatchTimeout"/>) is caught rather than throwing and
