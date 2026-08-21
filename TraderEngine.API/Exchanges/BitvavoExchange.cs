@@ -20,7 +20,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   private readonly ILogger<BitvavoExchange> _logger;
   private readonly HttpClient _httpClient;
   private readonly BitvavoWebSocketConnectionPool _wsPool;
-  private readonly IMemoryCache _marketDataCache;
+  private readonly IMemoryCache _publicDataCache;
 
   public ILogger<IExchange> Logger => _logger;
 
@@ -33,11 +33,11 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     ILogger<BitvavoExchange> logger,
     HttpClient httpClient,
     BitvavoWebSocketConnectionPool wsPool,
-    IMemoryCache marketDataCache)
+    IMemoryCache publicDataCache)
   {
     _logger = logger;
     _wsPool = wsPool;
-    _marketDataCache = marketDataCache;
+    _publicDataCache = publicDataCache;
 
     _httpClient = httpClient;
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
@@ -280,7 +280,10 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   // status/minimum from before the sell phase ran. MarketStatus in particular gates real trading
   // decisions (a stale "Trading" read could misclassify a newly-halted market as eligible), so
   // this is a deliberate freshness/efficiency trade-off, not just an arbitrary number.
-  private static readonly TimeSpan _marketDataCacheTtl = TimeSpan.FromSeconds(10);
+  //
+  // Shared (same field/TTL) with GetAsset below — same public, account-agnostic data shape, same
+  // freshness needs, no reason for a second cache instance or a second TTL constant.
+  private static readonly TimeSpan _publicDataCacheTtl = TimeSpan.FromSeconds(10);
 
   // Private nested key type namespaces this cache entry within the shared (DI singleton)
   // IMemoryCache, so it can't collide with cache keys used by any other feature.
@@ -290,7 +293,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   {
     var cacheKey = new MarketDataCacheKey(market);
 
-    if (_marketDataCache.TryGetValue<MarketDataDto>(cacheKey, out var cached))
+    if (_publicDataCache.TryGetValue<MarketDataDto>(cacheKey, out var cached))
       return cached;
 
     var fetched = await FetchMarketAsync(credentials, market);
@@ -300,7 +303,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     if (fetched is null)
       return null;
 
-    _marketDataCache.Set(cacheKey, fetched, _marketDataCacheTtl);
+    _publicDataCache.Set(cacheKey, fetched, _publicDataCacheTtl);
 
     return fetched;
   }
@@ -354,7 +357,30 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return ApiMapper.MapMarketData(result);
   }
 
+  // Same caching rationale/pattern as GetMarket above: public, account-agnostic data, cached
+  // per-symbol behind the same shared IMemoryCache instance rather than a bulk fetch.
+  private readonly record struct AssetDataCacheKey(string BaseSymbol);
+
   public async Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
+  {
+    var cacheKey = new AssetDataCacheKey(baseSymbol);
+
+    if (_publicDataCache.TryGetValue<AssetDataDto>(cacheKey, out var cached))
+      return cached;
+
+    var fetched = await FetchAssetAsync(credentials, baseSymbol);
+
+    // Don't cache a failure — the next call should retry, not keep silently failing for the rest
+    // of the TTL window.
+    if (fetched is null)
+      return null;
+
+    _publicDataCache.Set(cacheKey, fetched, _publicDataCacheTtl);
+
+    return fetched;
+  }
+
+  private async Task<AssetDataDto?> FetchAssetAsync(ExchangeCredentials credentials, string baseSymbol)
   {
     using var request = CreateRequestMsg(
       credentials, HttpMethod.Get, $"assets?symbol={baseSymbol}");
