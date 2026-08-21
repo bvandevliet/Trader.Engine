@@ -115,8 +115,10 @@ public class RebalancingService : IRebalancingService
     var div = 1 - quoteRelAlloc;
     totalTargetWeight = div == 0 ? 0 : totalTargetWeight / div;
 
-    decimal newAmountQuote(TargetAllocReqDto? targetAlloc) =>
-      (totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight) * curBalance.AmountQuoteTotal;
+    decimal newAmountQuote(TargetAllocReqDto? targetAlloc)
+    {
+      return (totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight) * curBalance.AmountQuoteTotal;
+    }
 
     // Every market either currently held or targeted — the full set this diff needs to cover, in
     // one pass instead of "current allocations, then whichever targets weren't already matched".

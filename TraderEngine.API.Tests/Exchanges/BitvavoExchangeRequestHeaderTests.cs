@@ -1,5 +1,5 @@
-using Microsoft.Extensions.Caching.Memory;
 using System.Net;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TraderEngine.API.Exchanges;
