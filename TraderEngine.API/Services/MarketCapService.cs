@@ -1,5 +1,4 @@
 using System.Text.RegularExpressions;
-using TraderEngine.API.Mappers;
 using TraderEngine.Common.Abstracts;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -73,7 +72,11 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     var ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
     var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
-    currentAssets = currentAssets?.Select(a => a.DeepClone()).ToList();
+    // A lookup rather than currentAssets.FindAndRemove per market-cap record: the "remove" half
+    // of that helper was never actually needed here (nothing downstream reads the drained list),
+    // so it only bought a mutating O(n) scan per record plus a defensive DeepClone to keep from
+    // mutating the caller's own list. A plain Contains check needs neither.
+    var currentAssetsSet = currentAssets?.ToHashSet();
 
     return
       marketCapLatest
@@ -82,7 +85,7 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       .Select(marketCapDataDto =>
       {
         var hasWeighting = configReqDto.WeightingOverrides.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
-        var isAllocated = null != currentAssets?.FindAndRemove(curAlloc => curAlloc.Equals(marketCapDataDto.Market));
+        var isAllocated = currentAssetsSet?.Contains(marketCapDataDto.Market) ?? false;
         var finalWeighting = hasWeighting ? weighting : 1;
 
         return new
