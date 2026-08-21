@@ -1,4 +1,14 @@
-# TraderEngine — Claude Code notes
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Domain Skills
+
+Core portfolio management domain knowledge (always load; always available):
+@./.claude/skills/portfolio-manager/SKILL.md
+
+Load these skills when implementing backtesting or strategy evaluation logic:
+- **`./.claude/skills/backtest-expert/SKILL.md`**
 
 ## .NET solution / build
 - Solution is `.slnx` (not `.sln`); use `dotnet sln <file>.slnx` / VS 2022 17.x+.
@@ -36,6 +46,11 @@
 - `PlaceLimitThenFallback`'s dust-remainder branch (`RebalancingService.cs`, ~line 275) only has an escape hatch for `OrderSide.Sell`: a sell remainder under `MinOrderSizeInQuote` (€5 on Bitvavo) still gets fully liquidated via an `Amount`-based order, since Bitvavo allows fully closing a position under the quote-value minimum. A `Buy` remainder under that same €5 floor has no equivalent path and is simply dropped, silently, with no log line. Confirmed live: a €20 limit buy for XRP filled about €15 before timing out, left a roughly €5 remainder, and that remainder was abandoned outright instead of getting a market-order attempt, not "dust" in the negligible sense, a full 25% of the intended order gone because the leftover happened to land at or under the exchange minimum.
   - **Observability, fixed**: this branch, `BuyUnderagesAndVerify`'s pre-scaling `AmountQuote < MinOrderSizeInQuote` filter, and its post-claim filter all now log via `LogInformation` when they skip/drop an order.
   - **The balance-race blocker described here is now largely resolved**: buy legs no longer size against a static snapshot; each concurrently-dispatched leg atomically claims its share from `BudgetLedger` (see below), clamped to whatever's actually left, including that leg's own reserved fee, immediately before placing. What's still missing: that ledger isn't threaded through into `PlaceLimitThenFallback` (called per-order, no access to the batch's shared budget), so rounding a buy-side dust remainder up to the exchange minimum here is still deferred, but the "real plumbing" blocker is now much smaller, since the live-budget mechanism already exists and mainly needs plumbing through, not designing from scratch.
+- **Every Bitvavo market is quoted against EUR only** (no direct crypto-to-crypto pairs, e.g. no ETH-BTC market); every rebalance leg round-trips through EUR as the sole tradable quote currency. This is an exchange-imposed constraint, not a design choice in this codebase. If a future exchange integration supported direct crypto-to-crypto pairs, swapping directly between two held assets (skipping the EUR hop) could in principle cut the fee/latency cost of a rebalance roughly in half for that leg. Caveat this would need to be verified against, not assumed: direct altcoin-to-altcoin pairs typically carry far lower volume/liquidity than pairs quoted against a major fiat or stablecoin, so the wider spread/slippage on a thin direct pair could easily offset or exceed the fee savings from cutting out the EUR middle-hop, especially for smaller-cap alts. Not worth pursuing until an exchange with such pairs is actually integrated, and even then only after checking real liquidity on the specific pairs involved.
+
+## Portfolio management model: no risk-profile concept, EUR is the risk lever
+- This app has no investor risk-profile concept (Conservative/Moderate/Growth/Aggressive or similar) anywhere in the codebase, no per-position thesis tracking, and no tax-lot/cost-basis logic, confirmed via repo-wide search, zero hits for any of these. It's a single, global, systematic market-cap-index rebalancer: `MarketCapService.BalancedTargetAllocs` computes target weights as `(weighting × marketCap)^(1/NthRoot)` normalized by the sum, with no hard per-asset or per-tier concentration ceiling enforced anywhere (`NthRoot` only *dampens* the power-law curve, it doesn't cap any single position).
+- `ConfigReqDto.QuoteAllocation`/`QuoteTakeout` (EUR) is the actual risk-off lever here, not a crypto stablecoin. `TagsToIgnore` defaulting to `["stablecoin"]` is unrelated to risk sizing: it just keeps crypto-stablecoins out of the ranked/traded universe (correct, since Bitvavo only trades against EUR anyway, so a crypto stablecoin holding isn't independently useful the way EUR itself is). Don't conflate the two: excluding stablecoin-tagged assets from ranking is not the same lever as `QuoteAllocation`, which is the one that actually controls risk-off sizing.
 
 ## Rebalancing algorithm: interleaved sell/buy execution (`RebalancingService.cs`, `BudgetLedger.cs`)
 - Sells and buys within one `Rebalance` run execute **concurrently** against a shared `BudgetLedger` (`TraderEngine.Common/Services/BudgetLedger.cs`), not sequentially (`await` all sells, then `await` all buys) as originally implemented. The old sequential design gated the entire buy phase on `Task.WhenAll` of every sell leg, including the single slowest one (up to the full ~60s limit-order fill-wait plus market fallback), even buys whose funding came from a different, already-completed sell. `BudgetLedger.ClaimAsync` lets a buy leg claim its share and place its order as soon as enough has actually landed, without waiting for stragglers.
