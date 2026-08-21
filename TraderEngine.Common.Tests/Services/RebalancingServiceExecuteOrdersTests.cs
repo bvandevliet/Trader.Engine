@@ -5,6 +5,7 @@ using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Models;
 using TraderEngine.Common.Services;
+using TraderEngine.Common.Tests.Exchanges;
 
 namespace TraderEngine.Common.Tests.Services;
 
@@ -128,16 +129,17 @@ public class RebalancingServiceExecuteOrdersTests
   }
 
   [TestMethod]
-  public async Task Rebalance_GivenOrders_BuyUnderfundedByDustSellEstimateBlindSpot_RecoveredByRetryAfterReconciliation()
+  public async Task Rebalance_GivenOrders_BuyFundedByDustSellProceeds_WaitsForRealDeposit()
   {
     // Arrange
-    // Regression test for a real-world bug: this overload has no drift/target-weight context, so
-    // its upfront funding estimate (used only to precompute a fair ratio) is blind to Amount-only
-    // dust sells (no AmountQuote to read) — here that blind spot makes the estimate look like 0
-    // available, even though the sell is about to fully fund the buy. Without a retry, the buy's
-    // ratio-scaled claim (0 * ratio = 0) would be dropped permanently, leaving the buy's target
-    // short and the sell's real proceeds sitting unspent as leftover EUR — exactly what was
-    // observed in production before the retry-after-reconciliation fix.
+    // Regression test for a real-world bug: an earlier design pre-scaled every buy's claim by a
+    // ratio estimated upfront from projected sell proceeds. This overload has no drift/target-
+    // weight context, so that estimate was blind to Amount-only dust sells (no AmountQuote to
+    // read) — here that blind spot made the estimate look like 0 available, even though the sell
+    // was about to fully fund the buy, permanently dropping the buy's claim (0 * ratio = 0) and
+    // leaving the sell's real proceeds sitting unspent as leftover EUR. BudgetLedger no longer
+    // estimates a ratio at all (see its own remarks): the buy just requests its full target and
+    // waits for the dust sell's real, settled deposit to land, which now correctly funds it.
     var curBalance = new Balance("EUR");
     curBalance.TryAddAllocation(new Allocation(_eur, price: 1, amount: 0));
     curBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 100));
@@ -162,6 +164,55 @@ public class RebalancingServiceExecuteOrdersTests
     var eth = results.Single(o => o.Market.BaseSymbol == "ETH");
     Assert.AreEqual(OrderSide.Buy, eth.Side);
     Assert.AreEqual(6m, eth.AmountQuoteFilled);
+  }
+
+  [TestMethod]
+  public async Task Rebalance_GivenOrders_MarketSellBelowBaseAssetMinimum_IsDropped_NoOrderPlaced()
+  {
+    // Arrange
+    // A market sell with an explicit (base-currency) Amount is checked directly against the
+    // market's own base-asset floor, the same as a limit order's finalized Amount already was —
+    // market orders previously skipped this check entirely (PlaceAndVerifyOrder only ran it for
+    // OrderType.Limit), relying on the exchange to reject the order instead of catching it here.
+    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1 };
+    exchange.SetMinOrderSizeInBase("BTC", 0.01m);
+
+    var orders = new[]
+    {
+      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 0.005m },
+    };
+
+    // Act
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert
+    Assert.AreEqual(0, results.Length);
+    Assert.AreEqual(0, exchange.NewOrderCalls.Count);
+  }
+
+  [TestMethod]
+  public async Task Rebalance_GivenOrders_MarketBuyEstimatedBelowBaseAssetMinimum_IsDropped_NoOrderPlaced()
+  {
+    // Arrange
+    // A market buy sized by AmountQuote has no explicit Amount yet, so the base-asset floor check
+    // estimates one from the current best ask, the same estimation basis a limit order already
+    // used for its own (exact, since a limit order always has an explicit Amount) check.
+    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1 };
+    exchange.SetMinOrderSizeInBase("BTC", 1m);
+    exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
+
+    var orders = new[]
+    {
+      // 50 / 101 ~= 0.495 BTC, well under the 1 BTC floor.
+      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
+    };
+
+    // Act
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert
+    Assert.AreEqual(0, results.Length);
+    Assert.AreEqual(0, exchange.NewOrderCalls.Count);
   }
 
   /// <summary>

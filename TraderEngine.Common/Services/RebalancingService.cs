@@ -164,9 +164,67 @@ public class RebalancingService : IRebalancingService
     IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel)
   {
     if (orderReq.Type != OrderType.Limit)
+    {
+      // Unlike a limit order (whose exact base-asset Amount is always known before placing, see
+      // PlaceLimitThenFallback), a market order sized by AmountQuote only has its base-asset
+      // quantity estimated here via the current best bid/ask — the exchange settles at whatever
+      // the actual fill price turns out to be, so this is a best-effort proactive check, not a
+      // guarantee; the exchange itself remains the final arbiter either way.
+      var marketAmount = await ResolveMarketOrderBaseAmount(exchange, credentials, orderReq);
+
+      if (marketAmount is decimal amount
+        && !await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, amount))
+        return [];
+
       return [await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)];
+    }
 
     return await PlaceLimitThenFallback(exchange, credentials, orderReq, source);
+  }
+
+  /// <summary>
+  /// Estimates the base-asset quantity a market order will actually request: <see cref="OrderReqDto.Amount"/>
+  /// directly if already given (e.g. a dust/full-liquidation sell), otherwise <see cref="OrderReqDto.AmountQuote"/>
+  /// divided by the current best bid (sell) / ask (buy). Returns <see langword="null"/> if neither
+  /// is resolvable (no explicit Amount and no book data available) — the caller should treat that
+  /// as "can't check, let the exchange decide" rather than a hard failure.
+  /// </summary>
+  private static async Task<decimal?> ResolveMarketOrderBaseAmount(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq)
+  {
+    if (orderReq.Amount is decimal amount)
+      return amount;
+
+    if (orderReq.AmountQuote is not decimal amountQuote)
+      return null;
+
+    var bidAsk = await exchange.GetBestBidAsk(credentials, orderReq.Market);
+    var price = orderReq.Side == OrderSide.Sell ? bidAsk?.Bid : bidAsk?.Ask;
+
+    return price is decimal p and > 0 ? amountQuote / p : null;
+  }
+
+  /// <summary>
+  /// Checks <paramref name="amount"/> (base-asset units) against the market's own per-market
+  /// minimum base-asset order size (<see cref="MarketDataDto.MinOrderSizeInBase"/>) — a flat
+  /// quote-value check alone (<see cref="IExchange.MinOrderSizeInQuote"/>) isn't sufficient, since
+  /// an amount can clear that flat floor yet still fall under this specific market's own,
+  /// separately-enforced base-asset floor. Confirmed live on Bitvavo: a 30.811819 ADA sell
+  /// (~€5.12, above the €5 quote minimum) was rejected outright (errorCode 212) this way.
+  /// </summary>
+  private async Task<bool> ClearsBaseAssetMinimum(
+    IExchange exchange, ExchangeCredentials credentials, MarketReqDto market, OrderSide side, decimal amount)
+  {
+    var marketData = await exchange.GetMarket(credentials, market);
+
+    if (marketData?.MinOrderSizeInBase is not decimal minOrderSizeInBase || amount >= minOrderSizeInBase)
+      return true;
+
+    _logger.LogInformation(
+      "Dropping {Side} order for market {Market}: amount {Amount} is below the exchange's minimum base-asset order size of {MinOrderSizeInBase}.",
+      side, market.ToString().SanitizeForLog(), amount, minOrderSizeInBase);
+
+    return false;
   }
 
   /// <summary>
@@ -220,23 +278,10 @@ public class RebalancingService : IRebalancingService
     if (limitAmount <= 0)
       return [];
 
-    // Bitvavo enforces a per-market minimum base-asset quantity (minOrderInBaseAsset) IN ADDITION
-    // to the flat quote-value minimum (exchange.MinOrderSizeInQuote) checked elsewhere — a
-    // sell/buy amount can clear the quote-value floor yet still be rejected outright (errorCode
-    // 212) if the market's own base-asset floor is higher for that asset at the current price.
-    // Confirmed live: a 30.811819 ADA sell (~€5.12, above the €5 quote minimum) was rejected this
-    // way. Checked here, right after Amount is finalized, since that's the only point this
-    // service knows the exact base-asset quantity a limit order will actually request.
-    var limitMarketData = await exchange.GetMarket(credentials, orderReq.Market);
-
-    if (limitMarketData?.MinOrderSizeInBase is decimal minOrderSizeInBase && limitAmount < minOrderSizeInBase)
-    {
-      _logger.LogInformation(
-        "Dropping {Side} order for market {Market}: amount {LimitAmount} is below the exchange's minimum base-asset order size of {MinOrderSizeInBase}.",
-        orderReq.Side, orderReq.Market.ToString().SanitizeForLog(), limitAmount, minOrderSizeInBase);
-
+    // Checked here, right after Amount is finalized, since that's the only point this service
+    // knows the exact base-asset quantity a limit order will actually request.
+    if (!await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, limitAmount))
       return [];
-    }
 
     var limitReq = new OrderReqDto()
     {
