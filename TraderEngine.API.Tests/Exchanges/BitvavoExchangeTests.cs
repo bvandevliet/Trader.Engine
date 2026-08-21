@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TraderEngine.API.Exchanges;
@@ -21,7 +22,7 @@ public class BitvavoExchangeTests
 
     var wsPool = new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState());
 
-    var bitvavo = new BitvavoExchange(logger, httpClient, wsPool);
+    var bitvavo = new BitvavoExchange(logger, httpClient, wsPool, new MemoryCache(new MemoryCacheOptions()));
 
     var credentials = new ExchangeCredentials("key", "secret");
 
