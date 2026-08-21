@@ -740,7 +740,13 @@ public class RebalancingServiceTests
     // Assert
     Assert.AreEqual(4, orders.Count);
 
-    Assert.AreEqual(1.3872m, Math.Round(orders.Sum(result => result.FeePaid), 4));
+    // 1.3872 under the old sequential design, which re-applied the settlement-lag TakerFee buffer
+    // to the entire post-sell balance including sell proceeds ((initial + proceeds) * (1 - fee)).
+    // The interleaved ledger tracks each sell's proceeds via its own authoritative
+    // AmountQuoteFilled - FeePaid (already net, no settlement-lag ambiguity to buffer against) and
+    // only buffers the initial pre-sell snapshot (initial * (1 - fee) + proceeds) — a legitimate
+    // reduction in unnecessary double-discounting, letting ADA's buy claim a fraction more.
+    Assert.AreEqual(1.3875m, Math.Round(orders.Sum(result => result.FeePaid), 4));
 
     Assert.IsNull(orders[0].Amount);
     Assert.IsNull(orders[1].Amount);

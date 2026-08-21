@@ -477,35 +477,15 @@ public class RebalancingService : IRebalancingService
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s in order for those to meet <paramref name="targetAllocs"/>.
-  /// Completes when verified that all triggered sell orders are ended.
+  /// Builds sell order requests for oversized <see cref="Allocation"/>s from already-computed
+  /// <paramref name="allocDrifts"/> (positive drift = oversized). Raw output only — still needs to
+  /// go through <see cref="PrepareSellOrders"/> before execution.
   /// </summary>
-  /// <param name="exchange"></param>
-  /// <param name="credentials"></param>
-  /// <param name="targetAllocs"></param>
-  /// <param name="source"></param>
-  /// <param name="config"></param>
-  /// <param name="curBalance"></param>
-  /// <returns></returns>
-  private async Task<OrderDto[]> SellOveragesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, string source, ConfigReqDto config, Balance? curBalance)
+  private static IEnumerable<OrderReqDto> BuildSellOrdersFromDrifts(
+    IExchange exchange, ExchangeCredentials credentials, IEnumerable<AllocDriftReqDto> allocDrifts, ConfigReqDto config)
   {
-    if (null == curBalance)
-    {
-      var curBalanceResult = await exchange.GetBalance(credentials);
-      curBalance = curBalanceResult.Value!;
-    }
-
-    var orders =
-      GetAllocationQuoteDrifts(exchange, targetAllocs, config, curBalance)
-
-      // We can't trade quote currency for quote currency.
-      .Where(allocDrift => !allocDrift.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
-
-      // Positive quote differences refer to oversized allocations.
+    return allocDrifts
       .Where(allocDrift => allocDrift.AmountQuoteDrift > 0)
-
-      // Construct sell order.
       .Select(allocDrift =>
       {
         var order = new OrderReqDto()
@@ -531,81 +511,18 @@ public class RebalancingService : IRebalancingService
 
         return order;
       });
-
-    return await SellOveragesAndVerify(exchange, credentials, orders, source);
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="orders"/>.
-  /// Completes when verified that all triggered sell orders are ended.
+  /// Builds buy order requests for undersized <see cref="Allocation"/>s from already-computed
+  /// <paramref name="allocDrifts"/> (negative drift = undersized). Raw output only — still needs
+  /// to go through <see cref="PrepareBuyOrders"/> before execution.
   /// </summary>
-  /// <param name="exchange"></param>
-  /// <param name="credentials"></param>
-  /// <param name="orders"></param>
-  /// <param name="source"></param>
-  /// <returns></returns>
-  private async Task<OrderDto[]> SellOveragesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<OrderReqDto> orders, string source)
+  private static IEnumerable<OrderReqDto> BuildBuyOrdersFromDrifts(
+    IEnumerable<AllocDriftReqDto> allocDrifts, ConfigReqDto config)
   {
-    // The sell task loop ..
-    var results = await Task.WhenAll(
-      orders
-
-      // Filter for sell orders.
-      .Where(order => order.Side == OrderSide.Sell)
-
-      // We can't trade quote currency for quote currency.
-      .Where(sellOrder => !sellOrder.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
-
-      // Check if reached minimum order size.
-      .Where(sellOrder => sellOrder.AmountQuote >= exchange.MinOrderSizeInQuote || sellOrder.Amount > 0)
-
-      // Round to avoid potentially invalid amount quote.
-      .Select(sellOrder =>
-      {
-        if (sellOrder.AmountQuote is decimal amountQuote)
-          sellOrder.AmountQuote = RoundAmountQuote(amountQuote, OrderSide.Sell);
-
-        return sellOrder;
-      })
-
-      // Sell, then verify the sell order ended. A limit order that falls back to market
-      // yields two entries; everything else yields exactly one.
-      .Select(sellOrder => PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true)));
-
-    return results.SelectMany(orderResults => orderResults).ToArray();
-  }
-
-  /// <summary>
-  /// Buy to increase undersized <see cref="Allocation"/>s in order for those to meet <paramref name="targetAllocs"/>.
-  /// Completes when all triggered buy orders are posted.
-  /// </summary>
-  /// <param name="exchange"></param>
-  /// <param name="credentials"></param>
-  /// <param name="targetAllocs"></param>
-  /// <param name="source"></param>
-  /// <param name="config"></param>
-  /// <param name="curBalance"></param>
-  /// <returns></returns>
-  private async Task<OrderDto[]> BuyUnderagesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, string source, ConfigReqDto config, Balance? curBalance)
-  {
-    if (null == curBalance)
-    {
-      var curBalanceResult = await exchange.GetBalance(credentials);
-      curBalance = curBalanceResult.Value!;
-    }
-
-    var orders =
-      GetAllocationQuoteDrifts(exchange, targetAllocs, config, curBalance)
-
-      // We can't trade quote currency for quote currency.
-      .Where(allocDrift => !allocDrift.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
-
-      // Negative quote differences refer to undersized allocations.
+    return allocDrifts
       .Where(allocDrift => allocDrift.AmountQuoteDrift < 0)
-
-      // Construct buy order.
       .Select(allocDrift => new OrderReqDto()
       {
         Market = allocDrift.Market,
@@ -613,43 +530,37 @@ public class RebalancingService : IRebalancingService
         Type = config.UseLimitOrders ? OrderType.Limit : OrderType.Market,
         AmountQuote = Math.Abs(allocDrift.AmountQuoteDrift),
       });
-
-    return await BuyUnderagesAndVerify(exchange, credentials, orders, source, curBalance);
   }
 
   /// <summary>
-  /// Sell pieces of oversized <see cref="Allocation"/>s as defined in <paramref name="orders"/>.
-  /// Completes when verified that all triggered sell orders are ended.
+  /// Filters and normalizes raw sell order requests for execution: quote-to-quote and sub-minimum
+  /// orders are dropped, and any explicit <see cref="OrderReqDto.AmountQuote"/> is rounded.
   /// </summary>
-  /// <param name="exchange"></param>
-  /// <param name="credentials"></param>
-  /// <param name="orders"></param>
-  /// <param name="source"></param>
-  /// <param name="curBalance"></param>
-  /// <returns></returns>
-  private async Task<OrderDto[]> BuyUnderagesAndVerify(
-    IExchange exchange, ExchangeCredentials credentials, IEnumerable<OrderReqDto> orders, string source, Balance? curBalance = null)
+  private static List<OrderReqDto> PrepareSellOrders(IExchange exchange, IEnumerable<OrderReqDto> orders)
   {
-    if (null == curBalance)
-    {
-      var curBalanceResult = await exchange.GetBalance(credentials);
-      curBalance = curBalanceResult.Value!;
-    }
+    return orders
+      .Where(order => order.Side == OrderSide.Sell)
+      .Where(sellOrder => !sellOrder.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
+      .Where(sellOrder => sellOrder.AmountQuote >= exchange.MinOrderSizeInQuote || sellOrder.Amount > 0)
+      .Select(sellOrder =>
+      {
+        if (sellOrder.AmountQuote is decimal amountQuote)
+          sellOrder.AmountQuote = RoundAmountQuote(amountQuote, OrderSide.Sell);
 
-    List<OrderReqDto> buyOrders = new();
+        return sellOrder;
+      })
+      .ToList();
+  }
 
-    // Absolute sum of all negative quote differences,
-    // using a single multi-purpose enumeration to eliminate redundant enumerations.
-    var totalBuy =
-      orders
-
-      // Filter for buy orders.
+  /// <summary>
+  /// Filters raw buy order requests for execution: quote-to-quote orders and any request already
+  /// below the exchange minimum (before ratio scaling) are dropped and logged.
+  /// </summary>
+  private List<OrderReqDto> PrepareBuyOrders(IExchange exchange, IEnumerable<OrderReqDto> orders)
+  {
+    return orders
       .Where(order => order.Side == OrderSide.Buy)
-
-      // We can't trade quote currency for quote currency.
       .Where(buyOrder => !buyOrder.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
-
-      // Check if reached minimum order size.
       .Where(buyOrder =>
       {
         if (buyOrder.AmountQuote >= exchange.MinOrderSizeInQuote)
@@ -661,107 +572,156 @@ public class RebalancingService : IRebalancingService
 
         return false;
       })
+      .ToList();
+  }
 
-      // Sum of all negative quote differences.
-      .Sum(buyOrder =>
+  /// <summary>
+  /// Runs every sell and buy leg of a rebalance run concurrently against a shared <see cref="BudgetLedger"/>,
+  /// rather than gating the entire buy phase on every sell finishing first. Each sell leg deposits
+  /// its own exchange-settled net proceeds into the ledger as soon as it resolves; each buy leg
+  /// claims its (upfront ratio-scaled) share from the ledger, starting as soon as enough has
+  /// actually landed rather than waiting for the slowest sell in the batch.
+  /// </summary>
+  private async Task<OrderDto[]> ExecuteInterleaved(
+    IExchange exchange, ExchangeCredentials credentials,
+    List<OrderReqDto> sellOrders, List<OrderReqDto> buyOrders, string source, decimal initialAvailableWithFeeBuffer,
+    decimal projectedSellProceeds)
+  {
+    var ledger = new BudgetLedger(initialAvailableWithFeeBuffer);
+
+    var sellTasks = sellOrders
+      .Select(async sellOrder =>
       {
-        // Add to list.
-        buyOrders.Add(buyOrder);
+        var results = await PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true);
 
-        return (decimal)buyOrder.AmountQuote!;
-      });
+        // Net proceeds actually settled for this leg, exchange-reported on the resolved order(s)
+        // — authoritative for this leg specifically, not an estimate. A limit-then-fallback pair
+        // contributes both legs' own fills.
+        var netProceeds = results.Sum(order => order.AmountQuoteFilled - order.FeePaid);
 
-    // Bitvavo docs: placing an order blocks (`onHold`) the traded amount, but the trading fee
-    // itself is only charged after the trade completes, with a slight settlement lag. When this
-    // balance was just fetched right after selling (see Rebalance()), AmountQuoteAvailable can
-    // therefore still include gross, pre-fee sell proceeds for a brief window — sizing buys
-    // against that figure risks a since-settled fee shrinking real availability out from under an
-    // order sized right at the edge. Reserving TakerFee's worth of headroom (the worse of the two
-    // rates) absorbs that lag; a zero-fee exchange (e.g. in tests) sees no change in behavior.
-    var availableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+        ledger.Deposit(netProceeds);
 
-    // Multiplication ratio to avoid potentially oversized buy order sizes. Divided by
-    // (1 + TakerFee) so the trade-value-only sum this caps at leaves room for every leg's own fee
-    // (reserved per-leg below) to still fit inside `availableWithFeeBuffer` once summed — sizing
-    // the ratio against `availableWithFeeBuffer` directly would double-reserve the fee (once here,
-    // again per leg below), guaranteeing the ledger runs dry before the last leg(s) get their fair
-    // share whenever scaling is actually needed.
+        return results;
+      })
+      .ToList();
+
+    var sellsCompletion = Task.WhenAll(sellTasks);
+
+    var totalBuy = buyOrders.Sum(order => (decimal)order.AmountQuote!);
+
+    // Estimated only, purely to precompute a fair upfront scaling ratio for buy legs to claim
+    // against — the ledger's live claim-time clamp is what actually prevents overspend, regardless
+    // of how this estimate turns out; an inaccurate estimate only makes some legs wait a bit
+    // longer or claim a slightly different final share than a perfectly accurate one would.
+    var projectedAvailable = initialAvailableWithFeeBuffer + projectedSellProceeds;
+
     var ratio = totalBuy == 0 ? 0 :
-      Math.Min(totalBuy, availableWithFeeBuffer / (1 + exchange.TakerFee)) / totalBuy;
+      Math.Min(totalBuy, projectedAvailable / (1 + exchange.TakerFee)) / totalBuy;
 
     if (ratio < 1)
       _logger.LogInformation(
-        "Scaling {BuyOrderCount} buy orders by a ratio of {Ratio} (available {AvailableWithFeeBuffer}, total requested {TotalBuy}) for exchange {Exchange}.",
-        buyOrders.Count, ratio, availableWithFeeBuffer, totalBuy, exchange.GetType().Name);
+        "Scaling {BuyOrderCount} buy orders by a ratio of {Ratio} (estimated available {ProjectedAvailable}, total requested {TotalBuy}) for exchange {Exchange}.",
+        buyOrders.Count, ratio, projectedAvailable, totalBuy, exchange.GetType().Name);
 
-    // In-process running ledger, decremented as each leg claims its own share — this is what
-    // actually closes the race: every leg below is scaled by the SAME `ratio` (preserving
-    // proportional fairness across legs when funds fall short), but a leg's claim is additionally
-    // clamped to whatever this ledger still has left AT THE MOMENT IT CLAIMS, rather than trusting
-    // that the batch-wide ratio alone guarantees no overlap. The exchange's real balance is never
-    // re-queried mid-batch; this ledger is the authority instead.
-    var remainingBudget = availableWithFeeBuffer;
-
-    // The lock below is a correctness guarantee, not a workaround for measured contention: within
-    // Task.WhenAll(IEnumerable<Task>), each `async` selector below runs synchronously up to its
-    // first genuine await (the placement call inside PlaceAndVerifyOrder), so in practice these
-    // claims already execute one at a time, in order, before any leg's HTTP response can resume it
-    // — but that relies on an enumeration-order implementation detail this lock makes explicit and
-    // future-proof instead of implicit.
-    var budgetLock = new object();
-
-    // The buy task loop, diffs are already filtered ..
-    var results = await Task.WhenAll(
-      buyOrders
-
-      // Claim this leg's share from the shared ledger, then place (and verify) only what was
-      // actually claimed. A limit order that falls back to market yields two entries; everything
-      // else yields exactly one; a leg that couldn't claim enough to reach the exchange minimum
-      // yields none.
+    var buyTasks = buyOrders
       .Select(async buyOrder =>
       {
-        decimal claimed;
+        var tradeValueTarget = (decimal)buyOrder.AmountQuote! * ratio;
 
-        lock (budgetLock)
-        {
-          var requested = (decimal)buyOrder.AmountQuote! * ratio;
+        // Bitvavo charges a buy order's fee in quote currency IN ADDITION to its trade value, so
+        // the ledger is claimed against (and settled in) full-cost units (trade value + this leg's
+        // own fee), not trade value alone — otherwise a leg's own fee would silently draw down
+        // whatever's left for legs claiming after it, rather than being reserved out of its own share.
+        var fullCostRequested = tradeValueTarget * (1 + exchange.TakerFee);
+        var minFullCost = exchange.MinOrderSizeInQuote * (1 + exchange.TakerFee);
 
-          // `availableWithFeeBuffer` reserves headroom for ONE risk: the snapshot balance still
-          // reflecting gross, pre-fee sell proceeds. It says nothing about each buy leg's own
-          // trading fee, which Bitvavo charges in quote currency IN ADDITION to the trade value
-          // (feeCurrency == quote symbol for an EUR-quoted market) — a real, certain cost, not a
-          // timing artifact. Dividing by (1 + TakerFee) reserves that fee out of this leg's own
-          // claim rather than leaving it to be silently absorbed by whatever's left in the shared
-          // ledger once every other leg has also claimed.
-          var maxAffordable = Math.Max(0, remainingBudget) / (1 + exchange.TakerFee);
+        var claimedFullCost = await ledger.ClaimAsync(fullCostRequested, minFullCost);
 
-          // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never
-          // reclaim back into the fee headroom already reserved above.
-          claimed = RoundAmountQuote(Math.Min(requested, maxAffordable), OrderSide.Buy);
+        if (claimedFullCost <= 0)
+          return [];
 
-          // Only debit the ledger for a claim that will actually be spent. A claim that rounds
-          // below the exchange minimum is never placed (see the check below), so decrementing here
-          // regardless would burn budget nothing was actually spent on, needlessly starving legs
-          // processed after this one.
-          if (claimed >= exchange.MinOrderSizeInQuote)
-            remainingBudget -= claimed * (1 + exchange.TakerFee);
-        }
+        // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never
+        // reclaim back into the fee headroom already reserved above.
+        var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + exchange.TakerFee), OrderSide.Buy);
 
-        if (claimed < exchange.MinOrderSizeInQuote)
+        OrderDto[] results;
+
+        if (claimedTradeValue < exchange.MinOrderSizeInQuote)
         {
           _logger.LogInformation(
-            "Dropping buy order for market {Market}: could only claim {Claimed} of the exchange minimum {MinOrderSizeInQuote} from the remaining budget.",
-            buyOrder.Market.ToString().SanitizeForLog(), claimed, exchange.MinOrderSizeInQuote);
+            "Dropping buy order for market {Market}: could only claim {Claimed} of the exchange minimum {MinOrderSizeInQuote} from the available budget.",
+            buyOrder.Market.ToString().SanitizeForLog(), claimedTradeValue, exchange.MinOrderSizeInQuote);
 
-          return [];
+          results = [];
+        }
+        else
+        {
+          buyOrder.AmountQuote = claimedTradeValue;
+
+          results = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
         }
 
-        buyOrder.AmountQuote = claimed;
+        // Whatever wasn't actually spent (2-decimal rounding remainder, a dropped/failed leg, or a
+        // partial fill) goes back to the pool rather than evaporating from the ledger unspent.
+        var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid);
+        ledger.Settle(claimedFullCost, actuallySpent);
 
-        return await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
-      }));
+        return results;
+      })
+      .ToList();
 
-    return results.SelectMany(orderResults => orderResults).ToArray();
+    var buysCompletion = Task.WhenAll(buyTasks);
+
+    // Started only now, after buyTasks above has had a chance to run every leg's synchronous
+    // fast-path claim attempt first — for a fully synchronous exchange (e.g. in tests) with no
+    // sells to wait for, this reconciliation would otherwise run to completion (nothing to
+    // actually await) before any buy leg had even been constructed, marking the ledger complete
+    // prematurely and turning every leg's *first* claim attempt into a "grab whatever's left"
+    // free-for-all instead of each leg getting its own fair, ratio-scaled share first.
+    var reconcileTask = ReconcileLedgerAfterSells(exchange, credentials, sellsCompletion, ledger);
+
+    await Task.WhenAll(sellsCompletion, buysCompletion, reconcileTask);
+
+    return [.. sellsCompletion.Result.SelectMany(r => r), .. buysCompletion.Result.SelectMany(r => r)];
+  }
+
+  /// <summary>
+  /// Once every sell leg has resolved, reconciles the ledger against one authoritative balance
+  /// fetch (see remarks on <see cref="BudgetLedger.Complete"/>), then releases whatever buy legs
+  /// are still waiting on the final scraps (or nothing). Best-effort: a failure here doesn't fail
+  /// the run — every deposit already fed the ledger directly from each sell's own settled result,
+  /// so this fetch is a safety-net correction on top of that, not the only source of truth. Losing
+  /// it just means this run misses its one reconciliation pass, not that it hangs or overspends.
+  /// </summary>
+  private async Task ReconcileLedgerAfterSells(
+    IExchange exchange, ExchangeCredentials credentials, Task sellsCompletion, BudgetLedger ledger)
+  {
+    try
+    {
+      await sellsCompletion;
+    }
+    catch
+    {
+      // PlaceAndVerifyOrder never throws (see its own remarks) — reaching here would mean
+      // something unexpected happened in this method's own sell-task wrapper. Still reconcile
+      // with whatever landed rather than leaving any waiting buy leg stuck on this ledger forever.
+    }
+
+    decimal? actualAvailable = null;
+
+    try
+    {
+      var balanceResult = await exchange.GetBalance(credentials);
+
+      if (balanceResult.Value is { } balance)
+        actualAvailable = balance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to fetch balance for final buy-budget reconciliation on exchange {Exchange}; proceeding with the locally-tracked total.", exchange.GetType().Name);
+    }
+
+    ledger.Complete(actualAvailable);
   }
 
   /// <summary>
@@ -793,15 +753,34 @@ public class RebalancingService : IRebalancingService
     // Make sure all market statuses of eligible assets are known.
     var targetAllocList = await GetTopRankingAllocs(exchange, credentials, targetAllocs, config.TopRankingCount);
 
-    // Sell pieces of oversized allocations first,
-    // so we have sufficient quote currency available to buy with.
-    var sellResults = await SellOveragesAndVerify(exchange, credentials, targetAllocList, source, config, curBalance);
+    if (null == curBalance)
+    {
+      var curBalanceResult = await exchange.GetBalance(credentials);
+      curBalance = curBalanceResult.Value!;
+    }
 
-    // Then buy to increase undersized allocations, re-fetching the balance fresh (curBalance:
-    // null) so buy sizing reflects what the sells above actually freed up, not a pre-sell snapshot.
-    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, targetAllocList, source, config, curBalance: null);
+    // Computed once, from the same pre-sell balance, for both legs: an internal sell barely moves
+    // AmountQuoteTotal (only the sell's own fee shaves a sliver off it), so target-weight sizing
+    // doesn't need to wait for sells to land the way funding (handled by ExecuteInterleaved's
+    // BudgetLedger below) genuinely does.
+    var allocDrifts = GetAllocationQuoteDrifts(exchange, targetAllocList, config, curBalance).ToList();
 
-    return [.. sellResults, .. buyResults];
+    var sellOrders = PrepareSellOrders(exchange, BuildSellOrdersFromDrifts(exchange, credentials, allocDrifts, config));
+    var buyOrders = PrepareBuyOrders(exchange, BuildBuyOrdersFromDrifts(allocDrifts, config));
+
+    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+
+    // Sourced from the drift itself (known exactly ahead of time, target-weight math already
+    // computed it), not from the resulting sell orders' own AmountQuote — a full-liquidation dust
+    // sell is placed by Amount instead (no AmountQuote at all), which would otherwise make an
+    // accurate, known proceeds figure look like a total unknown (silently collapsing the ratio to
+    // 0 even when funding is actually exactly sufficient).
+    var projectedSellProceeds = allocDrifts
+      .Where(allocDrift => !allocDrift.Market.BaseSymbol.Equals(exchange.QuoteSymbol))
+      .Where(allocDrift => allocDrift.AmountQuoteDrift > 0)
+      .Sum(allocDrift => allocDrift.AmountQuoteDrift);
+
+    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer, projectedSellProceeds);
   }
 
   public async Task<OrderDto[]> Rebalance(
@@ -812,13 +791,23 @@ public class RebalancingService : IRebalancingService
   {
     await using var orderNotificationSession = await BeginRebalanceAsync(exchange, credentials);
 
-    // Sell pieces of oversized allocations first,
-    // so we have sufficient quote currency available to buy with.
-    var sellResults = await SellOveragesAndVerify(exchange, credentials, orders, source);
+    var orderList = orders.ToList();
 
-    // Then buy to increase undersized allocations.
-    var buyResults = await BuyUnderagesAndVerify(exchange, credentials, orders, source);
+    var sellOrders = PrepareSellOrders(exchange, orderList);
+    var buyOrders = PrepareBuyOrders(exchange, orderList);
 
-    return [.. sellResults, .. buyResults];
+    var curBalanceResult = await exchange.GetBalance(credentials);
+    var curBalance = curBalanceResult.Value!;
+
+    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+
+    // No drift/target-weight context here (orders are caller-supplied verbatim), so an
+    // Amount-only dust sell's proceeds are a genuine unknown at this point, unlike the
+    // TargetAllocReqDto-based overload above — accepted as a narrower, rarer blind spot for this
+    // path specifically, since it only affects the upfront fairness estimate (never overspend
+    // safety, which the ledger's live claim-time clamp still enforces regardless).
+    var projectedSellProceeds = sellOrders.Sum(order => order.AmountQuote ?? 0);
+
+    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer, projectedSellProceeds);
   }
 }
