@@ -154,6 +154,7 @@ public class Program
     builder.Services.AddHostedService<MarketCapIngestionService>();
     builder.Services.AddHostedService<AutomationRebalancingService>();
 
+    builder.Services.AddMemoryCache();
     builder.Services.AddSingleton<BitvavoRateLimitState>();
     builder.Services.AddTransient<BitvavoRateLimitHandler>();
     builder.Services.AddHttpClient<IExchange>()

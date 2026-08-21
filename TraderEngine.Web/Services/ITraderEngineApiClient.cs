@@ -22,4 +22,10 @@ public interface ITraderEngineApiClient
   public Task<SimulationDto> SimulateRebalance(AppUser user, string exchangeName, string source, SimulationReqDto request, CancellationToken ct = default);
 
   public Task<OrderDto[]> Rebalance(AppUser user, string exchangeName, string source, RebalanceReqDto request, CancellationToken ct = default);
+
+  /// <summary>
+  /// Gets CoinMarketCap display names for the given base symbols, for the dashboard's info
+  /// tooltips. Symbols with no recent market cap record are simply absent from the result.
+  /// </summary>
+  public Task<Dictionary<string, string>> GetAssetNames(AppUser user, IEnumerable<string> baseSymbols, CancellationToken ct = default);
 }

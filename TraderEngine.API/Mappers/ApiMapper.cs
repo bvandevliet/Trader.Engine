@@ -16,6 +16,7 @@ public static partial class ApiMapper
 
   [MapProperty(nameof(BitvavoMarketDataDto.MinOrderInQuoteAsset), nameof(MarketDataDto.MinOrderSizeInQuote))]
   [MapProperty(nameof(BitvavoMarketDataDto.MinOrderInBaseAsset), nameof(MarketDataDto.MinOrderSizeInBase))]
+  [MapperIgnoreSource(nameof(BitvavoMarketDataDto.Market))]
   public static partial MarketDataDto MapMarketData(BitvavoMarketDataDto source);
 
   // ── BitvavoAssetDataDto → AssetDataDto ───────────────────────────────────────

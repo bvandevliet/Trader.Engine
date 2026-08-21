@@ -10,6 +10,11 @@ public class MarketCapMetric
 
   public string BaseSymbol { get; set; } = null!;
 
+  /// <summary>
+  /// The asset's display name as reported by CoinMarketCap (e.g. "Bitcoin" for BTC).
+  /// </summary>
+  public string Name { get; set; } = string.Empty;
+
   public DateTime Updated { get; set; }
 
   public double Price { get; set; }

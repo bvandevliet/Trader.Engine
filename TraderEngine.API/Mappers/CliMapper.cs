@@ -19,6 +19,7 @@ public static partial class CliMapper
     return new MarketCapDataDto
     {
       Market = new MarketReqDto(firstQuote.Key, source.Symbol),
+      Name = source.Name,
       Price = (double)firstQuote.Value.Price,
       MarketCap = (double)firstQuote.Value.Market_Cap,
       Tags = source.Tags.ToList(),

@@ -158,4 +158,31 @@ public class EfMarketCapInternalRepository : MarketCapHandlingBase, IMarketCapIn
     // For each unique asset base symbol, return its historical market cap.
     return assetGroups.Select(assetGroup => EfMarketCapMapper.MapFromEntities(assetGroup.AsEnumerable()));
   }
+
+  public async Task<Dictionary<string, string>> GetLatestNames(string quoteSymbol, IEnumerable<string> baseSymbols)
+  {
+    _logger.LogTrace("Getting latest asset names for '{QuoteSymbol}' ..", quoteSymbol);
+
+    await using var db = await _dbContextFactory.CreateDbContextAsync();
+
+    var quoteSymbolUpper = quoteSymbol.ToUpper();
+    var baseSymbolsUpper = baseSymbols.Select(baseSymbol => baseSymbol.ToUpper()).ToHashSet();
+    // A day comfortably covers the hourly ingestion cadence without scanning the whole retention window.
+    var updatedSince = DateTime.UtcNow.AddDays(-1);
+
+    var candidates = await db.MarketCapMetrics
+      .AsNoTracking()
+      .Where(m => m.QuoteSymbol == quoteSymbolUpper && baseSymbolsUpper.Contains(m.BaseSymbol) && m.Updated >= updatedSince)
+      .OrderByDescending(m => m.Updated)
+      .Select(m => new { m.BaseSymbol, m.Name })
+      .ToListAsync();
+
+    // Grouped client-side rather than via a GroupBy/OrderBy/First SQL translation: the candidate
+    // set is already small (bounded by baseSymbols.Count and the 1-day window), and picking "first
+    // non-empty name per group" out of an already-descending-ordered list is a plain in-memory scan.
+    return candidates
+      .Where(m => !string.IsNullOrEmpty(m.Name))
+      .GroupBy(m => m.BaseSymbol)
+      .ToDictionary(group => group.Key, group => group.First().Name);
+  }
 }

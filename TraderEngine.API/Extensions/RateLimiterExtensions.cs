@@ -28,7 +28,7 @@ public static class RateLimiterExtensions
 
         return RateLimitPartition.GetSlidingWindowLimiter(userId, _ => new SlidingWindowRateLimiterOptions
         {
-          PermitLimit = 20,
+          PermitLimit = 30,
           Window = TimeSpan.FromMinutes(1),
           SegmentsPerWindow = 4,
           QueueLimit = 0,

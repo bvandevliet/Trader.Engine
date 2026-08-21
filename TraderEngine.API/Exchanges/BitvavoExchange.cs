@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Net.Http.Headers;
 using TraderEngine.API.DTOs.Bitvavo.Response;
 using TraderEngine.API.Mappers;
@@ -19,6 +20,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   private readonly ILogger<BitvavoExchange> _logger;
   private readonly HttpClient _httpClient;
   private readonly BitvavoWebSocketConnectionPool _wsPool;
+  private readonly IMemoryCache _publicDataCache;
 
   public ILogger<IExchange> Logger => _logger;
 
@@ -30,10 +32,12 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
     HttpClient httpClient,
-    BitvavoWebSocketConnectionPool wsPool)
+    BitvavoWebSocketConnectionPool wsPool,
+    IMemoryCache publicDataCache)
   {
     _logger = logger;
     _wsPool = wsPool;
+    _publicDataCache = publicDataCache;
 
     _httpClient = httpClient;
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
@@ -257,7 +261,54 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       result.Sum(obj => decimal.Parse(obj!["amount"]!.ToString())));
   }
 
+  // RebalancingService.GetTopRankingAllocs calls GetMarket once per candidate market's status
+  // check, sequentially, in a tight loop right at the start of a rebalance run — without this
+  // cache, that's one HTTP call per candidate, back to back, and the same market is frequently
+  // re-queried later (e.g. PlaceLimitThenFallback checking a buy leg's minimum base-asset size).
+  //
+  // Deliberately per-market rather than one bulk GET /markets fetch behind the whole cache: a
+  // market absent from an unfiltered bulk response is ambiguous (could mean "doesn't exist" or
+  // could mean a transient omission), whereas Bitvavo's single-market endpoint is authoritative
+  // for the exact market asked about (errorCode 205 unambiguously means "not found"). IMemoryCache
+  // gives per-key (per-market) TTL storage without hand-rolling the cache structure/locking.
+  //
+  // The TTL is deliberately short — long enough to cover the sequential status-check burst at the
+  // start of a run (dozens of calls easily complete within a couple of seconds), but short enough
+  // to have expired again by the time PlaceLimitThenFallback checks a BUY leg's minimum base-asset
+  // size: sells are placed and fully verified (up to a 60s fill-wait each) before any buy leg is
+  // even sized, so a buy-side check always re-fetches live data rather than trusting a stale
+  // status/minimum from before the sell phase ran. MarketStatus in particular gates real trading
+  // decisions (a stale "Trading" read could misclassify a newly-halted market as eligible), so
+  // this is a deliberate freshness/efficiency trade-off, not just an arbitrary number.
+  //
+  // Shared (same field/TTL) with GetAsset below — same public, account-agnostic data shape, same
+  // freshness needs, no reason for a second cache instance or a second TTL constant.
+  private static readonly TimeSpan _publicDataCacheTtl = TimeSpan.FromSeconds(10);
+
+  // Private nested key type namespaces this cache entry within the shared (DI singleton)
+  // IMemoryCache, so it can't collide with cache keys used by any other feature.
+  private readonly record struct MarketDataCacheKey(MarketReqDto Market);
+
   public async Task<MarketDataDto?> GetMarket(ExchangeCredentials credentials, MarketReqDto market)
+  {
+    var cacheKey = new MarketDataCacheKey(market);
+
+    if (_publicDataCache.TryGetValue<MarketDataDto>(cacheKey, out var cached))
+      return cached;
+
+    var fetched = await FetchMarketAsync(credentials, market);
+
+    // Don't cache a failure — the next call should retry, not keep silently failing for the rest
+    // of the TTL window.
+    if (fetched is null)
+      return null;
+
+    _publicDataCache.Set(cacheKey, fetched, _publicDataCacheTtl);
+
+    return fetched;
+  }
+
+  private async Task<MarketDataDto?> FetchMarketAsync(ExchangeCredentials credentials, MarketReqDto market)
   {
     using var request = CreateRequestMsg(
       credentials, HttpMethod.Get, $"markets?market={market}");
@@ -306,7 +357,30 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return ApiMapper.MapMarketData(result);
   }
 
+  // Same caching rationale/pattern as GetMarket above: public, account-agnostic data, cached
+  // per-symbol behind the same shared IMemoryCache instance rather than a bulk fetch.
+  private readonly record struct AssetDataCacheKey(string BaseSymbol);
+
   public async Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
+  {
+    var cacheKey = new AssetDataCacheKey(baseSymbol);
+
+    if (_publicDataCache.TryGetValue<AssetDataDto>(cacheKey, out var cached))
+      return cached;
+
+    var fetched = await FetchAssetAsync(credentials, baseSymbol);
+
+    // Don't cache a failure — the next call should retry, not keep silently failing for the rest
+    // of the TTL window.
+    if (fetched is null)
+      return null;
+
+    _publicDataCache.Set(cacheKey, fetched, _publicDataCacheTtl);
+
+    return fetched;
+  }
+
+  private async Task<AssetDataDto?> FetchAssetAsync(ExchangeCredentials credentials, string baseSymbol)
   {
     using var request = CreateRequestMsg(
       credentials, HttpMethod.Get, $"assets?symbol={baseSymbol}");

@@ -10,6 +10,11 @@ public static class HttpClientBuilderExtensions
     clientBuilder
       .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
       {
+        // Must stay comfortably under AttemptTimeout (10s default, set below via
+        // AddStandardResilienceHandler) — that strategy wraps each attempt's entire duration,
+        // connect phase included, so a ConnectTimeout at or above it can never actually be the one
+        // that fires; AttemptTimeout would always cancel a hung connect first.
+        ConnectTimeout = TimeSpan.FromSeconds(5),
         UseCookies = false,
         UseProxy = false,
         PooledConnectionLifetime = TimeSpan.FromMinutes(5),

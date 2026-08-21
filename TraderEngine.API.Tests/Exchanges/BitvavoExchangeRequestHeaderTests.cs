@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
 using TraderEngine.API.Exchanges;
@@ -24,7 +25,7 @@ public class BitvavoExchangeRequestHeaderTests
     // Arrange
     var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, """{"market":"BTC-EUR","price":"50000"}""");
     var httpClient = new HttpClient(handler) { BaseAddress = new("https://api.bitvavo.com/v2/") };
-    var exchange = new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient, new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()));
+    var exchange = new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient, new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()), new MemoryCache(new MemoryCacheOptions()));
 
     // Act
     _ = await exchange.GetPrice(_credentials, new MarketReqDto("EUR", "BTC"));
