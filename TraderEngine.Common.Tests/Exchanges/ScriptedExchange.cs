@@ -28,9 +28,33 @@ internal sealed class ScriptedExchange : IExchange
 
   public decimal TakerFee { get; init; } = 0;
 
+  private readonly Dictionary<string, decimal> _takerFeesByMarket = [];
+
+  /// <summary>
+  /// <see cref="MarketReqDto"/> arguments passed to <see cref="GetTakerFee"/>, in call order
+  /// (<see langword="null"/> entries mark an account-default call with no market given).
+  /// </summary>
+  public List<MarketReqDto?> GetTakerFeeCalls { get; } = [];
+
+  /// <summary>
+  /// Configures a market-specific taker fee, overriding <see cref="TakerFee"/> for that market
+  /// only — mirrors Bitvavo's real fee categories differing per market rather than one flat
+  /// account-wide rate.
+  /// </summary>
+  public void SetTakerFee(string baseSymbol, decimal fee)
+  {
+    _takerFeesByMarket[baseSymbol] = fee;
+  }
+
   public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
   {
-    return Task.FromResult(TakerFee);
+    GetTakerFeeCalls.Add(market);
+
+    var fee = market is not null && _takerFeesByMarket.TryGetValue(market.BaseSymbol, out var marketFee)
+      ? marketFee
+      : TakerFee;
+
+    return Task.FromResult(fee);
   }
 
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];

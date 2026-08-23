@@ -4,6 +4,7 @@ using TraderEngine.Common.DTOs.API.Response;
 using TraderEngine.Common.Enums;
 using TraderEngine.Common.Exchanges;
 using TraderEngine.Common.Models;
+using TraderEngine.Common.Results;
 using TraderEngine.Common.Services;
 using TraderEngine.Common.Tests.Exchanges;
 
@@ -213,6 +214,54 @@ public class RebalancingServiceExecuteOrdersTests
     // Assert
     Assert.AreEqual(0, results.Length);
     Assert.AreEqual(0, exchange.NewOrderCalls.Count);
+  }
+
+  [TestMethod]
+  public async Task Rebalance_TwoBuyLegsDifferentMarkets_FetchesTakerFeePerMarket_NotOneSharedRate()
+  {
+    // Arrange — regresses BitvavoExchange.TakerFee's replacement with a live, per-market
+    // GetTakerFee lookup (see CLAUDE.md's "known future improvements" entry): Bitvavo can place
+    // different markets under different fee categories, so ClaimAndPlaceBuy must ask for each
+    // leg's own market's fee, not reuse one account-wide/first-seen rate across every leg.
+    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1 };
+    exchange.SetTakerFee("BTC", 0.01m);
+    exchange.SetTakerFee("ETH", 0.02m);
+
+    exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
+    {
+      Id = "buy-1",
+      Side = OrderSide.Buy,
+      Type = OrderType.Market,
+      Status = OrderStatus.Filled,
+      AmountQuote = 50,
+      AmountQuoteFilled = 50,
+    }));
+    exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
+    {
+      Id = "buy-2",
+      Side = OrderSide.Buy,
+      Type = OrderType.Market,
+      Status = OrderStatus.Filled,
+      AmountQuote = 50,
+      AmountQuoteFilled = 50,
+    }));
+
+    var orders = new[]
+    {
+      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
+      new OrderReqDto { Market = _eth, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
+    };
+
+    // Act
+    _ = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert — both legs run concurrently, so call order isn't guaranteed; what matters is that
+    // GetTakerFee was asked about each leg's own specific market, not just called once for a
+    // shared/default rate and reused for both.
+    Assert.IsTrue(exchange.GetTakerFeeCalls.Any(m => m?.BaseSymbol == "BTC"),
+      "Expected GetTakerFee to be called with the BTC market for the BTC buy leg.");
+    Assert.IsTrue(exchange.GetTakerFeeCalls.Any(m => m?.BaseSymbol == "ETH"),
+      "Expected GetTakerFee to be called with the ETH market for the ETH buy leg.");
   }
 
   /// <summary>

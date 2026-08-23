@@ -271,4 +271,58 @@ public class BudgetLedgerTests
     Assert.IsTrue(totalClaimed <= totalAvailable, $"Claimed {totalClaimed} but only {totalAvailable} was ever available.");
     Assert.AreEqual(totalAvailable, totalClaimed); // Every deposited unit was claimable by someone.
   }
+
+  /// <summary>
+  /// Regresses a real bug caught during review, not by a failing test, in
+  /// <c>RebalancingService.ClaimAndPlaceBuy</c>'s buy-side dust-remainder top-up (see CLAUDE.md's
+  /// "Bitvavo integration: known future improvements" entry on this fix). A leg that makes TWO
+  /// independent <see cref="BudgetLedger.ClaimAsync"/> calls (its own original claim, then a
+  /// separate top-up claim for a dust remainder) must settle them as a SINGLE combined
+  /// <see cref="BudgetLedger.Settle"/> call — using the SUM of both claimed amounts — or the
+  /// second claim's own contribution to <c>_inFlight</c> is never released. That leftover residue
+  /// is invisible in <c>_available</c> immediately (both claims already fully resolved by the time
+  /// they're settled here), but corrupts the ONE authoritative calculation
+  /// <see cref="BudgetLedger.Complete"/> ever makes (<c>_available = actual - _inFlight</c>) for
+  /// whatever ELSE is still pending at that point — silently shortchanging a completely unrelated
+  /// leg, even though the true account balance had more than enough for it.
+  /// </summary>
+  [TestMethod]
+  public async Task ClaimTwiceThenSettleAsOneCombinedPair_DoesNotLeaveInFlightResidue_ForALaterPendingClaim()
+  {
+    var ledger = new BudgetLedger(0);
+
+    // Leg A's original claim, granted immediately via an exact-covering deposit (mirrors a sell
+    // leg's proceeds landing well before final reconciliation).
+    var originalClaimTask = ledger.ClaimAsync(requested: 20, minClaimable: 1);
+    ledger.Deposit(20);
+    var claimedOriginal = await originalClaimTask.WaitAsync(TimeSpan.FromSeconds(5));
+    Assert.AreEqual(20, claimedOriginal);
+
+    // Leg A's separate dust top-up claim, ALSO granted early via its own exact-covering deposit —
+    // this is the second, independent ClaimAsync call that must not be settled separately.
+    var topUpClaimTask = ledger.ClaimAsync(requested: 0.10m, minClaimable: 0.10m);
+    ledger.Deposit(0.10m);
+    var claimedTopUp = await topUpClaimTask.WaitAsync(TimeSpan.FromSeconds(5));
+    Assert.AreEqual(0.10m, claimedTopUp);
+
+    // Leg A fully spends everything it claimed (both the original amount and the top-up), the
+    // correct fix, per ClaimAndPlaceBuy's own remarks: ONE Settle call, claimed = sum of both.
+    ledger.Settle(claimedOriginal + claimedTopUp, spent: 20.10m);
+
+    // An entirely unrelated leg, still pending when final reconciliation runs.
+    var otherLegTask = ledger.ClaimAsync(requested: 5, minClaimable: 1);
+
+    // The true account balance has exactly enough for this other leg — nothing left over from Leg
+    // A (it spent every cent it claimed), nothing missing either.
+    ledger.Complete(actualAvailable: 5);
+
+    var claimedOtherLeg = await otherLegTask.WaitAsync(TimeSpan.FromSeconds(5));
+
+    // Under the reverted-and-fixed bug (settling only the original claim, with the top-up's cost
+    // subtracted from `spent` instead of added to `claimed`), Leg A's Settle call would leave 0.10
+    // permanently stuck in _inFlight, and Complete would compute _available as 5 - 0.10 = 4.90 —
+    // short of the 5 requested, so this claim would fall into the proportional-split branch and
+    // receive only 4.90 instead of its full, genuinely-available 5.
+    Assert.AreEqual(5, claimedOtherLeg);
+  }
 }
