@@ -159,9 +159,17 @@ public class RebalancingService : IRebalancingService
   /// <param name="orderReq"></param>
   /// <param name="source"></param>
   /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
-  /// <returns>The placed (and, where possible, ended) order(s).</returns>
-  private async Task<OrderDto[]> PlaceAndVerifyOrder(
-    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel)
+  /// <param name="ledger">
+  /// <inheritdoc cref="PlaceLimitThenFallback" path="/param[@name='ledger']"/> Ignored outside the
+  /// limit-then-fallback path (a plain market order never leaves a dust remainder to top up).
+  /// </param>
+  /// <returns>
+  /// The placed (and, where possible, ended) order(s), plus whatever extra was claimed from
+  /// <paramref name="ledger"/> to round a buy-side dust remainder up to the exchange minimum
+  /// (always 0 unless that happened — see <see cref="PlaceLimitThenFallback"/>).
+  /// </returns>
+  private async Task<(OrderDto[] Orders, decimal ToppedUpFullCost)> PlaceAndVerifyOrder(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel, BudgetLedger? ledger = null)
   {
     if (orderReq.Type != OrderType.Limit)
     {
@@ -174,12 +182,12 @@ public class RebalancingService : IRebalancingService
 
       if (marketAmount is decimal amount
         && !await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, amount))
-        return [];
+        return ([], 0);
 
-      return [await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)];
+      return ([await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)], 0);
     }
 
-    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source);
+    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source, ledger);
   }
 
   /// <summary>
@@ -233,12 +241,23 @@ public class RebalancingService : IRebalancingService
   /// fully fill in time — cancels it and places a plain <see cref="OrderType.Market"/> order for
   /// exactly the remaining amount, so the leg always completes.
   /// </summary>
+  /// <param name="ledger">
+  /// Shared batch budget, used only for a <see cref="OrderSide.Buy"/> dust remainder that falls
+  /// under the exchange minimum: rather than dropping it outright, an extra top-up claim is made
+  /// so the fallback order can be rounded up to the exchange minimum instead. Pass
+  /// <see langword="null"/> to always drop such a remainder instead (e.g. for sells, which already
+  /// have their own full-liquidation escape hatch and need no extra funds to use it).
+  /// </param>
   /// <returns>
-  /// A single-element array if the limit order filled outright, or a two-element array
-  /// [limit leg (<see cref="OrderDto.IsSuperseded"/> = true), market fallback leg] otherwise.
+  /// <c>Orders</c>: a single-element array if the limit order filled outright, or a two-element
+  /// array [limit leg (<see cref="OrderDto.IsSuperseded"/> = true), market fallback leg] otherwise.
+  /// <c>ToppedUpFullCost</c>: whatever extra was claimed from <paramref name="ledger"/> to fund a
+  /// buy-side dust top-up (0 unless that happened) — the caller must its own <see cref="BudgetLedger.Settle"/>
+  /// bookkeeping to avoid double-counting this amount, since it was claimed (and will be settled)
+  /// independently of the caller's own claim for this leg.
   /// </returns>
-  private async Task<OrderDto[]> PlaceLimitThenFallback(
-    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source)
+  private async Task<(OrderDto[] Orders, decimal ToppedUpFullCost)> PlaceLimitThenFallback(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, BudgetLedger? ledger)
   {
     decimal limitPrice;
 
@@ -260,7 +279,7 @@ public class RebalancingService : IRebalancingService
       var marketOrder = await PlaceAndVerifySingleOrder(
         exchange, credentials, ToMarketOrder(orderReq), source, cancel: true);
 
-      return [marketOrder];
+      return ([marketOrder], 0);
     }
 
     // Honor decimals precision for the amount of this asset — a limit order (unlike a market
@@ -276,12 +295,12 @@ public class RebalancingService : IRebalancingService
         : 0;
 
     if (limitAmount <= 0)
-      return [];
+      return ([], 0);
 
     // Checked here, right after Amount is finalized, since that's the only point this service
     // knows the exact base-asset quantity a limit order will actually request.
     if (!await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, limitAmount))
-      return [];
+      return ([], 0);
 
     var limitReq = new OrderReqDto()
     {
@@ -302,7 +321,7 @@ public class RebalancingService : IRebalancingService
     // was ever superseded, and a market order for the same amount would fail for the same reason,
     // so there's nothing to gain from attempting it.
     if (limitOrder.Status is OrderStatus.Filled or OrderStatus.Failed || limitOrder.AmountRemaining <= 0)
-      return [limitOrder];
+      return ([limitOrder], 0);
 
     limitOrder.IsSuperseded = true;
 
@@ -312,41 +331,66 @@ public class RebalancingService : IRebalancingService
     var remainingAmountQuote = limitOrder.AmountRemaining * limitPrice;
 
     OrderReqDto fallbackReq;
+    var toppedUpFullCost = 0m;
 
     // Mirror the dust-prevention branch in SellOveragesAndVerify: a remainder below the exchange's
     // minimum order size would get rejected as an AmountQuote-based order, but exchanges commonly
-    // still allow a full-position liquidation by exact (asset-decimals-rounded) Amount. This only
-    // applies to sells — a dust buy remainder has no such escape hatch (there's nothing existing
-    // to fully acquire), so it's simply dropped.
+    // still allow a full-position liquidation by exact (asset-decimals-rounded) Amount. Sells use
+    // that escape hatch directly (no extra funds needed to sell what's already held); a buy has
+    // nothing to fully acquire, so it can only be rescued by topping the remainder up to the
+    // exchange minimum with a small extra claim against the shared batch budget, if one was given.
     if (remainingAmountQuote < exchange.MinOrderSizeInQuote)
     {
       if (orderReq.Side != OrderSide.Sell)
       {
+        var toppedUpAmountQuote = await TryClaimDustTopUp(exchange, credentials, orderReq.Market, ledger, remainingAmountQuote);
+
+        if (toppedUpAmountQuote is null)
+        {
+          _logger.LogInformation(
+            "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
+            orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
+
+          return ([limitOrder], 0);
+        }
+
+        var (toppedUpAmountQuoteValue, fullCost) = toppedUpAmountQuote.Value;
+
+        toppedUpFullCost = fullCost;
+
         _logger.LogInformation(
-          "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
-          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
+          "Rounding up unfilled buy remainder for market {Market}: {RemainingAmountQuote} topped up to the exchange minimum of {MinOrderSizeInQuote} using {ToppedUpFullCost} claimed from the batch budget.",
+          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote, toppedUpFullCost);
 
-        return [limitOrder];
+        fallbackReq = new OrderReqDto()
+        {
+          Market = orderReq.Market,
+          Side = orderReq.Side,
+          Type = OrderType.Market,
+          AmountQuote = toppedUpAmountQuoteValue,
+        };
       }
-
-      // Honor decimals precision for the amount of this asset.
-      var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
-      var decimals = assetData?.Decimals;
-
-      var dustAmount = decimals is not int
-        ? limitOrder.AmountRemaining
-        : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
-
-      if (dustAmount <= 0)
-        return [limitOrder];
-
-      fallbackReq = new OrderReqDto()
+      else
       {
-        Market = orderReq.Market,
-        Side = OrderSide.Sell,
-        Type = OrderType.Market,
-        Amount = dustAmount,
-      };
+        // Honor decimals precision for the amount of this asset.
+        var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
+        var decimals = assetData?.Decimals;
+
+        var dustAmount = decimals is not int
+          ? limitOrder.AmountRemaining
+          : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
+
+        if (dustAmount <= 0)
+          return ([limitOrder], 0);
+
+        fallbackReq = new OrderReqDto()
+        {
+          Market = orderReq.Market,
+          Side = OrderSide.Sell,
+          Type = OrderType.Market,
+          Amount = dustAmount,
+        };
+      }
     }
     else
     {
@@ -361,7 +405,42 @@ public class RebalancingService : IRebalancingService
 
     var fallbackOrder = await PlaceAndVerifySingleOrder(exchange, credentials, fallbackReq, source, cancel: true);
 
-    return [limitOrder, fallbackOrder];
+    return ([limitOrder, fallbackOrder], toppedUpFullCost);
+  }
+
+  /// <summary>
+  /// Attempts to claim just enough from <paramref name="ledger"/> (in full-cost, fee-inclusive
+  /// units — see <see cref="ClaimAndPlaceBuy"/>) to round <paramref name="remainingAmountQuote"/>
+  /// up to <see cref="IExchange.MinOrderSizeInQuote"/>, rather than leaving a buy-side dust
+  /// remainder unrescuable purely because it happened to land under the exchange floor. All-or-
+  /// nothing: a claim that can't fully close the gap wouldn't clear the minimum anyway, so it's
+  /// worthless — <see cref="BudgetLedger.ClaimAsync"/> is called with <c>minClaimable</c> equal to
+  /// the full ask, guaranteeing a non-zero result would actually close it.
+  /// </summary>
+  /// <returns>
+  /// <see langword="null"/> if no <paramref name="ledger"/> was given or nothing could be claimed
+  /// (the caller should drop the remainder in that case); otherwise the topped-up order's
+  /// <c>AmountQuote</c> and the full-cost amount actually claimed for it.
+  /// </returns>
+  private async Task<(decimal AmountQuote, decimal FullCost)?> TryClaimDustTopUp(
+    IExchange exchange, ExchangeCredentials credentials, MarketReqDto market, BudgetLedger? ledger, decimal remainingAmountQuote)
+  {
+    if (ledger is null)
+      return null;
+
+    var takerFee = await exchange.GetTakerFee(credentials, market);
+
+    var topUpAmountQuote = exchange.MinOrderSizeInQuote - remainingAmountQuote;
+    var topUpFullCost = topUpAmountQuote * (1 + takerFee);
+
+    var claimedFullCost = await ledger.ClaimAsync(topUpFullCost, minClaimable: topUpFullCost);
+
+    if (claimedFullCost <= 0)
+      return null;
+
+    var toppedUpAmountQuote = RoundAmountQuote(remainingAmountQuote + topUpAmountQuote, OrderSide.Buy);
+
+    return (toppedUpAmountQuote, claimedFullCost);
   }
 
   /// <summary>
@@ -639,7 +718,9 @@ public class RebalancingService : IRebalancingService
     var sellTasks = sellOrders
       .Select(async sellOrder =>
       {
-        var results = await PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true);
+        // Sells never top up a dust remainder (no ledger passed) — they already have their own
+        // full-liquidation escape hatch and need no extra funds to use it.
+        var (results, _) = await PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true);
 
         // Net proceeds actually settled for this leg, exchange-reported on the resolved order(s)
         // — authoritative for this leg specifically, not an estimate. A limit-then-fallback pair
@@ -718,6 +799,7 @@ public class RebalancingService : IRebalancingService
     var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + takerFee), OrderSide.Buy);
 
     OrderDto[] results;
+    var toppedUpFullCost = 0m;
 
     if (claimedTradeValue < exchange.MinOrderSizeInQuote)
     {
@@ -731,12 +813,15 @@ public class RebalancingService : IRebalancingService
     {
       buyOrder.AmountQuote = claimedTradeValue;
 
-      results = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
+      (results, toppedUpFullCost) = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false, ledger);
     }
 
     // Whatever wasn't actually spent (2-decimal rounding remainder, a dropped/failed leg, or a
     // partial fill) goes back to the pool rather than evaporating from the ledger unspent.
-    var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid);
+    // toppedUpFullCost is subtracted since that portion of results' cost was funded by a separate,
+    // independent claim/settle pair made directly against the ledger inside PlaceLimitThenFallback
+    // (see its own remarks) — counting it here too would settle the same money twice.
+    var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid) - toppedUpFullCost;
     ledger.Settle(claimedFullCost, actuallySpent);
 
     return results;
