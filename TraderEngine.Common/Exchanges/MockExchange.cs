@@ -48,6 +48,16 @@ public class MockExchange : IExchange
   }
 
   /// <summary>
+  /// Always returns the fixed <see cref="TakerFee"/> configured for this test double, regardless
+  /// of <paramref name="market"/> — unlike the real exchange, a mock has no notion of per-market
+  /// fee categories.
+  /// </summary>
+  public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return Task.FromResult(TakerFee);
+  }
+
+  /// <summary>
   /// Null, if no initial <see cref="Balance"/> was given.
   /// </summary>
   /// <returns></returns>
@@ -202,15 +212,31 @@ public class SimExchange : MockExchange, IExchange
   /// <summary>
   /// <inheritdoc cref="IExchange"/>
   /// </summary>
-  public SimExchange(IExchange exchangeService, Balance curBalance)
+  /// <param name="takerFee">
+  /// Resolved ahead of time by <see cref="CreateAsync"/> (via <paramref name="exchangeService"/>'s
+  /// own <see cref="IExchange.GetTakerFee"/>) since a constructor can't itself await it.
+  /// </param>
+  public SimExchange(IExchange exchangeService, Balance curBalance, decimal takerFee)
     : base(
       exchangeService.QuoteSymbol,
       exchangeService.MinOrderSizeInQuote,
       exchangeService.MakerFee,
-      exchangeService.TakerFee,
+      takerFee,
       curBalance)
   {
     _instance = exchangeService;
+  }
+
+  /// <summary>
+  /// Resolves <paramref name="exchangeService"/>'s current (account-wide default) taker fee before
+  /// constructing the simulator, so a dry-run's estimated fees reflect the real, live fee rather
+  /// than a guess.
+  /// </summary>
+  public static async Task<SimExchange> CreateAsync(IExchange exchangeService, ExchangeCredentials credentials, Balance curBalance)
+  {
+    var takerFee = await exchangeService.GetTakerFee(credentials);
+
+    return new SimExchange(exchangeService, curBalance, takerFee);
   }
 
   public async Task ProcessOrders(ExchangeCredentials credentials, IEnumerable<OrderDto> orders)

@@ -159,9 +159,20 @@ public class RebalancingService : IRebalancingService
   /// <param name="orderReq"></param>
   /// <param name="source"></param>
   /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
-  /// <returns>The placed (and, where possible, ended) order(s).</returns>
-  private async Task<OrderDto[]> PlaceAndVerifyOrder(
-    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel)
+  /// <param name="claimTopUp">
+  /// <inheritdoc cref="PlaceLimitThenFallback" path="/param[@name='claimTopUp']"/> Ignored outside
+  /// the limit-then-fallback path (a plain market order never leaves a dust remainder to top up).
+  /// </param>
+  /// <returns>
+  /// The placed (and, where possible, ended) order(s), plus whatever extra was claimed via
+  /// <paramref name="claimTopUp"/> to round a buy-side dust remainder up to the exchange minimum
+  /// (always 0 unless that happened — see <see cref="PlaceLimitThenFallback"/>). The caller is
+  /// responsible for folding this back into its own claim/settle accounting — see
+  /// <see cref="ClaimAndPlaceBuy"/> for the only caller that passes a non-null <paramref name="claimTopUp"/>.
+  /// </returns>
+  private async Task<(OrderDto[] Orders, decimal ToppedUpFullCost)> PlaceAndVerifyOrder(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel,
+    Func<decimal, decimal, Task<decimal>>? claimTopUp = null)
   {
     if (orderReq.Type != OrderType.Limit)
     {
@@ -174,12 +185,12 @@ public class RebalancingService : IRebalancingService
 
       if (marketAmount is decimal amount
         && !await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, amount))
-        return [];
+        return ([], 0);
 
-      return [await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)];
+      return ([await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)], 0);
     }
 
-    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source);
+    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source, claimTopUp);
   }
 
   /// <summary>
@@ -233,12 +244,29 @@ public class RebalancingService : IRebalancingService
   /// fully fill in time — cancels it and places a plain <see cref="OrderType.Market"/> order for
   /// exactly the remaining amount, so the leg always completes.
   /// </summary>
+  /// <param name="claimTopUp">
+  /// Requests up to <c>requested</c> more (full-cost, fee-inclusive units) from the caller's own
+  /// budget, granting it only if at least <c>minClaimable</c> can be given — mirroring
+  /// <see cref="BudgetLedger.ClaimAsync"/>'s own contract, but as a narrow capability rather than
+  /// exposing the ledger itself here, so this method's only interaction with the caller's budget is
+  /// "ask for more, get told how much" — the caller (<see cref="ClaimAndPlaceBuy"/>, the only one
+  /// that passes a non-null delegate) remains the sole owner of the actual claim/settle bookkeeping.
+  /// Used only for a <see cref="OrderSide.Buy"/> dust remainder that falls under the exchange
+  /// minimum, to round the fallback order up to the exchange minimum instead of dropping it. Pass
+  /// <see langword="null"/> to always drop such a remainder instead (e.g. for sells, which already
+  /// have their own full-liquidation escape hatch and need no extra funds to use it).
+  /// </param>
   /// <returns>
-  /// A single-element array if the limit order filled outright, or a two-element array
-  /// [limit leg (<see cref="OrderDto.IsSuperseded"/> = true), market fallback leg] otherwise.
+  /// <c>Orders</c>: a single-element array if the limit order filled outright, or a two-element
+  /// array [limit leg (<see cref="OrderDto.IsSuperseded"/> = true), market fallback leg] otherwise.
+  /// <c>ToppedUpFullCost</c>: whatever extra was granted via <paramref name="claimTopUp"/> to fund a
+  /// buy-side dust top-up (0 unless that happened) — the caller must fold this into its own claim
+  /// total before settling, so the ledger's <c>_inFlight</c> tracking for that extra claim actually
+  /// gets released (see <see cref="ClaimAndPlaceBuy"/>'s own remarks).
   /// </returns>
-  private async Task<OrderDto[]> PlaceLimitThenFallback(
-    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source)
+  private async Task<(OrderDto[] Orders, decimal ToppedUpFullCost)> PlaceLimitThenFallback(
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source,
+    Func<decimal, decimal, Task<decimal>>? claimTopUp)
   {
     decimal limitPrice;
 
@@ -260,7 +288,7 @@ public class RebalancingService : IRebalancingService
       var marketOrder = await PlaceAndVerifySingleOrder(
         exchange, credentials, ToMarketOrder(orderReq), source, cancel: true);
 
-      return [marketOrder];
+      return ([marketOrder], 0);
     }
 
     // Honor decimals precision for the amount of this asset — a limit order (unlike a market
@@ -276,12 +304,12 @@ public class RebalancingService : IRebalancingService
         : 0;
 
     if (limitAmount <= 0)
-      return [];
+      return ([], 0);
 
     // Checked here, right after Amount is finalized, since that's the only point this service
     // knows the exact base-asset quantity a limit order will actually request.
     if (!await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, limitAmount))
-      return [];
+      return ([], 0);
 
     var limitReq = new OrderReqDto()
     {
@@ -302,7 +330,7 @@ public class RebalancingService : IRebalancingService
     // was ever superseded, and a market order for the same amount would fail for the same reason,
     // so there's nothing to gain from attempting it.
     if (limitOrder.Status is OrderStatus.Filled or OrderStatus.Failed || limitOrder.AmountRemaining <= 0)
-      return [limitOrder];
+      return ([limitOrder], 0);
 
     limitOrder.IsSuperseded = true;
 
@@ -312,41 +340,66 @@ public class RebalancingService : IRebalancingService
     var remainingAmountQuote = limitOrder.AmountRemaining * limitPrice;
 
     OrderReqDto fallbackReq;
+    var toppedUpFullCost = 0m;
 
     // Mirror the dust-prevention branch in SellOveragesAndVerify: a remainder below the exchange's
     // minimum order size would get rejected as an AmountQuote-based order, but exchanges commonly
-    // still allow a full-position liquidation by exact (asset-decimals-rounded) Amount. This only
-    // applies to sells — a dust buy remainder has no such escape hatch (there's nothing existing
-    // to fully acquire), so it's simply dropped.
+    // still allow a full-position liquidation by exact (asset-decimals-rounded) Amount. Sells use
+    // that escape hatch directly (no extra funds needed to sell what's already held); a buy has
+    // nothing to fully acquire, so it can only be rescued by topping the remainder up to the
+    // exchange minimum with a small extra claim against the shared batch budget, if one was given.
     if (remainingAmountQuote < exchange.MinOrderSizeInQuote)
     {
       if (orderReq.Side != OrderSide.Sell)
       {
+        var toppedUpAmountQuote = await TryClaimDustTopUp(exchange, credentials, orderReq.Market, claimTopUp, remainingAmountQuote);
+
+        if (toppedUpAmountQuote is null)
+        {
+          _logger.LogInformation(
+            "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
+            orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
+
+          return ([limitOrder], 0);
+        }
+
+        var (toppedUpAmountQuoteValue, fullCost) = toppedUpAmountQuote.Value;
+
+        toppedUpFullCost = fullCost;
+
         _logger.LogInformation(
-          "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
-          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
+          "Rounding up unfilled buy remainder for market {Market}: {RemainingAmountQuote} topped up to the exchange minimum of {MinOrderSizeInQuote} using {ToppedUpFullCost} claimed from the batch budget.",
+          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote, toppedUpFullCost);
 
-        return [limitOrder];
+        fallbackReq = new OrderReqDto()
+        {
+          Market = orderReq.Market,
+          Side = orderReq.Side,
+          Type = OrderType.Market,
+          AmountQuote = toppedUpAmountQuoteValue,
+        };
       }
-
-      // Honor decimals precision for the amount of this asset.
-      var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
-      var decimals = assetData?.Decimals;
-
-      var dustAmount = decimals is not int
-        ? limitOrder.AmountRemaining
-        : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
-
-      if (dustAmount <= 0)
-        return [limitOrder];
-
-      fallbackReq = new OrderReqDto()
+      else
       {
-        Market = orderReq.Market,
-        Side = OrderSide.Sell,
-        Type = OrderType.Market,
-        Amount = dustAmount,
-      };
+        // Honor decimals precision for the amount of this asset.
+        var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
+        var decimals = assetData?.Decimals;
+
+        var dustAmount = decimals is not int
+          ? limitOrder.AmountRemaining
+          : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
+
+        if (dustAmount <= 0)
+          return ([limitOrder], 0);
+
+        fallbackReq = new OrderReqDto()
+        {
+          Market = orderReq.Market,
+          Side = OrderSide.Sell,
+          Type = OrderType.Market,
+          Amount = dustAmount,
+        };
+      }
     }
     else
     {
@@ -361,7 +414,43 @@ public class RebalancingService : IRebalancingService
 
     var fallbackOrder = await PlaceAndVerifySingleOrder(exchange, credentials, fallbackReq, source, cancel: true);
 
-    return [limitOrder, fallbackOrder];
+    return ([limitOrder, fallbackOrder], toppedUpFullCost);
+  }
+
+  /// <summary>
+  /// Attempts to claim (via <paramref name="claimTopUp"/>, in full-cost, fee-inclusive units — see
+  /// <see cref="ClaimAndPlaceBuy"/>) just enough to round <paramref name="remainingAmountQuote"/>
+  /// up to <see cref="IExchange.MinOrderSizeInQuote"/>, rather than leaving a buy-side dust
+  /// remainder unrescuable purely because it happened to land under the exchange floor. All-or-
+  /// nothing: a claim that can't fully close the gap wouldn't clear the minimum anyway, so it's
+  /// worthless — <paramref name="claimTopUp"/> is called with its <c>minClaimable</c> argument
+  /// equal to the full ask, guaranteeing a non-zero result would actually close it.
+  /// </summary>
+  /// <returns>
+  /// <see langword="null"/> if no <paramref name="claimTopUp"/> was given or nothing could be
+  /// claimed (the caller should drop the remainder in that case); otherwise the topped-up order's
+  /// <c>AmountQuote</c> and the full-cost amount actually claimed for it.
+  /// </returns>
+  private async Task<(decimal AmountQuote, decimal FullCost)?> TryClaimDustTopUp(
+    IExchange exchange, ExchangeCredentials credentials, MarketReqDto market,
+    Func<decimal, decimal, Task<decimal>>? claimTopUp, decimal remainingAmountQuote)
+  {
+    if (claimTopUp is null)
+      return null;
+
+    var takerFee = await exchange.GetTakerFee(credentials, market);
+
+    var topUpAmountQuote = exchange.MinOrderSizeInQuote - remainingAmountQuote;
+    var topUpFullCost = topUpAmountQuote * (1 + takerFee);
+
+    var claimedFullCost = await claimTopUp(topUpFullCost, topUpFullCost);
+
+    if (claimedFullCost <= 0)
+      return null;
+
+    var toppedUpAmountQuote = RoundAmountQuote(remainingAmountQuote + topUpAmountQuote, OrderSide.Buy);
+
+    return (toppedUpAmountQuote, claimedFullCost);
   }
 
   /// <summary>
@@ -639,7 +728,9 @@ public class RebalancingService : IRebalancingService
     var sellTasks = sellOrders
       .Select(async sellOrder =>
       {
-        var results = await PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true);
+        // Sells never top up a dust remainder (no ledger passed) — they already have their own
+        // full-liquidation escape hatch and need no extra funds to use it.
+        var (results, _) = await PlaceAndVerifyOrder(exchange, credentials, sellOrder, source, cancel: true);
 
         // Net proceeds actually settled for this leg, exchange-reported on the resolved order(s)
         // — authoritative for this leg specifically, not an estimate. A limit-then-fallback pair
@@ -699,9 +790,14 @@ public class RebalancingService : IRebalancingService
     // Bitvavo charges a buy order's fee in quote currency IN ADDITION to its trade value, so the
     // ledger is claimed against (and settled in) full-cost units (trade value + this leg's own
     // fee), not trade value alone — otherwise a leg's own fee would silently draw down whatever's
-    // left for legs claiming after it, rather than being reserved out of its own share.
-    var fullCostRequested = tradeValueTarget * (1 + exchange.TakerFee);
-    var minFullCost = exchange.MinOrderSizeInQuote * (1 + exchange.TakerFee);
+    // left for legs claiming after it, rather than being reserved out of its own share. Fetched
+    // per-market rather than trusting one flat account-wide rate — Bitvavo can place different
+    // markets under different fee categories, so the actual rate for this specific market may
+    // differ from the account's default.
+    var takerFee = await exchange.GetTakerFee(credentials, buyOrder.Market);
+
+    var fullCostRequested = tradeValueTarget * (1 + takerFee);
+    var minFullCost = exchange.MinOrderSizeInQuote * (1 + takerFee);
 
     var claimedFullCost = await ledger.ClaimAsync(fullCostRequested, minFullCost);
 
@@ -710,9 +806,10 @@ public class RebalancingService : IRebalancingService
 
     // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never reclaim
     // back into the fee headroom already reserved above.
-    var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + exchange.TakerFee), OrderSide.Buy);
+    var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + takerFee), OrderSide.Buy);
 
     OrderDto[] results;
+    var toppedUpFullCost = 0m;
 
     if (claimedTradeValue < exchange.MinOrderSizeInQuote)
     {
@@ -726,13 +823,28 @@ public class RebalancingService : IRebalancingService
     {
       buyOrder.AmountQuote = claimedTradeValue;
 
-      results = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false);
+      // PlaceLimitThenFallback never calls ledger.ClaimAsync/Settle itself — it only has the
+      // narrow "ask for more, get told how much" capability below, so this remains the ONE place
+      // that owns this leg's entire claim/settle lifecycle, top-up included.
+      (results, toppedUpFullCost) = await PlaceAndVerifyOrder(
+        exchange, credentials, buyOrder, source, cancel: false,
+        claimTopUp: ledger.ClaimAsync);
     }
 
     // Whatever wasn't actually spent (2-decimal rounding remainder, a dropped/failed leg, or a
-    // partial fill) goes back to the pool rather than evaporating from the ledger unspent.
+    // partial fill) goes back to the pool rather than evaporating from the ledger unspent. Folding
+    // toppedUpFullCost into the claimed total here (rather than settling it separately) is what
+    // makes this a single claim/settle pair for the whole leg: ledger.ClaimAsync was called twice
+    // (once here, once inside PlaceLimitThenFallback's dust top-up, if any), each incrementing
+    // _inFlight by its own amount — a single Settle call using their SUM is what correctly reverses
+    // both increments in one shot. Settling only claimedFullCost here (or subtracting toppedUpFullCost
+    // from actuallySpent instead, as an earlier version of this code did) would leave the top-up's
+    // own _inFlight contribution permanently stuck, silently under-crediting the pool for whatever
+    // else was still pending when BudgetLedger.Complete ran — and would also mishandle a top-up
+    // order that failed outright, since actuallySpent (computed from real order fills, not from a
+    // subtraction) already reflects that correctly with no extra branching needed here.
     var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid);
-    ledger.Settle(claimedFullCost, actuallySpent);
+    ledger.Settle(claimedFullCost + toppedUpFullCost, actuallySpent);
 
     return results;
   }
@@ -766,7 +878,7 @@ public class RebalancingService : IRebalancingService
       var balanceResult = await exchange.GetBalance(credentials);
 
       if (balanceResult.Value is { } balance)
-        actualAvailable = balance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+        actualAvailable = balance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
     }
     catch (Exception ex)
     {
@@ -820,7 +932,7 @@ public class RebalancingService : IRebalancingService
     var sellOrders = PrepareSellOrders(exchange, BuildSellOrdersFromDrifts(exchange, credentials, allocDrifts, config));
     var buyOrders = PrepareBuyOrders(exchange, BuildBuyOrdersFromDrifts(allocDrifts, config));
 
-    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
     return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
   }
@@ -841,7 +953,7 @@ public class RebalancingService : IRebalancingService
     var curBalanceResult = await exchange.GetBalance(credentials);
     var curBalance = curBalanceResult.Value!;
 
-    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
     return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
   }

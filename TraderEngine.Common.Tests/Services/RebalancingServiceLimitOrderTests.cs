@@ -291,12 +291,85 @@ public class RebalancingServiceLimitOrderTests
   }
 
   [TestMethod]
-  public async Task Rebalance_LimitBuyCancelledUnfilled_DustRemainder_IsDropped()
+  public async Task Rebalance_LimitBuyCancelledUnfilled_DustRemainder_IsToppedUpToExchangeMinimum()
   {
     // Arrange
     // A dust buy remainder has no "liquidate the position" escape hatch the way a sell does —
-    // there's nothing existing to fully acquire — so it's simply dropped rather than attempted.
+    // there's nothing existing to fully acquire — so instead it's rounded up to the exchange
+    // minimum using a small extra claim against the shared batch budget (BudgetLedger), rather
+    // than dropped outright. The order-list Rebalance overload seeds that budget from
+    // ScriptedExchange's default (effectively unlimited) balance, so the claim succeeds here.
     var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1 };
+    exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
+
+    exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
+    {
+      Id = "limit-1",
+      Market = _btc,
+      Side = OrderSide.Buy,
+      Type = OrderType.Limit,
+      Status = OrderStatus.New,
+      Amount = 1,
+      AmountFilled = 0,
+      AmountRemaining = 1,
+    }));
+
+    exchange.EnqueueGetOrderResponse(new OrderDto
+    {
+      Id = "limit-1",
+      Market = _btc,
+      Side = OrderSide.Buy,
+      Type = OrderType.Limit,
+      Status = OrderStatus.Canceled,
+      Amount = 1,
+      AmountFilled = 0.999m,
+      AmountRemaining = 0.001m,
+    });
+
+    // Remainder is 0.001 BTC @ 101 ask = 0.101 EUR — below MinOrderSizeInQuote (1) — so the
+    // fallback should be topped up to exactly the exchange minimum (0.101 + 0.899 top-up = 1).
+    exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
+    {
+      Id = "topup-buy-1",
+      Market = _btc,
+      Side = OrderSide.Buy,
+      Type = OrderType.Market,
+      Status = OrderStatus.Filled,
+      AmountQuote = 1,
+      AmountQuoteFilled = 1,
+      AmountQuoteRemaining = 0,
+    }));
+
+    var orders = new[]
+    {
+      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Limit, AmountQuote = 100 },
+    };
+
+    // Act
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert
+    Assert.AreEqual(2, results.Length);
+    Assert.IsTrue(results[0].IsSuperseded);
+    Assert.IsFalse(results[1].IsSuperseded);
+
+    Assert.AreEqual(2, exchange.NewOrderCalls.Count);
+    Assert.AreEqual(OrderType.Market, exchange.NewOrderCalls[1].Type);
+    Assert.AreEqual(1m, exchange.NewOrderCalls[1].AmountQuote);
+  }
+
+  [TestMethod]
+  public async Task Rebalance_LimitBuyCancelledUnfilled_DustRemainder_DroppedWhenBudgetCantCoverTopUp()
+  {
+    // Arrange
+    // Same shape as the top-up test above, but the batch budget covers the original €100 claim
+    // exactly and nothing more, so there's no leftover for the top-up claim to draw on — it's
+    // all-or-nothing (a partial top-up wouldn't clear the exchange minimum anyway), so it should
+    // still be dropped, not attempted with an amount the exchange would reject.
+    var balance = new Balance("EUR");
+    balance.TryAddAllocation(new Allocation(new MarketReqDto("EUR", "EUR"), price: 1, amount: 100m));
+
+    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1, BalanceResponse = balance };
     exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
 
     exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto

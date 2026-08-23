@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -27,7 +28,13 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   public string QuoteSymbol { get; } = "EUR";
   public decimal MinOrderSizeInQuote { get; } = 5;
   public decimal MakerFee { get; } = .0015m;
-  public decimal TakerFee { get; } = .0025m;
+
+  /// <summary>
+  /// Last-resort fallback only, used when a live <see cref="GetTakerFee"/> call fails outright
+  /// (network/API error) — Bitvavo's documented default Category A taker fee. Never used as a
+  /// substitute for a real fee lookup in the normal path.
+  /// </summary>
+  private const decimal _fallbackTakerFee = .0025m;
 
   public BitvavoExchange(
     ILogger<BitvavoExchange> logger,
@@ -410,6 +417,61 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
 
     return ApiMapper.MapAssetData(result);
+  }
+
+  // Account-specific (fee tier depends on the account's own 30-day trading volume), so this must
+  // never go in the shared _publicDataCache — that cache is a DI singleton shared across every
+  // caller's credentials, and per its own eligibility bar is reserved for public, account-agnostic
+  // data only (see GetMarket/GetAsset above). BitvavoExchange itself is DI-registered Scoped (one
+  // instance per request/rebalance run), so a plain per-instance cache is inherently scoped to one
+  // account already, with no separate expiry needed — the instance itself is short-lived, and a fee
+  // tier changes at most once per day from Bitvavo's own 30-day rolling volume calculation, so
+  // staleness within a single rebalance run's lifetime is a non-issue.
+  private readonly ConcurrentDictionary<string, Task<decimal>> _takerFeeCache = new();
+
+  public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    var cacheKey = market?.ToString() ?? string.Empty;
+
+    return _takerFeeCache.GetOrAdd(cacheKey, _ => FetchTakerFeeAsync(credentials, market));
+  }
+
+  private async Task<decimal> FetchTakerFeeAsync(ExchangeCredentials credentials, MarketReqDto? market)
+  {
+    var requestPath = market is null ? "account/fees" : $"account/fees?market={market}";
+
+    try
+    {
+      using var request = CreateRequestMsg(credentials, HttpMethod.Get, requestPath);
+
+      using var response = await _httpClient.SendAsync(request);
+
+      if (!response.IsSuccessStatusCode)
+      {
+        _logger.LogError(
+          "Failed to get account fees from Bitvavo for market {Market}; falling back to the documented default taker fee. {Url} returned {Code} {Reason} with response: {Response}",
+          market?.ToString().SanitizeForLog() ?? "(account default)", request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+
+        return _fallbackTakerFee;
+      }
+
+      var result = await response.Content.DeserializeAsync<BitvavoFeesDto>();
+
+      if (result is null)
+      {
+        _logger.LogError("Bitvavo account fees response for market {Market} was empty or null; falling back to the documented default taker fee.", market?.ToString().SanitizeForLog() ?? "(account default)");
+
+        return _fallbackTakerFee;
+      }
+
+      return decimal.Parse(result.Taker);
+    }
+    catch (Exception ex)
+    {
+      _logger.LogError(ex, "Failed to fetch account fees from Bitvavo for market {Market}; falling back to the documented default taker fee.", market?.ToString().SanitizeForLog() ?? "(account default)");
+
+      return _fallbackTakerFee;
+    }
   }
 
   public async Task<decimal> GetPrice(ExchangeCredentials credentials, MarketReqDto market)

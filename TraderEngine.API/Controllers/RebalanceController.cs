@@ -79,7 +79,7 @@ public class RebalanceController : ControllerBase
     var curBalanceDto = CommonMapper.MapBalance(balance);
 
     // Create mock exchange.
-    var simExchange = new SimExchange(exchange, balance);
+    var simExchange = await SimExchange.CreateAsync(exchange, credentials, balance);
 
     // Await for the task to complete.
     var targetAllocs = await targetAllocsTask;
