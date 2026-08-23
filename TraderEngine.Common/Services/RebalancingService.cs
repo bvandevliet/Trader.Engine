@@ -699,9 +699,14 @@ public class RebalancingService : IRebalancingService
     // Bitvavo charges a buy order's fee in quote currency IN ADDITION to its trade value, so the
     // ledger is claimed against (and settled in) full-cost units (trade value + this leg's own
     // fee), not trade value alone — otherwise a leg's own fee would silently draw down whatever's
-    // left for legs claiming after it, rather than being reserved out of its own share.
-    var fullCostRequested = tradeValueTarget * (1 + exchange.TakerFee);
-    var minFullCost = exchange.MinOrderSizeInQuote * (1 + exchange.TakerFee);
+    // left for legs claiming after it, rather than being reserved out of its own share. Fetched
+    // per-market rather than trusting one flat account-wide rate — Bitvavo can place different
+    // markets under different fee categories, so the actual rate for this specific market may
+    // differ from the account's default.
+    var takerFee = await exchange.GetTakerFee(credentials, buyOrder.Market);
+
+    var fullCostRequested = tradeValueTarget * (1 + takerFee);
+    var minFullCost = exchange.MinOrderSizeInQuote * (1 + takerFee);
 
     var claimedFullCost = await ledger.ClaimAsync(fullCostRequested, minFullCost);
 
@@ -710,7 +715,7 @@ public class RebalancingService : IRebalancingService
 
     // Rounds toward zero (Math.Floor for a buy), so this can only shrink further, never reclaim
     // back into the fee headroom already reserved above.
-    var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + exchange.TakerFee), OrderSide.Buy);
+    var claimedTradeValue = RoundAmountQuote(claimedFullCost / (1 + takerFee), OrderSide.Buy);
 
     OrderDto[] results;
 
@@ -766,7 +771,7 @@ public class RebalancingService : IRebalancingService
       var balanceResult = await exchange.GetBalance(credentials);
 
       if (balanceResult.Value is { } balance)
-        actualAvailable = balance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+        actualAvailable = balance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
     }
     catch (Exception ex)
     {
@@ -820,7 +825,7 @@ public class RebalancingService : IRebalancingService
     var sellOrders = PrepareSellOrders(exchange, BuildSellOrdersFromDrifts(exchange, credentials, allocDrifts, config));
     var buyOrders = PrepareBuyOrders(exchange, BuildBuyOrdersFromDrifts(allocDrifts, config));
 
-    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
     return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
   }
@@ -841,7 +846,7 @@ public class RebalancingService : IRebalancingService
     var curBalanceResult = await exchange.GetBalance(credentials);
     var curBalance = curBalanceResult.Value!;
 
-    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - exchange.TakerFee);
+    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
     return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
   }

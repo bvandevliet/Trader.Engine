@@ -17,7 +17,13 @@ public interface IExchange
 
   public decimal MakerFee { get; }
 
-  public decimal TakerFee { get; }
+  /// <summary>
+  /// Fetches the taker fee currently in effect for <paramref name="market"/>, or the account's
+  /// default fee when <paramref name="market"/> is <see langword="null"/>. Not a flat constant:
+  /// exchanges commonly place different markets under different fee categories/tiers, so the
+  /// account-wide default doesn't necessarily reflect what a specific market actually charges.
+  /// </summary>
+  public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null);
 
   public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials);
 

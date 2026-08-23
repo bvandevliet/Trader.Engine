@@ -51,6 +51,11 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
 
   public decimal TakerFee => _inner.TakerFee;
 
+  public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return _inner.GetTakerFee(credentials, market);
+  }
+
   public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
   {
     return _inner.GetBalance(credentials);

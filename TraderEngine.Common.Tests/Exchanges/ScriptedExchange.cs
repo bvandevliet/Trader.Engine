@@ -28,6 +28,11 @@ internal sealed class ScriptedExchange : IExchange
 
   public decimal TakerFee { get; init; } = 0;
 
+  public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return Task.FromResult(TakerFee);
+  }
+
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];
 
   private readonly Dictionary<string, decimal> _minOrderSizesInBase = [];
