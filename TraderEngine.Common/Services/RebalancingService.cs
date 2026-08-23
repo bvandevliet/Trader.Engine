@@ -159,17 +159,20 @@ public class RebalancingService : IRebalancingService
   /// <param name="orderReq"></param>
   /// <param name="source"></param>
   /// <param name="cancel"><inheritdoc cref="VerifyOrderEnded" path="/param[@name='cancel']"/></param>
-  /// <param name="ledger">
-  /// <inheritdoc cref="PlaceLimitThenFallback" path="/param[@name='ledger']"/> Ignored outside the
-  /// limit-then-fallback path (a plain market order never leaves a dust remainder to top up).
+  /// <param name="claimTopUp">
+  /// <inheritdoc cref="PlaceLimitThenFallback" path="/param[@name='claimTopUp']"/> Ignored outside
+  /// the limit-then-fallback path (a plain market order never leaves a dust remainder to top up).
   /// </param>
   /// <returns>
-  /// The placed (and, where possible, ended) order(s), plus whatever extra was claimed from
-  /// <paramref name="ledger"/> to round a buy-side dust remainder up to the exchange minimum
-  /// (always 0 unless that happened — see <see cref="PlaceLimitThenFallback"/>).
+  /// The placed (and, where possible, ended) order(s), plus whatever extra was claimed via
+  /// <paramref name="claimTopUp"/> to round a buy-side dust remainder up to the exchange minimum
+  /// (always 0 unless that happened — see <see cref="PlaceLimitThenFallback"/>). The caller is
+  /// responsible for folding this back into its own claim/settle accounting — see
+  /// <see cref="ClaimAndPlaceBuy"/> for the only caller that passes a non-null <paramref name="claimTopUp"/>.
   /// </returns>
   private async Task<(OrderDto[] Orders, decimal ToppedUpFullCost)> PlaceAndVerifyOrder(
-    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel, BudgetLedger? ledger = null)
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, bool cancel,
+    Func<decimal, decimal, Task<decimal>>? claimTopUp = null)
   {
     if (orderReq.Type != OrderType.Limit)
     {
@@ -187,7 +190,7 @@ public class RebalancingService : IRebalancingService
       return ([await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)], 0);
     }
 
-    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source, ledger);
+    return await PlaceLimitThenFallback(exchange, credentials, orderReq, source, claimTopUp);
   }
 
   /// <summary>
@@ -241,23 +244,29 @@ public class RebalancingService : IRebalancingService
   /// fully fill in time — cancels it and places a plain <see cref="OrderType.Market"/> order for
   /// exactly the remaining amount, so the leg always completes.
   /// </summary>
-  /// <param name="ledger">
-  /// Shared batch budget, used only for a <see cref="OrderSide.Buy"/> dust remainder that falls
-  /// under the exchange minimum: rather than dropping it outright, an extra top-up claim is made
-  /// so the fallback order can be rounded up to the exchange minimum instead. Pass
+  /// <param name="claimTopUp">
+  /// Requests up to <c>requested</c> more (full-cost, fee-inclusive units) from the caller's own
+  /// budget, granting it only if at least <c>minClaimable</c> can be given — mirroring
+  /// <see cref="BudgetLedger.ClaimAsync"/>'s own contract, but as a narrow capability rather than
+  /// exposing the ledger itself here, so this method's only interaction with the caller's budget is
+  /// "ask for more, get told how much" — the caller (<see cref="ClaimAndPlaceBuy"/>, the only one
+  /// that passes a non-null delegate) remains the sole owner of the actual claim/settle bookkeeping.
+  /// Used only for a <see cref="OrderSide.Buy"/> dust remainder that falls under the exchange
+  /// minimum, to round the fallback order up to the exchange minimum instead of dropping it. Pass
   /// <see langword="null"/> to always drop such a remainder instead (e.g. for sells, which already
   /// have their own full-liquidation escape hatch and need no extra funds to use it).
   /// </param>
   /// <returns>
   /// <c>Orders</c>: a single-element array if the limit order filled outright, or a two-element
   /// array [limit leg (<see cref="OrderDto.IsSuperseded"/> = true), market fallback leg] otherwise.
-  /// <c>ToppedUpFullCost</c>: whatever extra was claimed from <paramref name="ledger"/> to fund a
-  /// buy-side dust top-up (0 unless that happened) — the caller must its own <see cref="BudgetLedger.Settle"/>
-  /// bookkeeping to avoid double-counting this amount, since it was claimed (and will be settled)
-  /// independently of the caller's own claim for this leg.
+  /// <c>ToppedUpFullCost</c>: whatever extra was granted via <paramref name="claimTopUp"/> to fund a
+  /// buy-side dust top-up (0 unless that happened) — the caller must fold this into its own claim
+  /// total before settling, so the ledger's <c>_inFlight</c> tracking for that extra claim actually
+  /// gets released (see <see cref="ClaimAndPlaceBuy"/>'s own remarks).
   /// </returns>
   private async Task<(OrderDto[] Orders, decimal ToppedUpFullCost)> PlaceLimitThenFallback(
-    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source, BudgetLedger? ledger)
+    IExchange exchange, ExchangeCredentials credentials, OrderReqDto orderReq, string source,
+    Func<decimal, decimal, Task<decimal>>? claimTopUp)
   {
     decimal limitPrice;
 
@@ -343,7 +352,7 @@ public class RebalancingService : IRebalancingService
     {
       if (orderReq.Side != OrderSide.Sell)
       {
-        var toppedUpAmountQuote = await TryClaimDustTopUp(exchange, credentials, orderReq.Market, ledger, remainingAmountQuote);
+        var toppedUpAmountQuote = await TryClaimDustTopUp(exchange, credentials, orderReq.Market, claimTopUp, remainingAmountQuote);
 
         if (toppedUpAmountQuote is null)
         {
@@ -409,23 +418,24 @@ public class RebalancingService : IRebalancingService
   }
 
   /// <summary>
-  /// Attempts to claim just enough from <paramref name="ledger"/> (in full-cost, fee-inclusive
-  /// units — see <see cref="ClaimAndPlaceBuy"/>) to round <paramref name="remainingAmountQuote"/>
+  /// Attempts to claim (via <paramref name="claimTopUp"/>, in full-cost, fee-inclusive units — see
+  /// <see cref="ClaimAndPlaceBuy"/>) just enough to round <paramref name="remainingAmountQuote"/>
   /// up to <see cref="IExchange.MinOrderSizeInQuote"/>, rather than leaving a buy-side dust
   /// remainder unrescuable purely because it happened to land under the exchange floor. All-or-
   /// nothing: a claim that can't fully close the gap wouldn't clear the minimum anyway, so it's
-  /// worthless — <see cref="BudgetLedger.ClaimAsync"/> is called with <c>minClaimable</c> equal to
-  /// the full ask, guaranteeing a non-zero result would actually close it.
+  /// worthless — <paramref name="claimTopUp"/> is called with its <c>minClaimable</c> argument
+  /// equal to the full ask, guaranteeing a non-zero result would actually close it.
   /// </summary>
   /// <returns>
-  /// <see langword="null"/> if no <paramref name="ledger"/> was given or nothing could be claimed
-  /// (the caller should drop the remainder in that case); otherwise the topped-up order's
+  /// <see langword="null"/> if no <paramref name="claimTopUp"/> was given or nothing could be
+  /// claimed (the caller should drop the remainder in that case); otherwise the topped-up order's
   /// <c>AmountQuote</c> and the full-cost amount actually claimed for it.
   /// </returns>
   private async Task<(decimal AmountQuote, decimal FullCost)?> TryClaimDustTopUp(
-    IExchange exchange, ExchangeCredentials credentials, MarketReqDto market, BudgetLedger? ledger, decimal remainingAmountQuote)
+    IExchange exchange, ExchangeCredentials credentials, MarketReqDto market,
+    Func<decimal, decimal, Task<decimal>>? claimTopUp, decimal remainingAmountQuote)
   {
-    if (ledger is null)
+    if (claimTopUp is null)
       return null;
 
     var takerFee = await exchange.GetTakerFee(credentials, market);
@@ -433,7 +443,7 @@ public class RebalancingService : IRebalancingService
     var topUpAmountQuote = exchange.MinOrderSizeInQuote - remainingAmountQuote;
     var topUpFullCost = topUpAmountQuote * (1 + takerFee);
 
-    var claimedFullCost = await ledger.ClaimAsync(topUpFullCost, minClaimable: topUpFullCost);
+    var claimedFullCost = await claimTopUp(topUpFullCost, topUpFullCost);
 
     if (claimedFullCost <= 0)
       return null;
@@ -813,16 +823,28 @@ public class RebalancingService : IRebalancingService
     {
       buyOrder.AmountQuote = claimedTradeValue;
 
-      (results, toppedUpFullCost) = await PlaceAndVerifyOrder(exchange, credentials, buyOrder, source, cancel: false, ledger);
+      // PlaceLimitThenFallback never calls ledger.ClaimAsync/Settle itself — it only has the
+      // narrow "ask for more, get told how much" capability below, so this remains the ONE place
+      // that owns this leg's entire claim/settle lifecycle, top-up included.
+      (results, toppedUpFullCost) = await PlaceAndVerifyOrder(
+        exchange, credentials, buyOrder, source, cancel: false,
+        claimTopUp: ledger.ClaimAsync);
     }
 
     // Whatever wasn't actually spent (2-decimal rounding remainder, a dropped/failed leg, or a
-    // partial fill) goes back to the pool rather than evaporating from the ledger unspent.
-    // toppedUpFullCost is subtracted since that portion of results' cost was funded by a separate,
-    // independent claim/settle pair made directly against the ledger inside PlaceLimitThenFallback
-    // (see its own remarks) — counting it here too would settle the same money twice.
-    var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid) - toppedUpFullCost;
-    ledger.Settle(claimedFullCost, actuallySpent);
+    // partial fill) goes back to the pool rather than evaporating from the ledger unspent. Folding
+    // toppedUpFullCost into the claimed total here (rather than settling it separately) is what
+    // makes this a single claim/settle pair for the whole leg: ledger.ClaimAsync was called twice
+    // (once here, once inside PlaceLimitThenFallback's dust top-up, if any), each incrementing
+    // _inFlight by its own amount — a single Settle call using their SUM is what correctly reverses
+    // both increments in one shot. Settling only claimedFullCost here (or subtracting toppedUpFullCost
+    // from actuallySpent instead, as an earlier version of this code did) would leave the top-up's
+    // own _inFlight contribution permanently stuck, silently under-crediting the pool for whatever
+    // else was still pending when BudgetLedger.Complete ran — and would also mishandle a top-up
+    // order that failed outright, since actuallySpent (computed from real order fills, not from a
+    // subtraction) already reflects that correctly with no extra branching needed here.
+    var actuallySpent = results.Sum(order => order.AmountQuoteFilled + order.FeePaid);
+    ledger.Settle(claimedFullCost + toppedUpFullCost, actuallySpent);
 
     return results;
   }
