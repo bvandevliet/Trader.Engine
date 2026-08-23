@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Common.DTOs.API.Response;
@@ -187,7 +188,15 @@ public class RebalancingService : IRebalancingService
         && !await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, amount))
         return ([], 0);
 
-      return ([await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel)], 0);
+      // A plain market order is unambiguously a taker fill by definition (it takes whatever
+      // liquidity is resting on the book rather than adding any), so this is logged purely to keep
+      // the same fill-fee-analysis trail available for every order this service places, not because
+      // there's any doubt about the classification the way there is for a crossing "limit" order.
+      var placedAt = Stopwatch.StartNew();
+      var marketOrder = await PlaceAndVerifySingleOrder(exchange, credentials, orderReq, source, cancel);
+      await LogFillFeeAnalysis(exchange, credentials, marketOrder, placedAt.Elapsed);
+
+      return ([marketOrder], 0);
     }
 
     return await PlaceLimitThenFallback(exchange, credentials, orderReq, source, claimTopUp);
@@ -320,10 +329,21 @@ public class RebalancingService : IRebalancingService
       Amount = limitAmount,
     };
 
+    // Observability: limitPrice is always priced at the crossing side of the spread (best bid for
+    // a sell, best ask for a buy — see above), which matches (or betters) any resting order on the
+    // other side and fills as a TAKER, not a maker, virtually every time. Logged explicitly rather
+    // than left implicit, so "are we actually paying maker or taker fees" is answerable straight
+    // from logs — see the fill-fee-analysis log emitted after this order resolves below.
+    _logger.LogInformation(
+      "Placing {Side} limit order for market {Market}: {Amount} @ {LimitPrice} — priced at the {CrossingSide} to cross the spread immediately (taker-side placement, not a passive/resting order).",
+      orderReq.Side, orderReq.Market.ToString().SanitizeForLog(), limitAmount, limitPrice, orderReq.Side == OrderSide.Sell ? "best bid" : "best ask");
+
     // Always cancel a limit order that hasn't (fully) filled by the timeout — the whole point of
     // this path is to fall back to a market order for the remainder, so a resting limit order can
     // never be allowed to just sit there past this point.
+    var limitPlacedAt = Stopwatch.StartNew();
     var limitOrder = await PlaceAndVerifySingleOrder(exchange, credentials, limitReq, source, cancel: true);
+    await LogFillFeeAnalysis(exchange, credentials, limitOrder, limitPlacedAt.Elapsed);
 
     // A Failed status here means the limit order was rejected outright at placement (e.g. bad
     // price/amount precision, insufficient balance) rather than resting-then-timing-out — nothing
@@ -412,9 +432,49 @@ public class RebalancingService : IRebalancingService
       };
     }
 
+    var fallbackPlacedAt = Stopwatch.StartNew();
     var fallbackOrder = await PlaceAndVerifySingleOrder(exchange, credentials, fallbackReq, source, cancel: true);
+    await LogFillFeeAnalysis(exchange, credentials, fallbackOrder, fallbackPlacedAt.Elapsed);
 
     return ([limitOrder, fallbackOrder], toppedUpFullCost);
+  }
+
+  /// <summary>
+  /// Logs <paramref name="order"/>'s realized effective fee rate (<c>FeePaid / AmountQuoteFilled</c>)
+  /// against the account's known maker/taker rates for its market, alongside how long it took to
+  /// resolve. No-op if nothing filled (nothing to analyze). This is the observability this service
+  /// otherwise has no way to get: whether a given fill actually landed at the maker rate, the taker
+  /// rate, or something else entirely (Bitvavo-reported fees on some markets have been observed to
+  /// exceed the documented taker ceiling with no confirmed cause as of 2026-08-23, see CLAUDE.md),
+  /// and how fast fills happen today — the data a future move to passive (maker-seeking) limit
+  /// pricing would need before it could be sized, rather than guessed at.
+  /// </summary>
+  private async Task LogFillFeeAnalysis(
+    IExchange exchange, ExchangeCredentials credentials, OrderDto order, TimeSpan elapsed)
+  {
+    if (order.AmountQuoteFilled <= 0)
+      return;
+
+    var takerFee = await exchange.GetTakerFee(credentials, order.Market);
+    var makerFee = await exchange.GetMakerFee(credentials, order.Market);
+
+    var realizedRate = order.FeePaid / order.AmountQuoteFilled;
+
+    // A small tolerance rather than exact equality, since a fill can span multiple sub-fills at
+    // slightly different prices, and the exchange's own rounding can shift the realized rate a
+    // fraction of a basis point off the nominal reference rate even for a genuine match.
+    const decimal tolerance = 0.0001m;
+
+    var classification = realizedRate <= makerFee + tolerance
+      ? "MAKER"
+      : realizedRate <= takerFee + tolerance
+        ? "TAKER"
+        : "ABOVE the known taker rate (unexplained)";
+
+    _logger.LogInformation(
+      "Fill fee analysis for order {OrderId} ({Market} {Side} {Type}): filled {AmountQuoteFilled} in {ElapsedMs}ms, fee paid {FeePaid} ({RealizedRatePercent:P3} realized) vs. known maker {MakerRatePercent:P3} / taker {TakerRatePercent:P3} — {Classification}.",
+      order.Id, order.Market.ToString().SanitizeForLog(), order.Side, order.Type, order.AmountQuoteFilled, elapsed.TotalMilliseconds,
+      order.FeePaid, realizedRate, makerFee, takerFee, classification);
   }
 
   /// <summary>

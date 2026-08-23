@@ -61,6 +61,11 @@ public class AutomationOrchestratorConcurrencyTests
       return Task.FromResult(TakerFee);
     }
 
+    public Task<decimal> GetMakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+    {
+      return Task.FromResult(MakerFee);
+    }
+
     public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
     {
       // Widen the race window: only record the credentials after yielding, so that if this

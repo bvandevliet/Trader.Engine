@@ -230,6 +230,7 @@ public class RebalancingServiceExecuteOrdersTests
     exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
     {
       Id = "buy-1",
+      Market = _btc,
       Side = OrderSide.Buy,
       Type = OrderType.Market,
       Status = OrderStatus.Filled,
@@ -239,6 +240,7 @@ public class RebalancingServiceExecuteOrdersTests
     exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
     {
       Id = "buy-2",
+      Market = _eth,
       Side = OrderSide.Buy,
       Type = OrderType.Market,
       Status = OrderStatus.Filled,

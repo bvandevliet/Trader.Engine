@@ -25,6 +25,13 @@ public interface IExchange
   /// </summary>
   public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null);
 
+  /// <summary>
+  /// <inheritdoc cref="GetTakerFee" path="/summary"/> Fetches the maker rate instead of the taker
+  /// rate — used purely for fee-analysis logging today (comparing a fill's realized rate against
+  /// both references to tell a maker fill from a taker fill), not for any budget reservation.
+  /// </summary>
+  public Task<decimal> GetMakerFee(ExchangeCredentials credentials, MarketReqDto? market = null);
+
   public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials);
 
   public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials);

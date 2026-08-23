@@ -57,6 +57,12 @@ internal sealed class ScriptedExchange : IExchange
     return Task.FromResult(fee);
   }
 
+  /// <inheritdoc cref="GetTakerFee"/>
+  public Task<decimal> GetMakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return Task.FromResult(MakerFee);
+  }
+
   private readonly Dictionary<string, MarketStatus> _marketStatuses = [];
 
   private readonly Dictionary<string, decimal> _minOrderSizesInBase = [];

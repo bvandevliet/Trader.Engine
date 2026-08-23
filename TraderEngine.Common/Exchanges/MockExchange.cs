@@ -57,6 +57,12 @@ public class MockExchange : IExchange
     return Task.FromResult(TakerFee);
   }
 
+  /// <inheritdoc cref="GetTakerFee"/>
+  public Task<decimal> GetMakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return Task.FromResult(MakerFee);
+  }
+
   /// <summary>
   /// Null, if no initial <see cref="Balance"/> was given.
   /// </summary>

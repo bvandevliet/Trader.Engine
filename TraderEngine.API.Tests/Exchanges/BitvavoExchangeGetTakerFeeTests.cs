@@ -150,4 +150,54 @@ public class BitvavoExchangeGetTakerFeeTests
     // Assert
     Assert.AreEqual(0.0025m, fee);
   }
+
+  [TestMethod]
+  public async Task GetMakerFee_ReturnsMakerRateFromTheSameResponseShape()
+  {
+    // Arrange
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, _categoryAFeesBody);
+
+    var exchange = NewExchange(handler);
+
+    // Act
+    var fee = await exchange.GetMakerFee(_credentials, new MarketReqDto("EUR", "BTC"));
+
+    // Assert
+    Assert.AreEqual(0.0015m, fee);
+  }
+
+  [TestMethod]
+  public async Task GetMakerFee_FetchFails_FallsBackToDocumentedDefault_DoesNotThrow()
+  {
+    // Arrange
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":"999","error":"Unexpected."}""");
+
+    var exchange = NewExchange(handler);
+
+    // Act
+    var fee = await exchange.GetMakerFee(_credentials, new MarketReqDto("EUR", "BTC"));
+
+    // Assert
+    Assert.AreEqual(0.0015m, fee);
+  }
+
+  [TestMethod]
+  public async Task GetTakerFee_ThenGetMakerFee_SameMarket_ReusesTheSameCachedFetch_OneHttpRequestTotal()
+  {
+    // Arrange — GetTakerFee and GetMakerFee both read from the same per-market cache entry (the
+    // account/fees response already carries both rates in one payload), so asking for both must
+    // not double the number of HTTP calls made per market.
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.OK, _categoryAFeesBody);
+
+    var exchange = NewExchange(handler);
+
+    // Act
+    var taker = await exchange.GetTakerFee(_credentials, new MarketReqDto("EUR", "BTC"));
+    var maker = await exchange.GetMakerFee(_credentials, new MarketReqDto("EUR", "BTC"));
+
+    // Assert
+    Assert.AreEqual(1, handler.RequestCount);
+    Assert.AreEqual(0.0025m, taker);
+    Assert.AreEqual(0.0015m, maker);
+  }
 }

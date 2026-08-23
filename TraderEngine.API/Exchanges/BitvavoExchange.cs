@@ -419,6 +419,12 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return ApiMapper.MapAssetData(result);
   }
 
+  /// <summary>
+  /// Last-resort fallback only, paired with <see cref="_fallbackTakerFee"/> above — Bitvavo's
+  /// documented default Category A maker fee.
+  /// </summary>
+  private const decimal _fallbackMakerFee = .0015m;
+
   // Account-specific (fee tier depends on the account's own 30-day trading volume), so this must
   // never go in the shared _publicDataCache — that cache is a DI singleton shared across every
   // caller's credentials, and per its own eligibility bar is reserved for public, account-agnostic
@@ -427,18 +433,33 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
   // account already, with no separate expiry needed — the instance itself is short-lived, and a fee
   // tier changes at most once per day from Bitvavo's own 30-day rolling volume calculation, so
   // staleness within a single rebalance run's lifetime is a non-issue.
-  private readonly ConcurrentDictionary<string, Task<decimal>> _takerFeeCache = new();
+  //
+  // Caches the FULL (taker, maker) pair from one fetch, not just the taker rate alone, so
+  // GetMakerFee (used for fee-analysis logging, comparing a fill's realized rate against both
+  // references) can reuse the same lookup instead of doubling the number of HTTP calls.
+  private readonly ConcurrentDictionary<string, Task<(decimal Taker, decimal Maker)>> _feesCache = new();
 
-  public Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  public async Task<decimal> GetTakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return (await GetFees(credentials, market)).Taker;
+  }
+
+  public async Task<decimal> GetMakerFee(ExchangeCredentials credentials, MarketReqDto? market = null)
+  {
+    return (await GetFees(credentials, market)).Maker;
+  }
+
+  private Task<(decimal Taker, decimal Maker)> GetFees(ExchangeCredentials credentials, MarketReqDto? market)
   {
     var cacheKey = market?.ToString() ?? string.Empty;
 
-    return _takerFeeCache.GetOrAdd(cacheKey, _ => FetchTakerFeeAsync(credentials, market));
+    return _feesCache.GetOrAdd(cacheKey, _ => FetchFeesAsync(credentials, market));
   }
 
-  private async Task<decimal> FetchTakerFeeAsync(ExchangeCredentials credentials, MarketReqDto? market)
+  private async Task<(decimal Taker, decimal Maker)> FetchFeesAsync(ExchangeCredentials credentials, MarketReqDto? market)
   {
     var requestPath = market is null ? "account/fees" : $"account/fees?market={market}";
+    var marketLabel = market?.ToString().SanitizeForLog() ?? "(account default)";
 
     try
     {
@@ -449,28 +470,39 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       if (!response.IsSuccessStatusCode)
       {
         _logger.LogError(
-          "Failed to get account fees from Bitvavo for market {Market}; falling back to the documented default taker fee. {Url} returned {Code} {Reason} with response: {Response}",
-          market?.ToString().SanitizeForLog() ?? "(account default)", request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+          "Failed to get account fees from Bitvavo for market {Market}; falling back to the documented default taker/maker fees. {Url} returned {Code} {Reason} with response: {Response}",
+          marketLabel, request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
 
-        return _fallbackTakerFee;
+        return (_fallbackTakerFee, _fallbackMakerFee);
       }
 
       var result = await response.Content.DeserializeAsync<BitvavoFeesDto>();
 
       if (result is null)
       {
-        _logger.LogError("Bitvavo account fees response for market {Market} was empty or null; falling back to the documented default taker fee.", market?.ToString().SanitizeForLog() ?? "(account default)");
+        _logger.LogError("Bitvavo account fees response for market {Market} was empty or null; falling back to the documented default taker/maker fees.", marketLabel);
 
-        return _fallbackTakerFee;
+        return (_fallbackTakerFee, _fallbackMakerFee);
       }
 
-      return decimal.Parse(result.Taker);
+      var taker = decimal.Parse(result.Taker);
+      var maker = decimal.Parse(result.Maker);
+
+      // Observability: this is the only place the account's live fee schedule is ever seen —
+      // logging it here, once per market per BitvavoExchange instance (thanks to the cache above),
+      // makes it possible to answer "what rate did we actually get quoted for this market" straight
+      // from logs, without needing to guess or re-derive it from a fill's realized fee after the fact.
+      _logger.LogInformation(
+        "Bitvavo account fees for market {Market}: tier {Tier}, 30d volume {Volume}, taker {Taker}, maker {Maker}.",
+        marketLabel, result.Tier, result.Volume, taker, maker);
+
+      return (taker, maker);
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to fetch account fees from Bitvavo for market {Market}; falling back to the documented default taker fee.", market?.ToString().SanitizeForLog() ?? "(account default)");
+      _logger.LogError(ex, "Failed to fetch account fees from Bitvavo for market {Market}; falling back to the documented default taker/maker fees.", marketLabel);
 
-      return _fallbackTakerFee;
+      return (_fallbackTakerFee, _fallbackMakerFee);
     }
   }
 
