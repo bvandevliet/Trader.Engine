@@ -71,6 +71,18 @@ public class OrderDto : OrderReqDto
   {
     var superseded = IsSuperseded ? " (superseded)" : "";
 
-    return $"{Market} {Side} {Type}{superseded}: {Status}, filled {AmountFilled} ({AmountQuoteFilled} {Market.QuoteSymbol})";
+    // The requested size, always shown regardless of outcome, is what a failed or unfilled order
+    // (AmountFilled/AmountQuoteFilled both 0) would otherwise give no indication of at all — e.g.
+    // the email/log for a rejected order would just read "filled 0 (0 EUR)" with no way to tell
+    // how large the attempt actually was.
+    var requested = Amount is decimal amount
+      ? Price is decimal price
+        ? $"{amount} {Market.BaseSymbol} @ {price}"
+        : $"{amount} {Market.BaseSymbol}"
+      : AmountQuote is decimal amountQuote
+        ? $"{amountQuote} {Market.QuoteSymbol}"
+        : "?";
+
+    return $"{Market} {Side} {Type}{superseded}: {Status}, requested {requested}, filled {AmountFilled} ({AmountQuoteFilled} {Market.QuoteSymbol})";
   }
 }
