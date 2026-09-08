@@ -14,7 +14,8 @@ public interface IRebalancingService
   /// <param name="credentials"></param>
   /// <param name="targetAlloc"></param>
   /// <returns>Collection of updated <see cref="TargetAllocReqDto"/>s.</returns>
-  public Task<TargetAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, TargetAllocReqDto targetAlloc);
+  public Task<TargetAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials,
+    TargetAllocReqDto targetAlloc);
 
   /// <summary>
   /// Get the top ranking assets in <paramref name="targetAllocs"/> for this exchange.
@@ -24,7 +25,8 @@ public interface IRebalancingService
   /// <param name="targetAllocs"></param>
   /// <param name="topRankingCount"></param>
   /// <returns>Collection of updated <see cref="TargetAllocReqDto"/>s.</returns>
-  public Task<List<TargetAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, int topRankingCount);
+  public Task<List<TargetAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials,
+    IEnumerable<TargetAllocReqDto> targetAllocs, int topRankingCount);
 
   /// <summary>
   /// A task that will complete when verified that the given <paramref name="order"/> has ended.
@@ -37,7 +39,8 @@ public interface IRebalancingService
   /// <param name="cancel"></param>
   /// <param name="checks"></param>
   /// <returns>Completes when verified that the given <paramref name="order"/> has ended.</returns>
-  public Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60);
+  public Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order,
+    bool cancel = true, int checks = 60);
 
   /// <summary>
   /// Asynchronously performs a portfolio rebalance.

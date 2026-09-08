@@ -76,7 +76,11 @@ public class UsersModel : TraderEnginePageModelBase
       .Where(ur => userIds.Contains(ur.UserId))
       .Join(_context.Roles.AsNoTracking(),
         ur => ur.RoleId, r => r.Id,
-        (ur, r) => new { ur.UserId, RoleName = r.Name })
+        (ur, r) => new
+        {
+          ur.UserId,
+          RoleName = r.Name
+        })
       .Where(x => !string.IsNullOrWhiteSpace(x.RoleName))
       .GroupBy(x => x.UserId)
       .ToDictionaryAsync(g => g.Key, g => g.Select(x => x.RoleName!).ToList());
@@ -116,7 +120,8 @@ public class UsersModel : TraderEnginePageModelBase
     var isLockedOut = user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow;
 
     // Unlock immediately, or lock for 100 years (effectively permanent).
-    var result = await UserManager.SetLockoutEndDateAsync(user, isLockedOut ? null : DateTimeOffset.UtcNow.AddYears(100));
+    var result =
+      await UserManager.SetLockoutEndDateAsync(user, isLockedOut ? null : DateTimeOffset.UtcNow.AddYears(100));
 
     TempData[result.Succeeded ? "Notice" : "Error"] = result.Succeeded
       ? $"User \"{user.UserName}\" {(isLockedOut ? "unlocked" : "locked")}."

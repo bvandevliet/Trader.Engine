@@ -17,16 +17,16 @@ public class MustChangePasswordMiddleware(RequestDelegate next, LinkGenerator li
 {
   private readonly string _changePasswordPath =
     (linkGenerator.GetPathByPage(page: "/Account/Manage/ChangePassword", values: new { area = "Identity" })
-      ?? "/identity/account/manage/changepassword").ToLowerInvariant();
+     ?? "/identity/account/manage/changepassword").ToLowerInvariant();
 
   private readonly string _logoutPath =
     (linkGenerator.GetPathByPage(page: "/Account/Logout", values: new { area = "Identity" })
-      ?? "/identity/account/logout").ToLowerInvariant();
+     ?? "/identity/account/logout").ToLowerInvariant();
 
   public async Task InvokeAsync(HttpContext context)
   {
     if (context.User.Identity?.IsAuthenticated == true
-      && context.User.HasClaim(c => c.Type == AppClaimTypes.MustChangePassword && c.Value == bool.TrueString))
+        && context.User.HasClaim(c => c.Type == AppClaimTypes.MustChangePassword && c.Value == bool.TrueString))
     {
       // Skip endpoints that allow anonymous access (e.g. static assets served by MapStaticAssets).
       // Redirecting those would break CSS/JS loading on the change-password page itself.
@@ -39,7 +39,7 @@ public class MustChangePasswordMiddleware(RequestDelegate next, LinkGenerator li
 
       var path = context.Request.Path.Value ?? string.Empty;
       var isAllowed = path.StartsWith(_changePasswordPath, StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith(_logoutPath, StringComparison.OrdinalIgnoreCase);
+                      || path.StartsWith(_logoutPath, StringComparison.OrdinalIgnoreCase);
 
       if (!isAllowed)
       {

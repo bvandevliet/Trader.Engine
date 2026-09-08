@@ -166,7 +166,10 @@ function addCell (row: HTMLTableRowElement, text: string, className?: string): v
 
   cell.textContent = text;
 
-  if (className) { cell.className = className; }
+  if (className)
+  {
+    cell.className = className;
+  }
 
   row.appendChild(cell);
 }
@@ -219,7 +222,10 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto, a
 
       const name = assetNames[baseSymbol];
 
-      if (name) { assetCell.append(buildNameTooltip(name)); }
+      if (name)
+      {
+        assetCell.append(buildNameTooltip(name));
+      }
 
       row.appendChild(assetCell);
 
@@ -237,7 +243,10 @@ function renderPortfolioTable (curBalance: BalanceDto, newBalance: BalanceDto, a
 
 function updateDriftThresholdQuote (): void
 {
-  if (!lastSimulation) { return; }
+  if (!lastSimulation)
+  {
+    return;
+  }
 
   const driftThresholdPercentInput = form.querySelector<HTMLInputElement>('[data-config-field=\'driftThresholdPercent\']')!;
   const driftThresholdPercent = parseFloat(driftThresholdPercentInput.value || '0');
@@ -270,7 +279,10 @@ function setBalanceField (field: string, value: string): void
 {
   const cell = document.querySelector<HTMLTableCellElement>(`[data-field='${field}']`);
 
-  if (cell) { cell.textContent = value; }
+  if (cell)
+  {
+    cell.textContent = value;
+  }
 }
 
 function renderBalanceSummary (balance: BalanceDto): void
@@ -294,7 +306,10 @@ async function refreshBalance (): Promise<void>
 {
   const response = await fetch(withActingAsClientId('/dashboard/currentbalance'));
 
-  if (!response.ok) { return; }
+  if (!response.ok)
+  {
+    return;
+  }
 
   renderBalanceSummary(await response.json());
 }
@@ -309,7 +324,10 @@ function pollBalanceLoop (): void
 {
   refreshBalance()
     .catch(reason => console.error(reason))
-    .finally(() => { pollTimeoutHandle = setTimeout(pollBalanceLoop, POLL_INTERVAL_MS); });
+    .finally(() =>
+    {
+      pollTimeoutHandle = setTimeout(pollBalanceLoop, POLL_INTERVAL_MS);
+    });
 }
 
 // No point polling an exchange balance nobody's looking at — pause while the tab is hidden/backgrounded,
@@ -318,7 +336,10 @@ document.addEventListener('visibilitychange', () =>
 {
   clearTimeout(pollTimeoutHandle);
 
-  if (!document.hidden) { pollBalanceLoop(); }
+  if (!document.hidden)
+  {
+    pollBalanceLoop();
+  }
 });
 
 // The page never simulates server-side (that call runs the full market-cap ranking + rebalance
@@ -380,7 +401,10 @@ async function simulate (): Promise<void>
 
   try
   {
-    const { simulation, assetNames } = await postJson<SimulateResponseDto>(withActingAsClientId('/dashboard/simulate'), buildConfigFromForm());
+    const {
+      simulation,
+      assetNames,
+    } = await postJson<SimulateResponseDto>(withActingAsClientId('/dashboard/simulate'), buildConfigFromForm());
 
     applySimulation(simulation, assetNames);
 
@@ -390,7 +414,10 @@ async function simulate (): Promise<void>
   {
     showError(portfolioErrorEl, err, 'Could not simulate a rebalance.');
 
-    if (!lastSimulation) { portfolioTableBody.replaceChildren(); }
+    if (!lastSimulation)
+    {
+      portfolioTableBody.replaceChildren();
+    }
   }
   finally
   {
@@ -445,7 +472,10 @@ form.querySelectorAll<HTMLInputElement>('.config-input').forEach(input =>
   {
     updateDriftThresholdQuote();
 
-    if (input.dataset.noResim !== undefined) { return; }
+    if (input.dataset.noResim !== undefined)
+    {
+      return;
+    }
 
     portfolioTableOverlay.show();
 
@@ -458,9 +488,15 @@ rebalanceNowBtn.addEventListener('click', () =>
 {
   (async () =>
   {
-    if (!lastSimulation) { return; }
+    if (!lastSimulation)
+    {
+      return;
+    }
 
-    if (!confirm('This will perform a portfolio rebalance.\nAre you sure?')) { return; }
+    if (!confirm('This will perform a portfolio rebalance.\nAre you sure?'))
+    {
+      return;
+    }
 
     if (
       lastSimulation.targetAllocs.length === 0
@@ -481,7 +517,9 @@ rebalanceNowBtn.addEventListener('click', () =>
     {
       // The response already carries the post-trade balance (see OnPostRebalanceNowAsync) — no
       // separate /dashboard/currentbalance round-trip needed to refresh these two.
-      const { currentBalance } = await postJson<{ currentBalance: BalanceDto }>(withActingAsClientId('/dashboard/rebalancenow'), {
+      const { currentBalance } = await postJson<{
+        currentBalance: BalanceDto
+      }>(withActingAsClientId('/dashboard/rebalancenow'), {
         config: buildConfigFromForm(),
         targetAllocs: lastSimulation.targetAllocs,
       });
@@ -505,7 +543,10 @@ rebalanceNowBtn.addEventListener('click', () =>
       // now describes trades that were just executed, so clicking again immediately would replay
       // a stale target. Only a fresh resimulate (the next config input change) re-enables it. On
       // failure nothing changed, so it's safe to let the user retry right away.
-      if (!succeeded) { rebalanceNowBtn.disabled = false; }
+      if (!succeeded)
+      {
+        rebalanceNowBtn.disabled = false;
+      }
     }
   })();
 });

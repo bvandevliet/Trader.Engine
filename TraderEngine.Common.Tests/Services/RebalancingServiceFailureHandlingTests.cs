@@ -17,7 +17,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceFailureHandlingTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 

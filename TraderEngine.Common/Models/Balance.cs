@@ -24,18 +24,21 @@ public class Balance
   public string QuoteSymbol { get; }
 
   private readonly List<Allocation> _allocations = new();
+
   /// <summary>
   /// Collection of <see cref="Allocation"/> instances.
   /// </summary>
   public ReadOnlyCollection<Allocation> Allocations { get; }
 
   private decimal? _amountQuoteAvailable;
+
   /// <summary>
   /// Amount of quote currency available.
   /// </summary>
   public decimal AmountQuoteAvailable => _amountQuoteAvailable ??= GetAllocation(QuoteSymbol)?.AmountQuote ?? 0;
 
   private decimal? _amountQuoteTotal;
+
   /// <summary>
   /// Total value of portfolio in quote currency.
   /// </summary>
@@ -72,7 +75,8 @@ public class Balance
   {
     if (false == QuoteSymbol.Equals(allocation.Market.QuoteSymbol))
     {
-      throw new InvalidObjectException("Quote currency of given Allocation object does not match with the quote currency of this Balance instance.");
+      throw new InvalidObjectException(
+        "Quote currency of given Allocation object does not match with the quote currency of this Balance instance.");
     }
 
     if (_allocations.Any(alloc => alloc.Market.Equals(allocation.Market)))

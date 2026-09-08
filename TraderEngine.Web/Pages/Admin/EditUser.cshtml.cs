@@ -84,7 +84,8 @@ public class EditUserModel : TraderEnginePageModelBase
       {
         foreach (var error in setUserNameResult.Errors)
         {
-          ModelState.AddModelError(error.Code == "DuplicateUserName" ? $"{nameof(Input)}.{nameof(Input.UserName)}" : string.Empty,
+          ModelState.AddModelError(
+            error.Code == "DuplicateUserName" ? $"{nameof(Input)}.{nameof(Input.UserName)}" : string.Empty,
             error.Code == "DuplicateUserName" ? "This username is already in use." : error.Description);
         }
 
@@ -100,7 +101,8 @@ public class EditUserModel : TraderEnginePageModelBase
       {
         foreach (var error in setEmailResult.Errors)
         {
-          ModelState.AddModelError(error.Code == "DuplicateEmail" ? $"{nameof(Input)}.{nameof(Input.Email)}" : string.Empty,
+          ModelState.AddModelError(
+            error.Code == "DuplicateEmail" ? $"{nameof(Input)}.{nameof(Input.Email)}" : string.Empty,
             error.Code == "DuplicateEmail" ? "This email is already in use." : error.Description);
         }
 

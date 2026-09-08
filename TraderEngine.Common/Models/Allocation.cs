@@ -12,6 +12,7 @@ public class Allocation
   /// Note that <see cref="AmountQuote"/> will also become outdated.
   /// </summary>
   public event PriceUpdatedEvent? PriceUpdated;
+
   public delegate void PriceUpdatedEvent(decimal? oldValue, decimal? newValue);
 
   /// <summary>
@@ -19,6 +20,7 @@ public class Allocation
   /// Note that <see cref="AmountQuote"/> will also become outdated.
   /// </summary>
   public event AmountUpdateEvent? AmountUpdated;
+
   public delegate void AmountUpdateEvent(decimal? oldValue, decimal? newValue);
 
   /// <summary>
@@ -26,6 +28,7 @@ public class Allocation
   /// Note that <see cref="Amount"/> will also become outdated.
   /// </summary>
   public event AmountQuoteUpdatedEvent? AmountQuoteUpdated;
+
   public delegate void AmountQuoteUpdatedEvent(decimal? oldValue, decimal? newValue);
 
   /// <summary>
@@ -34,30 +37,36 @@ public class Allocation
   public MarketReqDto Market { get; }
 
   private decimal _price;
+
   /// <summary>
   /// Price in quote currency per unit of base currency.
   /// </summary>
   public decimal Price
   {
-    get => _price; set => UpdatePrice(value);
+    get => _price;
+    set => UpdatePrice(value);
   }
 
   private decimal _amount;
+
   /// <summary>
   /// Amount in base currency.
   /// </summary>
   public decimal Amount
   {
-    get => _amount; set => UpdateAmount(value);
+    get => _amount;
+    set => UpdateAmount(value);
   }
 
   private decimal? _amountQuote;
+
   /// <summary>
   /// Amount in quote currency.
   /// </summary>
   public decimal AmountQuote
   {
-    get => _amountQuote ??= Price * Amount; set => UpdateAmountQuote(value);
+    get => _amountQuote ??= Price * Amount;
+    set => UpdateAmountQuote(value);
   }
 
   public Allocation(

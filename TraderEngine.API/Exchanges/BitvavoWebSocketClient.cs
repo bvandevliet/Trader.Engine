@@ -202,8 +202,7 @@ public sealed class BitvavoWebSocketClient : IAsyncDisposable
           }
 
           messageStream.Write(buffer, 0, result.Count);
-        }
-        while (!result.EndOfMessage);
+        } while (!result.EndOfMessage);
 
         messageStream.Position = 0;
 
@@ -218,7 +217,10 @@ public sealed class BitvavoWebSocketClient : IAsyncDisposable
         }
       }
     }
-    catch (OperationCanceledException) { /* normal shutdown */ }
+    catch (OperationCanceledException)
+    {
+      /* normal shutdown */
+    }
     catch (Exception ex)
     {
       _logger.LogError(ex, "Bitvavo WebSocket receive loop terminated unexpectedly.");
@@ -256,7 +258,8 @@ public sealed class BitvavoWebSocketClient : IAsyncDisposable
 
           try
           {
-            _logger.LogInformation("Attempting to reconnect Bitvavo WebSocket (attempt {Attempt}/{Max}).", attempt, MaxAttempts);
+            _logger.LogInformation("Attempting to reconnect Bitvavo WebSocket (attempt {Attempt}/{Max}).", attempt,
+              MaxAttempts);
 
             await ConnectAndAuthenticateAsync(ct);
             await ResubscribeAllAsync(_transport, ct);
@@ -355,7 +358,8 @@ public sealed class BitvavoWebSocketClient : IAsyncDisposable
       _connectionLock.Release();
     }
 
-    try { await _receiveLoop; } catch (OperationCanceledException) { }
+    try { await _receiveLoop; }
+    catch (OperationCanceledException) { }
 
     await _transport.DisposeAsync();
     _connectionLock.Dispose();

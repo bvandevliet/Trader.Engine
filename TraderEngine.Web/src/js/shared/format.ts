@@ -33,7 +33,10 @@ function formatLocal (date: Date, dateOnly: boolean, includeSeconds: boolean): s
 {
   const datePart = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 
-  if (dateOnly) { return datePart; }
+  if (dateOnly)
+  {
+    return datePart;
+  }
 
   const timePart = includeSeconds
     ? `${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`
@@ -51,13 +54,19 @@ export function localizeTimestamps (root: ParentNode = document): void
   {
     const date = new Date(el.dateTime);
 
-    if (Number.isNaN(date.getTime())) { return; }
+    if (Number.isNaN(date.getTime()))
+    {
+      return;
+    }
 
     const dateOnly = el.dataset.utcDateOnly === 'true';
     const withSeconds = el.dataset.utcSeconds === 'true';
 
     el.textContent = formatLocal(date, dateOnly, withSeconds);
 
-    if (el.dataset.utcTitle === 'true') { el.title = formatLocal(date, false, true); }
+    if (el.dataset.utcTitle === 'true')
+    {
+      el.title = formatLocal(date, false, true);
+    }
   });
 }

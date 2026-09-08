@@ -22,7 +22,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceLimitOrderTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
@@ -50,7 +51,13 @@ public class RebalancingServiceLimitOrderTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Limit, Amount = 2 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Limit,
+        Amount = 2
+      },
     };
 
     // Act
@@ -94,7 +101,11 @@ public class RebalancingServiceLimitOrderTests
     postSellBalance.TryAddAllocation(new Allocation(_btc, price: 1, amount: 300));
     postSellBalance.TryAddAllocation(new Allocation(eth, price: 1, amount: 100));
 
-    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1, BalanceResponse = postSellBalance };
+    var exchange = new ScriptedExchange
+    {
+      MinOrderSizeInQuote = 1,
+      BalanceResponse = postSellBalance
+    };
     exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
     exchange.SetBestBidAsk("ETH", bid: 10, ask: 11);
     exchange.SetMarketStatus("BTC", MarketStatus.Trading);
@@ -126,11 +137,7 @@ public class RebalancingServiceLimitOrderTests
       AmountRemaining = 0,
     }));
 
-    var targets = new[]
-    {
-      new TargetAllocReqDto(_btc, .5m),
-      new TargetAllocReqDto(eth, .5m),
-    };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(eth, .5m), };
 
     var config = new ConfigReqDto { UseLimitOrders = true };
 
@@ -195,7 +202,13 @@ public class RebalancingServiceLimitOrderTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Limit, AmountQuote = 100 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Buy,
+        Type = OrderType.Limit,
+        AmountQuote = 100
+      },
     };
 
     // Act
@@ -273,7 +286,13 @@ public class RebalancingServiceLimitOrderTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Limit, Amount = 1 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Limit,
+        Amount = 1
+      },
     };
 
     // Act
@@ -342,7 +361,13 @@ public class RebalancingServiceLimitOrderTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Limit, AmountQuote = 100 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Buy,
+        Type = OrderType.Limit,
+        AmountQuote = 100
+      },
     };
 
     // Act
@@ -369,7 +394,11 @@ public class RebalancingServiceLimitOrderTests
     var balance = new Balance("EUR");
     balance.TryAddAllocation(new Allocation(new MarketReqDto("EUR", "EUR"), price: 1, amount: 100m));
 
-    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1, BalanceResponse = balance };
+    var exchange = new ScriptedExchange
+    {
+      MinOrderSizeInQuote = 1,
+      BalanceResponse = balance
+    };
     exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
 
     exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
@@ -398,7 +427,13 @@ public class RebalancingServiceLimitOrderTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Limit, AmountQuote = 100 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Buy,
+        Type = OrderType.Limit,
+        AmountQuote = 100
+      },
     };
 
     // Act
@@ -429,7 +464,13 @@ public class RebalancingServiceLimitOrderTests
     {
       // 0.9 BTC @ 100 bid = 90 EUR, comfortably above MinOrderSizeInQuote, but below the
       // market's own 1 BTC minimum base-asset size.
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Limit, Amount = 0.9m },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Limit,
+        Amount = 0.9m
+      },
     };
 
     // Act
@@ -459,7 +500,13 @@ public class RebalancingServiceLimitOrderTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Limit, AmountQuote = 50 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Limit,
+        AmountQuote = 50
+      },
     };
 
     // Act

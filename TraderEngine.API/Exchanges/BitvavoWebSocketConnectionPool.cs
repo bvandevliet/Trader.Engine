@@ -53,7 +53,8 @@ public sealed class BitvavoWebSocketConnectionPool : IAsyncDisposable
     _logger = logger;
     _rateLimitState = rateLimitState;
     _delayFn = delayFn ?? Task.Delay;
-    _clientFactory = clientFactory ?? (credentials => new BitvavoWebSocketClient(credentials, _loggerFactory.CreateLogger<BitvavoWebSocketClient>(), _rateLimitState));
+    _clientFactory = clientFactory ?? (credentials =>
+      new BitvavoWebSocketClient(credentials, _loggerFactory.CreateLogger<BitvavoWebSocketClient>(), _rateLimitState));
   }
 
   /// <summary>
@@ -100,7 +101,8 @@ public sealed class BitvavoWebSocketConnectionPool : IAsyncDisposable
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Failed to warm up Bitvavo WebSocket connection at session start; orders will fall back to REST as needed.");
+      _logger.LogWarning(ex,
+        "Failed to warm up Bitvavo WebSocket connection at session start; orders will fall back to REST as needed.");
     }
 
     return new SessionLease(this, apiKey);

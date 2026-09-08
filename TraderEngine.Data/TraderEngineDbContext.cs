@@ -90,7 +90,11 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
         .HasForeignKey(c => c.UserId)
         .OnDelete(DeleteBehavior.Cascade);
 
-      entity.HasIndex(c => new { c.UserId, c.ExchangeName }).IsUnique();
+      entity.HasIndex(c => new
+      {
+        c.UserId,
+        c.ExchangeName
+      }).IsUnique();
     });
 
     builder.Entity<PortfolioManagerGrant>(entity =>
@@ -107,7 +111,11 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
 
       // One row per (manager, client) pair, ever — re-granting after a revoke reuses this row
       // rather than inserting a new one (see PortfolioManagerGrant's doc comment).
-      entity.HasIndex(g => new { g.ManagerId, g.ClientId }).IsUnique();
+      entity.HasIndex(g => new
+      {
+        g.ManagerId,
+        g.ClientId
+      }).IsUnique();
 
       // The composite index above only serves manager-first lookups efficiently; a client's "who
       // manages me" query needs its own index on the leading ClientId column.
@@ -121,7 +129,12 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
     builder.Entity<MarketCapMetric>(entity =>
     {
       // The time column (Updated) must be part of the key on a TimescaleDB hypertable.
-      entity.HasKey(m => new { m.QuoteSymbol, m.BaseSymbol, m.Updated });
+      entity.HasKey(m => new
+      {
+        m.QuoteSymbol,
+        m.BaseSymbol,
+        m.Updated
+      });
 
       entity.HasIndex(m => m.Updated)
         .IsDescending();

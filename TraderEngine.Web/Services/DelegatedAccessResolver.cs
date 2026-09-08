@@ -21,10 +21,12 @@ public class DelegatedAccessResolver : IDelegatedAccessResolver
       return new DelegatedAccessContext(caller, caller, IsDelegated: false);
 
     if (!await _delegationAuth.IsAuthorizedAsync(caller.Id, actingAsClientId.Value))
-      throw new DelegationAccessDeniedException("You do not currently have delegated access to this client's portfolio.");
+      throw new DelegationAccessDeniedException(
+        "You do not currently have delegated access to this client's portfolio.");
 
     var client = await _userManager.FindByIdAsync(actingAsClientId.Value.ToString())
-      ?? throw new DelegationAccessDeniedException("You do not currently have delegated access to this client's portfolio.");
+                 ?? throw new DelegationAccessDeniedException(
+                   "You do not currently have delegated access to this client's portfolio.");
 
     return new DelegatedAccessContext(caller, client, IsDelegated: true);
   }

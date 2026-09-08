@@ -121,11 +121,8 @@ public class BitvavoWebSocketClientReconnectTests
     CollectionAssert.AreEqual(
       new[]
       {
-        TimeSpan.FromMilliseconds(250),
-        TimeSpan.FromMilliseconds(500),
-        TimeSpan.FromSeconds(1),
-        TimeSpan.FromSeconds(2),
-        TimeSpan.FromSeconds(4),
+        TimeSpan.FromMilliseconds(250), TimeSpan.FromMilliseconds(500), TimeSpan.FromSeconds(1),
+        TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(4),
       },
       delays);
 

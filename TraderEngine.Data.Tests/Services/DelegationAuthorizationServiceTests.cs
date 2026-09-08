@@ -91,7 +91,11 @@ public class DelegationAuthorizationServiceTests
     // Arrange
     var managerId = Guid.NewGuid();
     var clientId = Guid.NewGuid();
-    var manager = new AppUser { Id = managerId, UserName = "manager" };
+    var manager = new AppUser
+    {
+      Id = managerId,
+      UserName = "manager"
+    };
     var delegationRepository = Substitute.For<IPortfolioDelegationRepository>();
     delegationRepository.HasActiveGrantAsync(managerId, clientId).Returns(true);
     var userManager = NewUserManagerSubstitute();
@@ -112,7 +116,11 @@ public class DelegationAuthorizationServiceTests
     // Arrange
     var managerId = Guid.NewGuid();
     var clientId = Guid.NewGuid();
-    var manager = new AppUser { Id = managerId, UserName = "manager" };
+    var manager = new AppUser
+    {
+      Id = managerId,
+      UserName = "manager"
+    };
     var delegationRepository = Substitute.For<IPortfolioDelegationRepository>();
     delegationRepository.HasActiveGrantAsync(managerId, clientId).Returns(true);
     var userManager = NewUserManagerSubstitute();

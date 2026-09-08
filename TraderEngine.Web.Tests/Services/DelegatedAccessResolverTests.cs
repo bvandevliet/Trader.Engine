@@ -41,7 +41,8 @@ public class DelegatedAccessResolverTests
   }
 
   [TestMethod]
-  public async Task ResolveAsync_ActingAsClientIdEqualsOwnId_ReturnsSelfContext_WithoutConsultingTheAuthorizationService()
+  public async Task
+    ResolveAsync_ActingAsClientIdEqualsOwnId_ReturnsSelfContext_WithoutConsultingTheAuthorizationService()
   {
     // Arrange — a user "delegating to themselves" must be indistinguishable from not delegating.
     var caller = new AppUser { Id = Guid.NewGuid() };

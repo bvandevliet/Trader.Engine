@@ -22,7 +22,10 @@ public class BitvavoExchangeGetOpenOrdersTests
   {
     var httpClient = new HttpClient(handler) { BaseAddress = new("https://api.bitvavo.com/v2/") };
 
-    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient, new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()), new MemoryCache(new MemoryCacheOptions()));
+    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient,
+      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(),
+        Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
+      new MemoryCache(new MemoryCacheOptions()));
   }
 
   [TestMethod]
@@ -100,7 +103,8 @@ public class BitvavoExchangeGetOpenOrdersTests
   public async Task GetOpenOrders_NonSuccessStatusCode_ReturnsNull()
   {
     // Arrange
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":"999","error":"Unexpected."}""");
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError,
+      """{"errorCode":"999","error":"Unexpected."}""");
 
     var exchange = NewExchange(handler);
 

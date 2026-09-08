@@ -25,7 +25,11 @@ public class EfPortfolioDelegationRepository : IPortfolioDelegationRepository
 
     if (entity == null)
     {
-      entity = new PortfolioManagerGrant { ManagerId = managerId, ClientId = clientId };
+      entity = new PortfolioManagerGrant
+      {
+        ManagerId = managerId,
+        ClientId = clientId
+      };
       _db.PortfolioManagerGrants.Add(entity);
     }
 
@@ -54,7 +58,9 @@ public class EfPortfolioDelegationRepository : IPortfolioDelegationRepository
       .AsNoTracking()
       .Where(g => g.ClientId == clientId && g.RevokedAt == null)
       .OrderBy(g => g.Manager.UserName)
-      .Select(g => new DelegationCounterpartRow(g.Manager.Id, g.Manager.UserName ?? string.Empty, g.Manager.DisplayName, g.GrantedAt))
+      .Select(g =>
+        new DelegationCounterpartRow(g.Manager.Id, g.Manager.UserName ?? string.Empty, g.Manager.DisplayName,
+          g.GrantedAt))
       .ToListAsync();
   }
 
@@ -64,7 +70,8 @@ public class EfPortfolioDelegationRepository : IPortfolioDelegationRepository
       .AsNoTracking()
       .Where(g => g.ManagerId == managerId && g.RevokedAt == null)
       .OrderBy(g => g.Client.UserName)
-      .Select(g => new DelegationCounterpartRow(g.Client.Id, g.Client.UserName ?? string.Empty, g.Client.DisplayName, g.GrantedAt))
+      .Select(g =>
+        new DelegationCounterpartRow(g.Client.Id, g.Client.UserName ?? string.Empty, g.Client.DisplayName, g.GrantedAt))
       .ToListAsync();
   }
 }

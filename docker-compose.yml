@@ -5,13 +5,18 @@ services:
     image: timescale/timescaledb:latest-pg18
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}" ]
       interval: 5s
       timeout: 5s
       retries: 15
       start_period: 5s
     volumes:
-      - ./.volumes/postgres-data:/var/lib/postgresql
+      # :Z relabels the host directory for exclusive SELinux access by this container — a plain
+      # bind mount (unlike a Docker-managed named volume, which the container runtime pre-labels
+      # for container access automatically) is otherwise denied by policy on an SELinux-enforcing
+      # host, regardless of Unix ownership/mode or which filesystem backs the path. Uppercase,
+      # not :z, because only this one container mounts this path. No-op on non-SELinux hosts.
+      - ./.volumes/postgres-data:/var/lib/postgresql:Z
     environment:
       - POSTGRES_DB=${POSTGRES_DATABASE}
       - POSTGRES_USER=${POSTGRES_USERNAME}
@@ -27,13 +32,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1" ]
       interval: 5s
       timeout: 5s
       retries: 25
       start_period: 5s
     volumes:
-      - ./.volumes/secrets:/app/secrets
+      # :z relabels the host directory for shared SELinux access — on an SELinux-enforcing host,
+      # a bind mount is otherwise denied by policy regardless of Unix ownership/mode (confirmed
+      # via a DataProtection KeyRingProvider UnauthorizedAccessException reading /app/secrets).
+      # Lowercase, not :Z, because this same directory is mounted into both this container and
+      # its sibling (they share one Data Protection key ring) — :Z's exclusive/private label
+      # would let one relabel evict the other's access. No-op on non-SELinux hosts.
+      - ./.volumes/secrets:/app/secrets:z
     environment:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
@@ -65,13 +76,19 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1"]
+      test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://127.0.0.1:80/health || exit 1" ]
       interval: 5s
       timeout: 5s
       retries: 25
       start_period: 5s
     volumes:
-      - ./.volumes/secrets:/app/secrets
+      # :z relabels the host directory for shared SELinux access — on an SELinux-enforcing host,
+      # a bind mount is otherwise denied by policy regardless of Unix ownership/mode (confirmed
+      # via a DataProtection KeyRingProvider UnauthorizedAccessException reading /app/secrets).
+      # Lowercase, not :Z, because this same directory is mounted into both this container and
+      # its sibling (they share one Data Protection key ring) — :Z's exclusive/private label
+      # would let one relabel evict the other's access. No-op on non-SELinux hosts.
+      - ./.volumes/secrets:/app/secrets:z
     environment:
       - TZ=Europe/Amsterdam
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}

@@ -61,7 +61,8 @@ public class EfMarketCapInternalRepository : MarketCapHandlingBase, IMarketCapIn
       .OrderByDescending(m => m.Updated)
       .FirstOrDefaultAsync();
 
-    if (null != lastRecord && OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance < 60 - earlierTolerance)
+    if (null != lastRecord &&
+        OffsetMinutes(marketCap.Updated, lastRecord.Updated) + laterTolerance < 60 - earlierTolerance)
     {
       _logger.LogWarning("Updated time '{updated}' of market cap of '{market}' is too close to the previous record.",
         marketCap.Updated, marketCap.Market);
@@ -148,7 +149,8 @@ public class EfMarketCapInternalRepository : MarketCapHandlingBase, IMarketCapIn
 
     var listHistorical = await db.MarketCapMetrics
       .AsNoTracking()
-      .Where(m => m.QuoteSymbol == quoteSymbolUpper && m.Updated >= updatedSince && relevantAssets.Contains(m.BaseSymbol))
+      .Where(m => m.QuoteSymbol == quoteSymbolUpper && m.Updated >= updatedSince &&
+                  relevantAssets.Contains(m.BaseSymbol))
       .OrderByDescending(m => m.Updated)
       .ToListAsync();
 
@@ -172,9 +174,14 @@ public class EfMarketCapInternalRepository : MarketCapHandlingBase, IMarketCapIn
 
     var candidates = await db.MarketCapMetrics
       .AsNoTracking()
-      .Where(m => m.QuoteSymbol == quoteSymbolUpper && baseSymbolsUpper.Contains(m.BaseSymbol) && m.Updated >= updatedSince)
+      .Where(m => m.QuoteSymbol == quoteSymbolUpper && baseSymbolsUpper.Contains(m.BaseSymbol) &&
+                  m.Updated >= updatedSince)
       .OrderByDescending(m => m.Updated)
-      .Select(m => new { m.BaseSymbol, m.Name })
+      .Select(m => new
+      {
+        m.BaseSymbol,
+        m.Name
+      })
       .ToListAsync();
 
     // Grouped client-side rather than via a GroupBy/OrderBy/First SQL translation: the candidate

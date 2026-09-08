@@ -21,8 +21,8 @@ public abstract class JsonEnumConverterBase<TEnum> : JsonConverter<TEnum> where 
       if (reader.TryGetInt32(out var enumValue))
       {
         return Enum.IsDefined(typeof(TEnum), enumValue)
-            ? (TEnum)Enum.ToObject(typeof(TEnum), enumValue)
-            : Enum.IsDefined(typeof(TEnum), -1)
+          ? (TEnum)Enum.ToObject(typeof(TEnum), enumValue)
+          : Enum.IsDefined(typeof(TEnum), -1)
             ? (TEnum)Enum.ToObject(typeof(TEnum), -1)
             : default;
       }

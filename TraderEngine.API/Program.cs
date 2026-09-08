@@ -53,7 +53,8 @@ public class Program
 
     var jwtSettings = builder.Services.AddTraderEngineJwtSettings(builder.Configuration);
 
-    builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ConfigureDefaultJsonSerializerOptions());
+    builder.Services.ConfigureHttpJsonOptions(options =>
+      options.SerializerOptions.ConfigureDefaultJsonSerializerOptions());
 
     builder.Services.Configure<CoinMarketCapSettings>(builder.Configuration.GetSection("CoinMarketCap"));
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
@@ -124,7 +125,8 @@ public class Program
     // TraderEngine.Web via AddSharedDataProtection — both hosts must decrypt values the other
     // encrypted, so the key ring path, application name and optional protecting certificate must
     // all match exactly between the two.
-    var resolvedKeyRingPath = builder.Configuration.ResolveDataProtectionKeyRingPath(builder.Environment.ContentRootPath);
+    var resolvedKeyRingPath =
+      builder.Configuration.ResolveDataProtectionKeyRingPath(builder.Environment.ContentRootPath);
     builder.Services.AddSharedDataProtection(builder.Configuration, resolvedKeyRingPath);
 
     builder.Services.AddTraderEngineSharedServices();
@@ -143,13 +145,13 @@ public class Program
     });
 
     builder.Services.AddHttpClient<IMarketCapExternalRepository, MarketCapExternalRepository>((x, httpClient) =>
-    {
-      var cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
+      {
+        var cmcSettings = x.GetRequiredService<IOptions<CoinMarketCapSettings>>().Value;
 
-      httpClient.BaseAddress = new("https://pro-api.coinmarketcap.com/v1/");
-      httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
-      httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
-    })
+        httpClient.BaseAddress = new("https://pro-api.coinmarketcap.com/v1/");
+        httpClient.DefaultRequestHeaders.Accept.Add(new("application/json"));
+        httpClient.DefaultRequestHeaders.Add("X-CMC_PRO_API_KEY", cmcSettings.API_KEY);
+      })
       .ApplyDefaultPoolAndPolicyConfig();
 
     builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>();
@@ -175,6 +177,7 @@ public class Program
       .AddHttpMessageHandler<BitvavoRateLimitHandler>();
     builder.Services.AddSingleton<BitvavoWebSocketConnectionPool>();
     foreach (var exchangeType in _exchanges) { builder.Services.AddScoped(exchangeType); }
+
     builder.Services.AddScoped(x => new ExchangeFactory(x, _exchanges));
 
     var app = builder.Build();
@@ -219,7 +222,7 @@ public class Program
   // failure.
   private static async Task MigrateWithRetryAsync(TraderEngineDbContext dbContext, int maxAttempts = 3)
   {
-    for (var attempt = 1; ; attempt++)
+    for (var attempt = 1;; attempt++)
     {
       try
       {

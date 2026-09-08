@@ -10,10 +10,12 @@ public enum TimeInForce
   /// Good-Til-Canceled
   /// </summary>
   GTC,
+
   /// <summary>
   /// Immediate-Or-Cancel
   /// </summary>
   IOC,
+
   /// <summary>
   /// Fill-Or-Kill
   /// </summary>

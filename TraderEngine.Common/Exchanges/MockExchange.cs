@@ -117,10 +117,17 @@ public class MockExchange : IExchange
   {
     var price = _curBalance.GetAllocation(market.BaseSymbol)?.Price ?? 0;
 
-    return Task.FromResult(price <= 0 ? null : new BestBidAskDto { Bid = price, Ask = price });
+    return Task.FromResult(price <= 0
+      ? null
+      : new BestBidAskDto
+      {
+        Bid = price,
+        Ask = price
+      });
   }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "Mock")
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order,
+    string source = "Mock")
   {
     var quoteAlloc = _curBalance.GetAllocation(QuoteSymbol)!;
 
@@ -187,7 +194,8 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "Mock")
+  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market,
+    string source = "Mock")
   {
     throw new NotImplementedException();
   }
@@ -197,12 +205,14 @@ public class MockExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "Mock")
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null,
+    string source = "Mock")
   {
     return Task.FromResult(new List<OrderDto>().AsEnumerable())!;
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? asset = null, string source = "Mock")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials,
+    string? asset = null, string source = "Mock")
   {
     throw new NotImplementedException();
   }
@@ -238,7 +248,8 @@ public class SimExchange : MockExchange, IExchange
   /// constructing the simulator, so a dry-run's estimated fees reflect the real, live fee rather
   /// than a guess.
   /// </summary>
-  public static async Task<SimExchange> CreateAsync(IExchange exchangeService, ExchangeCredentials credentials, Balance curBalance)
+  public static async Task<SimExchange> CreateAsync(IExchange exchangeService, ExchangeCredentials credentials,
+    Balance curBalance)
   {
     var takerFee = await exchangeService.GetTakerFee(credentials);
 
@@ -253,7 +264,9 @@ public class SimExchange : MockExchange, IExchange
       if (order.Side == OrderSide.Buy)
       {
         order.Amount = order.AmountFilled > 0 ? order.AmountFilled * (1 / (1 - TakerFee)) : order.Amount;
-        order.AmountQuote = order.AmountQuoteFilled > 0 ? order.AmountQuoteFilled * (1 / (1 - TakerFee)) : order.AmountQuote;
+        order.AmountQuote = order.AmountQuoteFilled > 0
+          ? order.AmountQuoteFilled * (1 / (1 - TakerFee))
+          : order.AmountQuote;
       }
       // For sell orders, we don't need to add the fee, since it's already subtracted from the amount.
       else

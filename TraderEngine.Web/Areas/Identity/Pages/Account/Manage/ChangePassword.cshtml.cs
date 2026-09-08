@@ -17,7 +17,8 @@ public class ChangePasswordModel : PageModel
   private readonly SignInManager<AppUser> _signInManager;
   private readonly ILogger<ChangePasswordModel> _logger;
 
-  public ChangePasswordModel(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager, ILogger<ChangePasswordModel> logger)
+  public ChangePasswordModel(UserManager<AppUser> userManager, SignInManager<AppUser> signInManager,
+    ILogger<ChangePasswordModel> logger)
   {
     _userManager = userManager;
     _signInManager = signInManager;

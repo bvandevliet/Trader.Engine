@@ -10,7 +10,12 @@ public class ConfigReqDtoClonerTests
   public void DeepClone_CopiesScalarValues()
   {
     // Arrange
-    var source = new ConfigReqDto { UseLimitOrders = true, QuoteTakeout = 50, TopRankingCount = 7 };
+    var source = new ConfigReqDto
+    {
+      UseLimitOrders = true,
+      QuoteTakeout = 50,
+      TopRankingCount = 7
+    };
 
     // Act
     var clone = source.DeepClone();

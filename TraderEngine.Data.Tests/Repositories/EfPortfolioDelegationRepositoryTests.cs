@@ -112,7 +112,8 @@ public class EfPortfolioDelegationRepositoryTests
     var managerId = Guid.NewGuid();
     var clientId = Guid.NewGuid();
     var otherClientId = Guid.NewGuid();
-    await using var db = await SeededDbContext((managerId, "manager"), (clientId, "client"), (otherClientId, "other-client"));
+    await using var db =
+      await SeededDbContext((managerId, "manager"), (clientId, "client"), (otherClientId, "other-client"));
     var repository = new EfPortfolioDelegationRepository(db);
 
     await repository.GrantAsync(managerId, otherClientId);
@@ -163,7 +164,8 @@ public class EfPortfolioDelegationRepositoryTests
     await repository.GrantAsync(managerId, clientId);
 
     // Assert
-    var rows = await db.PortfolioManagerGrants.Where(g => g.ManagerId == managerId && g.ClientId == clientId).ToListAsync();
+    var rows = await db.PortfolioManagerGrants.Where(g => g.ManagerId == managerId && g.ClientId == clientId)
+      .ToListAsync();
     Assert.AreEqual(1, rows.Count, "Re-granting after a revoke must reuse the existing row, not insert a second one.");
     Assert.AreEqual(originalId, rows[0].Id);
     Assert.IsNull(rows[0].RevokedAt);

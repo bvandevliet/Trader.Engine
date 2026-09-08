@@ -11,7 +11,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceVerifyOrderEndedTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
@@ -25,7 +26,12 @@ public class RebalancingServiceVerifyOrderEndedTests
     // Arrange
     var exchange = new ScriptedExchange();
 
-    var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.Filled };
+    var order = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.Filled
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order);
@@ -44,7 +50,12 @@ public class RebalancingServiceVerifyOrderEndedTests
     // of its status.
     var exchange = new ScriptedExchange();
 
-    var order = new OrderDto { Id = null, Market = _market, Status = OrderStatus.New };
+    var order = new OrderDto
+    {
+      Id = null,
+      Market = _market,
+      Status = OrderStatus.New
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order);
@@ -63,10 +74,20 @@ public class RebalancingServiceVerifyOrderEndedTests
     // Arrange
     var exchange = new ScriptedExchange();
 
-    var updatedOrder = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.Filled };
+    var updatedOrder = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.Filled
+    };
     exchange.EnqueueGetOrderResponse(updatedOrder);
 
-    var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
+    var order = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order, cancel: true, checks: 3);
@@ -83,13 +104,28 @@ public class RebalancingServiceVerifyOrderEndedTests
     // Arrange
     var exchange = new ScriptedExchange
     {
-      CancelOrderResponse = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.Canceled },
+      CancelOrderResponse = new OrderDto
+      {
+        Id = "abc",
+        Market = _market,
+        Status = OrderStatus.Canceled
+      },
     };
 
     // GetOrder never reports the order as ended.
-    exchange.EnqueueGetOrderResponse(new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New });
+    exchange.EnqueueGetOrderResponse(new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    });
 
-    var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
+    var order = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order, cancel: true, checks: 1);
@@ -106,9 +142,19 @@ public class RebalancingServiceVerifyOrderEndedTests
     // Arrange
     var exchange = new ScriptedExchange();
 
-    exchange.EnqueueGetOrderResponse(new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New });
+    exchange.EnqueueGetOrderResponse(new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    });
 
-    var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
+    var order = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order, cancel: false, checks: 1);
@@ -127,10 +173,20 @@ public class RebalancingServiceVerifyOrderEndedTests
       ThrowOnCancelOrder = true,
     };
 
-    var lastKnownOrder = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
+    var lastKnownOrder = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    };
     exchange.EnqueueGetOrderResponse(lastKnownOrder);
 
-    var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
+    var order = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order, cancel: true, checks: 1);
@@ -151,7 +207,12 @@ public class RebalancingServiceVerifyOrderEndedTests
 
     exchange.EnqueueGetOrderResponse(null);
 
-    var order = new OrderDto { Id = "abc", Market = _market, Status = OrderStatus.New };
+    var order = new OrderDto
+    {
+      Id = "abc",
+      Market = _market,
+      Status = OrderStatus.New
+    };
 
     // Act
     var result = await _service.VerifyOrderEnded(exchange, _credentials, order, cancel: false, checks: 1);

@@ -50,12 +50,14 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     _httpClient.BaseAddress = new("https://api.bitvavo.com/v2/");
   }
 
-  private static string CreateSignature(ExchangeCredentials credentials, long timestamp, string method, string url, string? payload)
+  private static string CreateSignature(ExchangeCredentials credentials, long timestamp, string method, string url,
+    string? payload)
   {
     return BitvavoSignature.Compute(credentials.ApiSecret, timestamp, method, url, payload);
   }
 
-  private HttpRequestMessage CreateRequestMsg(ExchangeCredentials credentials, HttpMethod method, string requestPath, object? body = null)
+  private HttpRequestMessage CreateRequestMsg(ExchangeCredentials credentials, HttpMethod method, string requestPath,
+    object? body = null)
   {
     var request = new HttpRequestMessage(method, new Uri(_httpClient.BaseAddress!, requestPath));
 
@@ -73,7 +75,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
 
     var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-    var signature = CreateSignature(credentials, timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery, payload);
+    var signature = CreateSignature(credentials, timestamp, request.Method.ToString(), request.RequestUri!.PathAndQuery,
+      payload);
 
     request.Headers.Add("bitvavo-access-key", credentials.ApiKey);
     request.Headers.Add("bitvavo-access-timestamp", timestamp.ToString());
@@ -109,11 +112,14 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to deserialize Bitvavo get balance error response: {Content}", await response.Content.ReadAsStringAsync());
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get balance error response: {Content}",
+          await response.Content.ReadAsStringAsync());
       }
 
-      _logger.LogCritical("Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      _logger.LogCritical(
+        "Failed to get balance from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
@@ -128,7 +134,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo get balance response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get balance response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -137,27 +144,27 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     var allocations = await Task.WhenAll(
       result
 
-      // Get amount of each asset.
-      .Select(allocationDto => new
-      {
-        AllocDto = allocationDto,
-        AmountQuote = decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder)
-      })
+        // Get amount of each asset.
+        .Select(allocationDto => new
+        {
+          AllocDto = allocationDto,
+          AmountQuote = decimal.Parse(allocationDto.Available) + decimal.Parse(allocationDto.InOrder)
+        })
 
-      // Filter out assets of which the amount is 0.
-      .Where(alloc => alloc.AmountQuote > 0)
+        // Filter out assets of which the amount is 0.
+        .Where(alloc => alloc.AmountQuote > 0)
 
-      // Get price of each asset.
-      .Select(async alloc =>
-      {
-        var market = new MarketReqDto(QuoteSymbol, alloc.AllocDto.Symbol);
+        // Get price of each asset.
+        .Select(async alloc =>
+        {
+          var market = new MarketReqDto(QuoteSymbol, alloc.AllocDto.Symbol);
 
-        var price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(credentials, market);
+          var price = market.BaseSymbol.Equals(QuoteSymbol) ? 1 : await GetPrice(credentials, market);
 
-        var allocation = new Allocation(market, price, alloc.AmountQuote);
+          var allocation = new Allocation(market, price, alloc.AmountQuote);
 
-        return allocation;
-      }));
+          return allocation;
+        }));
 
     foreach (var allocation in allocations)
     {
@@ -192,11 +199,14 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to deserialize Bitvavo get total deposited error response: {Content}", await response.Content.ReadAsStringAsync());
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get total deposited error response: {Content}",
+          await response.Content.ReadAsStringAsync());
       }
 
-      _logger.LogCritical("Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      _logger.LogCritical(
+        "Failed to get total deposited from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
@@ -211,7 +221,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo deposit response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo deposit response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -241,11 +252,14 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to deserialize Bitvavo get total withdrawn error response: {Content}", await response.Content.ReadAsStringAsync());
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get total withdrawn error response: {Content}",
+          await response.Content.ReadAsStringAsync());
       }
 
-      _logger.LogCritical("Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}",
-          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      _logger.LogCritical(
+        "Failed to get total withdrawn from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return Result<decimal, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
@@ -260,7 +274,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo withdrawal response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo withdrawal response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -338,11 +353,13 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to deserialize Bitvavo get market error response: {Content}", await response.Content.ReadAsStringAsync());
+        _logger.LogError(ex, "Failed to deserialize Bitvavo get market error response: {Content}",
+          await response.Content.ReadAsStringAsync());
       }
 
       _logger.LogError("Failed to get market from Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -357,7 +374,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo get market response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get market response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -397,7 +415,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     if (!response.IsSuccessStatusCode)
     {
       _logger.LogError("Failed to get asset from Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -412,7 +431,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo asset response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo asset response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -456,7 +476,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return _feesCache.GetOrAdd(cacheKey, _ => FetchFeesAsync(credentials, market));
   }
 
-  private async Task<(decimal Taker, decimal Maker)> FetchFeesAsync(ExchangeCredentials credentials, MarketReqDto? market)
+  private async Task<(decimal Taker, decimal Maker)> FetchFeesAsync(ExchangeCredentials credentials,
+    MarketReqDto? market)
   {
     var requestPath = market is null ? "account/fees" : $"account/fees?market={market}";
     var marketLabel = market?.ToString().SanitizeForLog() ?? "(account default)";
@@ -471,7 +492,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       {
         _logger.LogError(
           "Failed to get account fees from Bitvavo for market {Market}; falling back to the documented default taker/maker fees. {Url} returned {Code} {Reason} with response: {Response}",
-          marketLabel, request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+          marketLabel, request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+          await response.Content.ReadAsStringAsync());
 
         return (_fallbackTakerFee, _fallbackMakerFee);
       }
@@ -480,7 +502,9 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
 
       if (result is null)
       {
-        _logger.LogError("Bitvavo account fees response for market {Market} was empty or null; falling back to the documented default taker/maker fees.", marketLabel);
+        _logger.LogError(
+          "Bitvavo account fees response for market {Market} was empty or null; falling back to the documented default taker/maker fees.",
+          marketLabel);
 
         return (_fallbackTakerFee, _fallbackMakerFee);
       }
@@ -500,7 +524,9 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to fetch account fees from Bitvavo for market {Market}; falling back to the documented default taker/maker fees.", marketLabel);
+      _logger.LogError(ex,
+        "Failed to fetch account fees from Bitvavo for market {Market}; falling back to the documented default taker/maker fees.",
+        marketLabel);
 
       return (_fallbackTakerFee, _fallbackMakerFee);
     }
@@ -516,7 +542,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     if (!response.IsSuccessStatusCode)
     {
       _logger.LogCritical("Failed to get price from Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       throw new Exception("Error while requesting price.");
     }
@@ -531,7 +558,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker price response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker price response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -547,8 +575,10 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("Failed to get ticker book from Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      _logger.LogError(
+        "Failed to get ticker book from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -563,14 +593,16 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker book response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo ticker book response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
     return ApiMapper.MapTickerBook(result);
   }
 
-  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
+  public async Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order,
+    string source = "API")
   {
     var newOrderDto = ApiMapper.MapOrderReq(order);
 
@@ -616,11 +648,14 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
         }
         catch (Exception ex)
         {
-          _logger.LogError(ex, "Failed to deserialize Bitvavo new order error response: {Content}", await response.Content.ReadAsStringAsync());
+          _logger.LogError(ex, "Failed to deserialize Bitvavo new order error response: {Content}",
+            await response.Content.ReadAsStringAsync());
         }
 
-        _logger.LogCritical("Failed to create new order on Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
-            request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
+        _logger.LogCritical(
+          "Failed to create new order on Bitvavo. {url} returned {code} {reason} with response: {response}\nRequest payload was {payload}",
+          request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+          await response.Content.ReadAsStringAsync(), await request.Content!.ReadAsStringAsync());
 
         return Result<OrderDto, ExchangeErrCodeEnum>.Failure(failedOrder, ExchangeErrCodeEnum.Other);
       }
@@ -635,7 +670,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to deserialize Bitvavo new order response: {Content}", await response.Content.ReadAsStringAsync());
+        _logger.LogError(ex, "Failed to deserialize Bitvavo new order response: {Content}",
+          await response.Content.ReadAsStringAsync());
         throw;
       }
 
@@ -661,7 +697,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     if (!response.IsSuccessStatusCode)
     {
       _logger.LogError("Failed to get order from Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -676,24 +713,28 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo get order response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get order response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
     return ApiMapper.MapOrder(result);
   }
 
-  public async Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
+  public async Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market,
+    string source = "API")
   {
     using var request = CreateRequestMsg(
-      credentials, HttpMethod.Delete, $"order?orderId={orderId}&market={market}&operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
+      credentials, HttpMethod.Delete,
+      $"order?orderId={orderId}&market={market}&operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
 
     using var response = await _httpClient.SendAsync(request);
 
     if (!response.IsSuccessStatusCode)
     {
       _logger.LogError("Failed to cancel order on Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -708,7 +749,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo cancel order response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo cancel order response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
@@ -725,8 +767,10 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("Failed to get open orders from Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      _logger.LogError(
+        "Failed to get open orders from Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -741,23 +785,28 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo get open orders response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo get open orders response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
     return ApiMapper.MapOrders(result);
   }
 
-  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
+  public async Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials,
+    MarketReqDto? market = null, string source = "API")
   {
-    using var request = CreateRequestMsg(credentials, HttpMethod.Delete, $"orders?operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
+    using var request = CreateRequestMsg(credentials, HttpMethod.Delete,
+      $"orders?operatorId={$"trader.{source.ToLower()}".GetHashCode()}");
 
     using var response = await _httpClient.SendAsync(request);
 
     if (!response.IsSuccessStatusCode)
     {
-      _logger.LogError("Failed to cancel all open orders on Bitvavo. {url} returned {code} {reason} with response: {response}",
-        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase, await response.Content.ReadAsStringAsync());
+      _logger.LogError(
+        "Failed to cancel all open orders on Bitvavo. {url} returned {code} {reason} with response: {response}",
+        request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
+        await response.Content.ReadAsStringAsync());
 
       return null;
     }
@@ -772,19 +821,22 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to deserialize Bitvavo cancel all open orders response: {Content}", await response.Content.ReadAsStringAsync());
+      _logger.LogError(ex, "Failed to deserialize Bitvavo cancel all open orders response: {Content}",
+        await response.Content.ReadAsStringAsync());
       throw;
     }
 
     return ApiMapper.MapOrders(result);
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? asset = null, string source = "API")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials,
+    string? asset = null, string source = "API")
   {
     throw new NotImplementedException();
   }
 
-  public async Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default)
+  public async Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials,
+    CancellationToken ct = default)
   {
     try
     {
@@ -792,13 +844,15 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Failed to begin Bitvavo WebSocket session; orders in this run will fall back to REST polling.");
+      _logger.LogWarning(ex,
+        "Failed to begin Bitvavo WebSocket session; orders in this run will fall back to REST polling.");
 
       return NoOpAsyncDisposable.Instance;
     }
   }
 
-  public async Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default)
+  public async Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout,
+    CancellationToken ct = default)
   {
     if (order.Id is not string orderId)
       return order;
@@ -813,7 +867,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Failed to establish Bitvavo WebSocket connection for order {OrderId}; falling back to REST polling.", orderId);
+      _logger.LogWarning(ex,
+        "Failed to establish Bitvavo WebSocket connection for order {OrderId}; falling back to REST polling.", orderId);
       return null;
     }
 
@@ -861,7 +916,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     }
     catch (Exception ex)
     {
-      _logger.LogWarning(ex, "Bitvavo WebSocket subscription failed for order {OrderId}; falling back to REST polling.", orderId);
+      _logger.LogWarning(ex, "Bitvavo WebSocket subscription failed for order {OrderId}; falling back to REST polling.",
+        orderId);
       return null;
     }
     finally

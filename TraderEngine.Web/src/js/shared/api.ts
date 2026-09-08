@@ -4,7 +4,9 @@ import { csrfHeaders } from './csrf';
 // Razor Page AJAX handler in this app returns on failure (see Dashboard.cshtml.cs's
 // ExecuteExchangeCall and OnPostSaveAsync) — callers can catch this specifically to show the
 // server's message, and let anything else (network failure, bad JSON) surface as a generic error.
-export class ApiError extends Error {}
+export class ApiError extends Error
+{
+}
 
 export async function postJson<T = void> (url: string, body: unknown): Promise<T>
 {

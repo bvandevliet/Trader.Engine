@@ -59,7 +59,8 @@ public class AuthController : ControllerBase
     // MustChangePasswordMiddleware. 403 rather than 401: the caller *is* who they say they are,
     // they're just not allowed a token yet.
     if (user.MustChangePassword)
-      return StatusCode(StatusCodes.Status403Forbidden, "Password change required. Log in via the web application to set a new password.");
+      return StatusCode(StatusCodes.Status403Forbidden,
+        "Password change required. Log in via the web application to set a new password.");
 
     var (token, expiresAt) = _jwtTokenService.GenerateToken(user);
 

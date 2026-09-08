@@ -1,11 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
-    <PackageReference Include="AwesomeAssertions" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="NSubstitute" />
-    <PackageReference Include="MSTest.TestAdapter" />
-    <PackageReference Include="MSTest.TestFramework" />
+    <PackageReference Include="AwesomeAssertions"/>
+    <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+    <PackageReference Include="NSubstitute"/>
+    <PackageReference Include="MSTest.TestAdapter"/>
+    <PackageReference Include="MSTest.TestFramework"/>
     <PackageReference Include="coverlet.collector">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -13,11 +13,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\TraderEngine.API\TraderEngine.API.csproj" />
+    <ProjectReference Include="..\TraderEngine.API\TraderEngine.API.csproj"/>
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Helpers\" />
+    <Folder Include="Helpers\"/>
   </ItemGroup>
 
 </Project>

@@ -122,7 +122,11 @@ internal sealed class ScriptedExchange : IExchange
   /// </summary>
   public void SetBestBidAsk(string baseSymbol, decimal bid, decimal ask)
   {
-    _bestBidAsks[baseSymbol] = new BestBidAskDto { Bid = bid, Ask = ask };
+    _bestBidAsks[baseSymbol] = new BestBidAskDto
+    {
+      Bid = bid,
+      Ask = ask
+    };
   }
 
   /// <summary>
@@ -163,7 +167,11 @@ internal sealed class ScriptedExchange : IExchange
     var hasMinOrderSizeInBase = _minOrderSizesInBase.TryGetValue(market.BaseSymbol, out var minOrderSizeInBase);
 
     return Task.FromResult(hasStatus || hasMinOrderSizeInBase
-      ? new MarketDataDto { Status = status, MinOrderSizeInBase = minOrderSizeInBase }
+      ? new MarketDataDto
+      {
+        Status = status,
+        MinOrderSizeInBase = minOrderSizeInBase
+      }
       : null);
   }
 
@@ -174,7 +182,8 @@ internal sealed class ScriptedExchange : IExchange
     return Task.FromResult(_getOrderResponses.Count > 0 ? _getOrderResponses.Dequeue() : null);
   }
 
-  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
+  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market,
+    string source = "API")
   {
     CancelOrderCalls.Add((orderId, market));
 
@@ -184,7 +193,8 @@ internal sealed class ScriptedExchange : IExchange
     return Task.FromResult(CancelOrderResponse);
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null,
+    string source = "API")
   {
     return Task.FromResult(Enumerable.Empty<OrderDto>())!;
   }
@@ -233,7 +243,12 @@ internal sealed class ScriptedExchange : IExchange
   public Task<AssetDataDto?> GetAsset(ExchangeCredentials credentials, string baseSymbol)
   {
     return Task.FromResult(_assetDecimals.TryGetValue(baseSymbol, out var decimals)
-      ? new AssetDataDto { BaseSymbol = baseSymbol, Name = baseSymbol, Decimals = decimals }
+      ? new AssetDataDto
+      {
+        BaseSymbol = baseSymbol,
+        Name = baseSymbol,
+        Decimals = decimals
+      }
       : null);
   }
 
@@ -249,7 +264,8 @@ internal sealed class ScriptedExchange : IExchange
     return Task.FromResult(_bestBidAsks.TryGetValue(market.BaseSymbol, out var bidAsk) ? bidAsk : null);
   }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order,
+    string source = "API")
   {
     NewOrderCalls.Add(order);
 
@@ -264,7 +280,8 @@ internal sealed class ScriptedExchange : IExchange
     throw new NotImplementedException();
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials,
+    string? baseSymbol = null, string source = "API")
   {
     throw new NotImplementedException();
   }

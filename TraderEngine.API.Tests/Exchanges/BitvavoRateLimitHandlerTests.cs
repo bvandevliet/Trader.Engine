@@ -32,7 +32,8 @@ public class BitvavoRateLimitHandlerTests
     return (handler, state, delays);
   }
 
-  private static Task<HttpResponseMessage> SendAsync(BitvavoRateLimitHandler handler, string url = "https://api.bitvavo.com/v2/time")
+  private static Task<HttpResponseMessage> SendAsync(BitvavoRateLimitHandler handler,
+    string url = "https://api.bitvavo.com/v2/time")
   {
     using var invoker = new HttpMessageInvoker(handler, disposeHandler: false);
 
@@ -45,7 +46,8 @@ public class BitvavoRateLimitHandlerTests
     // Arrange
     var resetAt = DateTimeOffset.UtcNow.AddSeconds(30);
     var inner = new FakeHttpMessageHandler(HttpStatusCode.OK, "{}");
-    inner.SetResponseHeaders(("bitvavo-ratelimit-remaining", "900"), ("bitvavo-ratelimit-resetat", resetAt.ToUnixTimeMilliseconds().ToString()));
+    inner.SetResponseHeaders(("bitvavo-ratelimit-remaining", "900"),
+      ("bitvavo-ratelimit-resetat", resetAt.ToUnixTimeMilliseconds().ToString()));
     var (handler, state, _) = NewHandler(inner);
 
     // Act
@@ -152,7 +154,8 @@ public class BitvavoRateLimitHandlerTests
   public async Task SendAsync_ErrorResponseWithErrorCode105_TriggersConservativeBackoff_WhenHeadersAbsent()
   {
     // Arrange
-    var inner = new FakeHttpMessageHandler(HttpStatusCode.TooManyRequests, """{"errorCode":105,"error":"Rate limit exceeded."}""");
+    var inner = new FakeHttpMessageHandler(HttpStatusCode.TooManyRequests,
+      """{"errorCode":105,"error":"Rate limit exceeded."}""");
     var (handler, state, _) = NewHandler(inner);
     var before = DateTimeOffset.UtcNow;
 
@@ -169,8 +172,10 @@ public class BitvavoRateLimitHandlerTests
   {
     // Arrange
     var resetAt = DateTimeOffset.UtcNow.AddSeconds(5);
-    var inner = new FakeHttpMessageHandler(HttpStatusCode.TooManyRequests, """{"errorCode":105,"error":"Rate limit exceeded."}""");
-    inner.SetResponseHeaders(("bitvavo-ratelimit-remaining", "0"), ("bitvavo-ratelimit-resetat", resetAt.ToUnixTimeMilliseconds().ToString()));
+    var inner = new FakeHttpMessageHandler(HttpStatusCode.TooManyRequests,
+      """{"errorCode":105,"error":"Rate limit exceeded."}""");
+    inner.SetResponseHeaders(("bitvavo-ratelimit-remaining", "0"),
+      ("bitvavo-ratelimit-resetat", resetAt.ToUnixTimeMilliseconds().ToString()));
     var (handler, state, _) = NewHandler(inner);
 
     // Act
@@ -184,7 +189,8 @@ public class BitvavoRateLimitHandlerTests
   public async Task SendAsync_ErrorResponseWithoutErrorCode105_DoesNotTriggerBackoff()
   {
     // Arrange
-    var inner = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":999,"error":"Unexpected."}""");
+    var inner = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError,
+      """{"errorCode":999,"error":"Unexpected."}""");
     var (handler, state, _) = NewHandler(inner);
 
     // Act

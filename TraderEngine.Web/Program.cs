@@ -33,7 +33,8 @@ public class Program
 
     builder.Services.AddTraderEngineJwtSettings(builder.Configuration);
 
-    builder.Services.ConfigureHttpJsonOptions(options => options.SerializerOptions.ConfigureDefaultJsonSerializerOptions());
+    builder.Services.ConfigureHttpJsonOptions(options =>
+      options.SerializerOptions.ConfigureDefaultJsonSerializerOptions());
 
     builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("EmailSettings"));
     builder.Services.Configure<TraderEngineApiSettings>(builder.Configuration.GetSection("TraderEngineApi"));
@@ -99,7 +100,8 @@ public class Program
     // protecting certificate TraderEngine.API uses — this host decrypts exchange credentials the
     // API encrypted (and vice versa), so the two hosts share one key ring rather than each
     // keeping their own.
-    var resolvedKeyRingPath = builder.Configuration.ResolveDataProtectionKeyRingPath(builder.Environment.ContentRootPath);
+    var resolvedKeyRingPath =
+      builder.Configuration.ResolveDataProtectionKeyRingPath(builder.Environment.ContentRootPath);
     builder.Services.AddSharedDataProtection(builder.Configuration, resolvedKeyRingPath);
 
     builder.Services.AddTraderEngineSharedServices();

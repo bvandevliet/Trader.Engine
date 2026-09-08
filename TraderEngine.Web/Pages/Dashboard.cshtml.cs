@@ -64,7 +64,8 @@ public class DashboardModel : TraderEnginePageModelBase
   /// names lookup is a nice-to-have, not something that should turn a working simulation into an
   /// error page if it happens to time out or the API rejects it.
   /// </summary>
-  private async Task<Dictionary<string, string>> GetAssetNamesOrEmpty(AppUser user, SimulationDto simulation, CancellationToken ct)
+  private async Task<Dictionary<string, string>> GetAssetNamesOrEmpty(AppUser user, SimulationDto simulation,
+    CancellationToken ct)
   {
     var baseSymbols = simulation.CurBalance.Allocations
       .Concat(simulation.NewBalance.Allocations)
@@ -86,7 +87,8 @@ public class DashboardModel : TraderEnginePageModelBase
     var credentials = await _apiCredentialsRepository.GetApiCred(userId, _exchangeName);
 
     if (string.IsNullOrEmpty(credentials.ApiKey) || string.IsNullOrEmpty(credentials.ApiSecret))
-      throw new ExchangeAuthenticationException("Configure your exchange API keys before the dashboard can show any figures.");
+      throw new ExchangeAuthenticationException(
+        "Configure your exchange API keys before the dashboard can show any figures.");
 
     return credentials;
   }
@@ -99,7 +101,8 @@ public class DashboardModel : TraderEnginePageModelBase
   /// "same id as the token subject" before embedding the claim, so re-deriving that same
   /// condition here would just duplicate it.
   /// </summary>
-  private async Task<(DelegatedAccessContext Ctx, ApiCredReqDto Credentials)> ResolveAndAuthenticate(AppUser caller, Guid? actingAsClientId)
+  private async Task<(DelegatedAccessContext Ctx, ApiCredReqDto Credentials)> ResolveAndAuthenticate(AppUser caller,
+    Guid? actingAsClientId)
   {
     var ctx = await _delegatedAccessResolver.ResolveAsync(caller, actingAsClientId);
     var credentials = await GetCredentialsOrThrow(ctx.EffectiveUser.Id);
@@ -203,7 +206,8 @@ public class DashboardModel : TraderEnginePageModelBase
 
     var validationResults = new List<ValidationResult>();
 
-    if (!Validator.TryValidateObject(config, new ValidationContext(config), validationResults, validateAllProperties: true))
+    if (!Validator.TryValidateObject(config, new ValidationContext(config), validationResults,
+          validateAllProperties: true))
     {
       return StatusCode(StatusCodes.Status400BadRequest, new
       {
@@ -239,7 +243,8 @@ public class DashboardModel : TraderEnginePageModelBase
   /// Task.WhenAll across all three would let a failing simulation discard totals that had already
   /// succeeded, hiding them from the dashboard for no reason.
   /// </summary>
-  public async Task<IActionResult> OnPostInitAsync([FromBody] ConfigReqDto config, Guid? actingAsClientId, CancellationToken ct)
+  public async Task<IActionResult> OnPostInitAsync([FromBody] ConfigReqDto config, Guid? actingAsClientId,
+    CancellationToken ct)
   {
     var caller = await GetCurrentUserAsync();
 
@@ -247,9 +252,12 @@ public class DashboardModel : TraderEnginePageModelBase
     {
       var (ctx, credentials) = await ResolveAndAuthenticate(caller, actingAsClientId);
 
-      var depositedTask = _apiClient.GetTotalDeposited(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
-      var withdrawnTask = _apiClient.GetTotalWithdrawn(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
-      var simulationTask = _apiClient.SimulateRebalance(ctx.Caller, _exchangeName, Source, new SimulationReqDto(credentials, config), ctx.EffectiveUser.Id, ct);
+      var depositedTask =
+        _apiClient.GetTotalDeposited(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
+      var withdrawnTask =
+        _apiClient.GetTotalWithdrawn(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
+      var simulationTask = _apiClient.SimulateRebalance(ctx.Caller, _exchangeName, Source,
+        new SimulationReqDto(credentials, config), ctx.EffectiveUser.Id, ct);
 
       await Task.WhenAll(depositedTask, withdrawnTask);
 
@@ -283,7 +291,8 @@ public class DashboardModel : TraderEnginePageModelBase
   /// cref="OnPostInitAsync"/> — the deposited/withdrawn totals it also fetches don't change based
   /// on rebalance config, so refetching them on every debounced keystroke would be wasted calls.
   /// </summary>
-  public async Task<IActionResult> OnPostSimulateAsync([FromBody] ConfigReqDto config, Guid? actingAsClientId, CancellationToken ct)
+  public async Task<IActionResult> OnPostSimulateAsync([FromBody] ConfigReqDto config, Guid? actingAsClientId,
+    CancellationToken ct)
   {
     var caller = await GetCurrentUserAsync();
 
@@ -291,10 +300,15 @@ public class DashboardModel : TraderEnginePageModelBase
     {
       var (ctx, credentials) = await ResolveAndAuthenticate(caller, actingAsClientId);
 
-      var simulation = await _apiClient.SimulateRebalance(ctx.Caller, _exchangeName, Source, new SimulationReqDto(credentials, config), ctx.EffectiveUser.Id, ct);
+      var simulation = await _apiClient.SimulateRebalance(ctx.Caller, _exchangeName, Source,
+        new SimulationReqDto(credentials, config), ctx.EffectiveUser.Id, ct);
       var assetNames = await GetAssetNamesOrEmpty(ctx.Caller, simulation, ct);
 
-      return new { simulation, assetNames };
+      return new
+      {
+        simulation,
+        assetNames
+      };
     });
   }
 
@@ -310,7 +324,8 @@ public class DashboardModel : TraderEnginePageModelBase
   /// than making the client do a separate <see cref="OnGetCurrentBalanceAsync"/> round-trip right
   /// after this one just to refresh the two tables — same reasoning as <see cref="OnPostInitAsync"/>.
   /// </summary>
-  public async Task<IActionResult> OnPostRebalanceNowAsync([FromBody] RebalanceNowRequest request, Guid? actingAsClientId, CancellationToken ct)
+  public async Task<IActionResult> OnPostRebalanceNowAsync([FromBody] RebalanceNowRequest request,
+    Guid? actingAsClientId, CancellationToken ct)
   {
     var caller = await GetCurrentUserAsync();
 
@@ -319,7 +334,8 @@ public class DashboardModel : TraderEnginePageModelBase
       var (ctx, credentials) = await ResolveAndAuthenticate(caller, actingAsClientId);
 
       var orders = await _apiClient.Rebalance(
-        ctx.Caller, _exchangeName, Source, new RebalanceReqDto(credentials, request.Config, request.TargetAllocs), ctx.EffectiveUser.Id, ct);
+        ctx.Caller, _exchangeName, Source, new RebalanceReqDto(credentials, request.Config, request.TargetAllocs),
+        ctx.EffectiveUser.Id, ct);
 
       // LastRebalance is persisted server-side by TraderEngine.API's RebalanceController itself,
       // right after the rebalance actually runs — not here, since this line would never run (and
@@ -328,9 +344,14 @@ public class DashboardModel : TraderEnginePageModelBase
 
       // Only fetched after the trades above have settled — this needs the post-trade balance, so
       // it can't run in parallel with placing the orders the way OnPostInitAsync's calls can.
-      var currentBalance = await _apiClient.GetCurrentBalance(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
+      var currentBalance =
+        await _apiClient.GetCurrentBalance(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
 
-      return new { orders, currentBalance };
+      return new
+      {
+        orders,
+        currentBalance
+      };
     });
   }
 
@@ -345,7 +366,8 @@ public class DashboardModel : TraderEnginePageModelBase
     try
     {
       var (ctx, credentials) = await ResolveAndAuthenticate(caller, actingAsClientId);
-      var balance = await _apiClient.GetCurrentBalance(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
+      var balance =
+        await _apiClient.GetCurrentBalance(ctx.Caller, _exchangeName, credentials, ctx.EffectiveUser.Id, ct);
 
       return new JsonResult(balance);
     }

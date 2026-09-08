@@ -46,7 +46,8 @@ public class RebalancingService : IRebalancingService
     }
   }
 
-  public async Task<TargetAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials, TargetAllocReqDto targetAlloc)
+  public async Task<TargetAllocReqDto> FetchMarketStatus(IExchange exchange, ExchangeCredentials credentials,
+    TargetAllocReqDto targetAlloc)
   {
     // Get market data for the asset and update market status.
     if (targetAlloc.MarketStatus == MarketStatus.Unknown)
@@ -61,7 +62,8 @@ public class RebalancingService : IRebalancingService
     return targetAlloc;
   }
 
-  public async Task<List<TargetAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials, IEnumerable<TargetAllocReqDto> targetAllocs, int topRankingCount)
+  public async Task<List<TargetAllocReqDto>> GetTopRankingAllocs(IExchange exchange, ExchangeCredentials credentials,
+    IEnumerable<TargetAllocReqDto> targetAllocs, int topRankingCount)
   {
     var targetAllocsList = new List<TargetAllocReqDto>();
 
@@ -101,15 +103,17 @@ public class RebalancingService : IRebalancingService
     // linearly scanned per current allocation below.
     var targetAllocsByMarket = targetAllocs
       .Where(targetAlloc => targetAlloc.MarketStatus is MarketStatus.Trading
-        || null != curBalance.GetAllocation(targetAlloc.Market.BaseSymbol))
+                            || null != curBalance.GetAllocation(targetAlloc.Market.BaseSymbol))
       .Where(targetAlloc => targetAlloc.Market.QuoteSymbol.Equals(exchange.QuoteSymbol))
       .ToDictionary(targetAlloc => targetAlloc.Market);
 
     var totalTargetWeight = targetAllocsByMarket.Values.Sum(targetAlloc => targetAlloc.TargetWeight);
 
     // Relative quote allocation (including takeout).
-    var quoteRelAlloc = curBalance.AmountQuoteTotal == 0 ? 0 : Math.Max(0, Math.Min(1,
-      config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
+    var quoteRelAlloc = curBalance.AmountQuoteTotal == 0
+      ? 0
+      : Math.Max(0, Math.Min(1,
+        config.QuoteTakeout / curBalance.AmountQuoteTotal + config.QuoteAllocation / 100));
 
     // Scale total sum of absolute allocation values to account for relative quote allocation.
     // NOTE: No need to add quote allocation, since it's already been accounted for in the total abs value.
@@ -118,7 +122,8 @@ public class RebalancingService : IRebalancingService
 
     decimal newAmountQuote(TargetAllocReqDto? targetAlloc)
     {
-      return (totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight) * curBalance.AmountQuoteTotal;
+      return (totalTargetWeight == 0 || targetAlloc == null ? 0 : targetAlloc.TargetWeight / totalTargetWeight) *
+             curBalance.AmountQuoteTotal;
     }
 
     // Every market either currently held or targeted — the full set this diff needs to cover, in
@@ -136,7 +141,8 @@ public class RebalancingService : IRebalancingService
         if (targetAlloc != null && targetAlloc.MarketStatus is not MarketStatus.Trading)
           continue;
 
-        yield return new AllocDriftReqDto(curAlloc.Market, curAlloc.Price, curAlloc.Amount, curAlloc.AmountQuote - newAmountQuote(targetAlloc));
+        yield return new AllocDriftReqDto(curAlloc.Market, curAlloc.Price, curAlloc.Amount,
+          curAlloc.AmountQuote - newAmountQuote(targetAlloc));
       }
       else
       {
@@ -185,7 +191,7 @@ public class RebalancingService : IRebalancingService
       var marketAmount = await ResolveMarketOrderBaseAmount(exchange, credentials, orderReq);
 
       if (marketAmount is decimal amount
-        && !await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, amount))
+          && !await ClearsBaseAssetMinimum(exchange, credentials, orderReq.Market, orderReq.Side, amount))
         return ([], 0);
 
       // A plain market order is unambiguously a taker fill by definition (it takes whatever
@@ -336,7 +342,8 @@ public class RebalancingService : IRebalancingService
     // from logs — see the fill-fee-analysis log emitted after this order resolves below.
     _logger.LogInformation(
       "Placing {Side} limit order for market {Market}: {Amount} @ {LimitPrice} — priced at the {CrossingSide} to cross the spread immediately (taker-side placement, not a passive/resting order).",
-      orderReq.Side, orderReq.Market.ToString().SanitizeForLog(), limitAmount, limitPrice, orderReq.Side == OrderSide.Sell ? "best bid" : "best ask");
+      orderReq.Side, orderReq.Market.ToString().SanitizeForLog(), limitAmount, limitPrice,
+      orderReq.Side == OrderSide.Sell ? "best bid" : "best ask");
 
     // Always cancel a limit order that hasn't (fully) filled by the timeout — the whole point of
     // this path is to fall back to a market order for the remainder, so a resting limit order can
@@ -372,7 +379,8 @@ public class RebalancingService : IRebalancingService
     {
       if (orderReq.Side != OrderSide.Sell)
       {
-        var toppedUpAmountQuote = await TryClaimDustTopUp(exchange, credentials, orderReq.Market, claimTopUp, remainingAmountQuote);
+        var toppedUpAmountQuote =
+          await TryClaimDustTopUp(exchange, credentials, orderReq.Market, claimTopUp, remainingAmountQuote);
 
         if (toppedUpAmountQuote is null)
         {
@@ -389,7 +397,8 @@ public class RebalancingService : IRebalancingService
 
         _logger.LogInformation(
           "Rounding up unfilled buy remainder for market {Market}: {RemainingAmountQuote} topped up to the exchange minimum of {MinOrderSizeInQuote} using {ToppedUpFullCost} claimed from the batch budget.",
-          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote, toppedUpFullCost);
+          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote,
+          toppedUpFullCost);
 
         fallbackReq = new OrderReqDto()
         {
@@ -473,7 +482,8 @@ public class RebalancingService : IRebalancingService
 
     _logger.LogInformation(
       "Fill fee analysis for order {OrderId} ({Market} {Side} {Type}): filled {AmountQuoteFilled} in {ElapsedMs}ms, fee paid {FeePaid} ({RealizedRatePercent:P3} realized) vs. known maker {MakerRatePercent:P3} / taker {TakerRatePercent:P3} — {Classification}.",
-      order.Id, order.Market.ToString().SanitizeForLog(), order.Side, order.Type, order.AmountQuoteFilled, elapsed.TotalMilliseconds,
+      order.Id, order.Market.ToString().SanitizeForLog(), order.Side, order.Type, order.AmountQuoteFilled,
+      elapsed.TotalMilliseconds,
       order.FeePaid, realizedRate, makerFee, takerFee, classification);
   }
 
@@ -586,7 +596,8 @@ public class RebalancingService : IRebalancingService
       {
         _logger.LogError(
           "Failed to place order for market {Market} on exchange {Exchange}: {ErrorCode} {Summary}",
-          orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name, result.ErrorCode, result.Summary.SanitizeForLog());
+          orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name, result.ErrorCode,
+          result.Summary.SanitizeForLog());
 
         return result.Value ?? NewFailedOrder(orderReq);
       }
@@ -595,7 +606,8 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.", orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
+      _logger.LogError(ex, "Failed to place order for market {Market} on exchange {Exchange}.",
+        orderReq.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       return NewFailedOrder(orderReq);
     }
@@ -606,7 +618,8 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.", order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
+      _logger.LogError(ex, "Failed to verify order {OrderId} for market {Market} on exchange {Exchange} has ended.",
+        order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
 
       // Return the last known state rather than the placement failure,
       // since the order itself was successfully placed.
@@ -628,7 +641,8 @@ public class RebalancingService : IRebalancingService
     };
   }
 
-  public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order, bool cancel = true, int checks = 60)
+  public async Task<OrderDto> VerifyOrderEnded(IExchange exchange, ExchangeCredentials credentials, OrderDto order,
+    bool cancel = true, int checks = 60)
   {
     if (exchange is IExchangeOrderNotifications pushExchange && order.Id != null && !order.HasEnded)
     {
@@ -664,7 +678,8 @@ public class RebalancingService : IRebalancingService
       }
       catch (Exception ex)
       {
-        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id, order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
+        _logger.LogError(ex, "Failed to cancel order {OrderId} for market {Market} on exchange {Exchange}.", order.Id,
+          order.Market.ToString().SanitizeForLog(), exchange.GetType().Name);
       }
 
     return order;
@@ -808,7 +823,8 @@ public class RebalancingService : IRebalancingService
     // Every leg requests its own full, unscaled target — see the type-level remarks on
     // BudgetLedger for why there's no upfront ratio/estimate here.
     var buyTasks = buyOrders
-      .Select(buyOrder => ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote!, source))
+      .Select(buyOrder =>
+        ClaimAndPlaceBuy(ledger, exchange, credentials, buyOrder, (decimal)buyOrder.AmountQuote!, source))
       .ToList();
 
     // Every buy leg above has now registered its claim (BudgetLedger.ClaimAsync registers
@@ -942,7 +958,9 @@ public class RebalancingService : IRebalancingService
     }
     catch (Exception ex)
     {
-      _logger.LogError(ex, "Failed to fetch balance for final buy-budget reconciliation on exchange {Exchange}; proceeding with the locally-tracked total.", exchange.GetType().Name);
+      _logger.LogError(ex,
+        "Failed to fetch balance for final buy-budget reconciliation on exchange {Exchange}; proceeding with the locally-tracked total.",
+        exchange.GetType().Name);
     }
 
     ledger.Complete(actualAvailable);
@@ -994,7 +1012,8 @@ public class RebalancingService : IRebalancingService
 
     var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
-    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
+    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source,
+      initialAvailableWithFeeBuffer);
   }
 
   public async Task<OrderDto[]> Rebalance(
@@ -1015,6 +1034,7 @@ public class RebalancingService : IRebalancingService
 
     var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
-    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source, initialAvailableWithFeeBuffer);
+    return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source,
+      initialAvailableWithFeeBuffer);
   }
 }

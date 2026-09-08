@@ -110,7 +110,8 @@ public class AutomationOrchestratorConcurrencyTests
       throw new NotSupportedException();
     }
 
-    public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
+    public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order,
+      string source = "API")
     {
       throw new NotSupportedException();
     }
@@ -120,7 +121,8 @@ public class AutomationOrchestratorConcurrencyTests
       throw new NotSupportedException();
     }
 
-    public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
+    public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market,
+      string source = "API")
     {
       throw new NotSupportedException();
     }
@@ -130,22 +132,29 @@ public class AutomationOrchestratorConcurrencyTests
       throw new NotSupportedException();
     }
 
-    public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
+    public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials,
+      MarketReqDto? market = null, string source = "API")
     {
       throw new NotSupportedException();
     }
 
-    public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API")
+    public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials,
+      string? baseSymbol = null, string source = "API")
     {
       throw new NotSupportedException();
     }
   }
 
-  private sealed class FakeApiCredentialsRepository(IReadOnlyDictionary<Guid, string> apiKeysByUser) : IApiCredentialsRepository
+  private sealed class FakeApiCredentialsRepository(IReadOnlyDictionary<Guid, string> apiKeysByUser)
+    : IApiCredentialsRepository
   {
     public Task<ApiCredReqDto> GetApiCred(Guid userId, string exchangeName)
     {
-      return Task.FromResult(new ApiCredReqDto { ApiKey = apiKeysByUser[userId], ApiSecret = apiKeysByUser[userId] });
+      return Task.FromResult(new ApiCredReqDto
+      {
+        ApiKey = apiKeysByUser[userId],
+        ApiSecret = apiKeysByUser[userId]
+      });
     }
 
     public Task<ApiCredentialStatus?> GetApiCredStatus(Guid userId, string exchangeName)

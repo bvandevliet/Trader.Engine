@@ -47,8 +47,8 @@ public class MarketReqDto : IEquatable<MarketReqDto>
   public bool Equals(MarketReqDto? obj)
   {
     return obj is not null
-    && QuoteSymbol.Equals(obj.QuoteSymbol, StringComparison.OrdinalIgnoreCase)
-    && BaseSymbol.Equals(obj.BaseSymbol, StringComparison.OrdinalIgnoreCase);
+           && QuoteSymbol.Equals(obj.QuoteSymbol, StringComparison.OrdinalIgnoreCase)
+           && BaseSymbol.Equals(obj.BaseSymbol, StringComparison.OrdinalIgnoreCase);
   }
 
   public override bool Equals(object? obj)

@@ -64,7 +64,11 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     // of which account it belongs to (see BitvavoRateLimitState), since it all leaves from this
     // app's single outbound IP — an unbounded fan-out would let one especially busy cycle burn
     // through that shared budget and throttle every other user's cycle in the same run at once.
-    await Parallel.ForEachAsync(userConfigs, new ParallelOptions { MaxDegreeOfParallelism = _maxConcurrentRuns, CancellationToken = ct }, async (userConfig, ct) =>
+    await Parallel.ForEachAsync(userConfigs, new ParallelOptions
+    {
+      MaxDegreeOfParallelism = _maxConcurrentRuns,
+      CancellationToken = ct
+    }, async (userConfig, ct) =>
     {
       var now = DateTime.UtcNow;
 
@@ -99,7 +103,7 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
         // Check if rebalance interval has elapsed.
         if (configReqDto.LastRebalance is DateTime lastRebalance &&
-          Math.Round((now - lastRebalance).TotalHours, MidpointRounding.AwayFromZero) < configReqDto.IntervalHours)
+            Math.Round((now - lastRebalance).TotalHours, MidpointRounding.AwayFromZero) < configReqDto.IntervalHours)
         {
           _logger.LogInformation(
             "Rebalance interval has not elapsed for user '{userId}'.", userConfig.Key);
@@ -119,7 +123,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         if (exchange == null)
         {
           _logger.LogError(
-            "Exchange '{exchangeName}' not found while running automation for user '{userId}'.", exchangeName, userConfig.Key);
+            "Exchange '{exchangeName}' not found while running automation for user '{userId}'.", exchangeName,
+            userConfig.Key);
 
           return;
         }
@@ -166,7 +171,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         }
 
         // Filter for assets that are potentially tradable.
-        var targetAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, rawTargetAllocs, configReqDto.TopRankingCount);
+        var targetAllocsTask =
+          _rebalancingService.GetTopRankingAllocs(exchange, credentials, rawTargetAllocs, configReqDto.TopRankingCount);
 
         // Map here to retain current balance as it will be
         // modified by the simulation since it is passed by reference.
@@ -182,7 +188,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // cached allocation price (no real order book lookup) and fill it instantly at the maker
         // rate, so UseLimitOrders is honored here too — the dry-run's estimated fees stay accurate
         // without ever touching a real API for a placement that will never actually rest.
-        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, targetAllocs, balance, "automation");
+        var simulatedOrders = await _rebalancingService.Rebalance(simExchange, credentials, configReqDto, targetAllocs,
+          balance, "automation");
 
         var newBalanceDto = CommonMapper.MapBalance(balance);
 
@@ -244,7 +251,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
 
           // Send simulation failure notification.
           await emailNotification.SendAutomationFailed(
-            userConfig.Key, now, "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
+            userConfig.Key, now,
+            "Attempted to fully sell a larger non-contiguous allocation. This is just a precaution, if intended, it should be done manually.",
             simulated.Orders, simulated, true);
 
           return;
@@ -325,7 +333,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         var totalWithdrawnTask = exchange.TotalWithdrawn(credentials);
         _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
         await emailNotification.SendAutomationSucceeded(
-          userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated, ordersExecuted);
+          userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated,
+          ordersExecuted);
       }
       catch (Exception exception)
       {
@@ -377,8 +386,8 @@ public class AutomationOrchestrator : IAutomationOrchestrator
     // Walk allocations from smallest to largest, skipping the quote currency itself.
     var keptAllocations = 0;
     foreach (var allocation in simulated.CurBalance.Allocations
-      .Where(a => a.Market.BaseSymbol != a.Market.QuoteSymbol)
-      .OrderBy(a => a.AmountQuote))
+               .Where(a => a.Market.BaseSymbol != a.Market.QuoteSymbol)
+               .OrderBy(a => a.AmountQuote))
     {
       // Skip dust allocations — too small to matter.
       if (allocation.AmountQuote < configReqDto.MinimumOrderSizeQuote)

@@ -2,226 +2,252 @@
 @using TraderEngine.Common.Extensions
 @model TraderEngine.Web.Pages.DashboardModel
 @{
-    ViewData["Title"] = "Dashboard";
+  ViewData["Title"] = "Dashboard";
 }
 
 <h1>@ViewData["Title"]</h1>
 
 @if (Model.ActingForClient is { } client)
 {
-    <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
-        <span>Acting as portfolio manager for <strong>@client.DisplayName</strong>'s portfolio.</span>
-        <span>
+  <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
+    <span>Acting as portfolio manager for <strong>@client.DisplayName</strong>'s portfolio.</span>
+    <span>
             <a class="btn btn-sm btn-outline-secondary" asp-page="/Config" asp-route-actingAsClientId="@client.Id">Advanced Config</a>
             <a class="btn btn-sm btn-outline-secondary" asp-page="/Delegation">Back to my clients</a>
         </span>
-    </div>
+  </div>
 }
 
 <div class="row">
-    <div class="col-lg-6 vstack">
-        <section class="card">
-            <div class="card-body">
-                <h2 class="card-title h4">Balance overview</h2>
-                <div class="table-responsive" id="balance-summary-wrapper">
-                    <table class="table table-borderless w-auto mb-0" id="balance-summary">
-                        <tbody>
-                            <tr>
-                                <td>Deposited (i)</td>
-                                <td class="quote-symbol"></td>
-                                <td class="text-end" data-field="deposited">&ndash;</td>
-                            </tr>
-                            <tr>
-                                <td>Withdrawn (o)</td>
-                                <td class="quote-symbol"></td>
-                                <td class="text-end" data-field="withdrawn">&ndash;</td>
-                            </tr>
-                            <tr>
-                                <td class="bg-primary">Balance (v)</td>
-                                <td class="bg-primary quote-symbol"></td>
-                                <td class="bg-primary text-end" data-field="balance">&ndash;</td>
-                            </tr>
-                            <tr>
-                                <td>Cumulative (V=o+v)</td>
-                                <td class="quote-symbol"></td>
-                                <td class="text-end" data-field="cumulative">&ndash;</td>
-                            </tr>
-                            <tr>
-                                <td>Total gain (V-i)</td>
-                                <td class="quote-symbol"></td>
-                                <td class="text-end" data-field="gain">&ndash;</td>
-                            </tr>
-                            <tr>
-                                <td></td>
-                                <td>%</td>
-                                <td class="text-end" data-field="gain-percent">&ndash;</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+  <div class="col-lg-6 vstack">
+    <section class="card">
+      <div class="card-body">
+        <h2 class="card-title h4">Balance overview</h2>
+        <div class="table-responsive" id="balance-summary-wrapper">
+          <table class="table table-borderless w-auto mb-0" id="balance-summary">
+            <tbody>
+            <tr>
+              <td>Deposited (i)</td>
+              <td class="quote-symbol"></td>
+              <td class="text-end" data-field="deposited">&ndash;</td>
+            </tr>
+            <tr>
+              <td>Withdrawn (o)</td>
+              <td class="quote-symbol"></td>
+              <td class="text-end" data-field="withdrawn">&ndash;</td>
+            </tr>
+            <tr>
+              <td class="bg-primary">Balance (v)</td>
+              <td class="bg-primary quote-symbol"></td>
+              <td class="bg-primary text-end" data-field="balance">&ndash;</td>
+            </tr>
+            <tr>
+              <td>Cumulative (V=o+v)</td>
+              <td class="quote-symbol"></td>
+              <td class="text-end" data-field="cumulative">&ndash;</td>
+            </tr>
+            <tr>
+              <td>Total gain (V-i)</td>
+              <td class="quote-symbol"></td>
+              <td class="text-end" data-field="gain">&ndash;</td>
+            </tr>
+            <tr>
+              <td></td>
+              <td>%</td>
+              <td class="text-end" data-field="gain-percent">&ndash;</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+    <section class="card">
+      <form id="rebalance-form" class="card-body">
+        <h2 class="card-title h4">Rebalance parameters</h2>
+
+        <div id="params-notice" class="alert alert-success alert-dismissible fade d-none" role="alert">
+          <span></span>
+          <button type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div id="params-error" class="alert alert-danger alert-dismissible fade d-none" role="alert">
+          <span></span>
+          <button type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.TopRankingCount" class="form-label mb-0"></label>
+              <info-tooltip asp-for="Config.TopRankingCount"/>
             </div>
-        </section>
-        <section class="card">
-            <form id="rebalance-form" class="card-body">
-                <h2 class="card-title h4">Rebalance parameters</h2>
+            <input asp-for="Config.TopRankingCount" class="form-control config-input mt-auto"
+                   data-config-field="topRankingCount" min="0" max="100" step="1"/>
+          </div>
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.Smoothing" class="form-label mb-0"></label>
+              <info-tooltip asp-for="Config.Smoothing"/>
+            </div>
+            <input asp-for="Config.Smoothing" class="form-control config-input mt-auto" data-config-field="smoothing"
+                   min="1" max="72" step="1"/>
+          </div>
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.NthRoot" class="form-label mb-0"></label>
+              <info-tooltip asp-for="Config.NthRoot"/>
+            </div>
+            <input asp-for="Config.NthRoot" type="number" class="form-control config-input mt-auto"
+                   data-config-field="nthRoot" min="1" max="25" step="0.1"/>
+          </div>
+        </div>
 
-                <div id="params-notice" class="alert alert-success alert-dismissible fade d-none" role="alert">
-                    <span></span>
-                    <button type="button" class="btn-close" aria-label="Close"></button>
-                </div>
-                <div id="params-error" class="alert alert-danger alert-dismissible fade d-none" role="alert">
-                    <span></span>
-                    <button type="button" class="btn-close" aria-label="Close"></button>
-                </div>
+        <div class="row mb-3">
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.QuoteTakeout"
+                     class="form-label mb-0">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span
+                  class="quote-symbol"></span>]</label>
+              <info-tooltip asp-for="Config.QuoteTakeout"/>
+            </div>
+            <input asp-for="Config.QuoteTakeout" type="number" class="form-control config-input mt-auto"
+                   data-config-field="quoteTakeout" min="0" step="1"/>
+          </div>
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.QuoteAllocation" class="form-label mb-0"></label>
+              <info-tooltip asp-for="Config.QuoteAllocation"/>
+            </div>
+            <input asp-for="Config.QuoteAllocation" type="number" class="form-control config-input mt-auto"
+                   data-config-field="quoteAllocation" min="0" max="100" step="0.1"/>
+          </div>
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.HeldAssetBiasMult" class="form-label mb-0"></label>
+              <info-tooltip asp-for="Config.HeldAssetBiasMult"/>
+            </div>
+            <input asp-for="Config.HeldAssetBiasMult" type="number" class="form-control config-input mt-auto"
+                   data-config-field="heldAssetBiasMult" min="1" step="0.01"/>
+          </div>
+        </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.TopRankingCount" class="form-label mb-0"></label>
-                            <info-tooltip asp-for="Config.TopRankingCount" />
-                        </div>
-                        <input asp-for="Config.TopRankingCount" class="form-control config-input mt-auto" data-config-field="topRankingCount" min="0" max="100" step="1" />
-                    </div>
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.Smoothing" class="form-label mb-0"></label>
-                            <info-tooltip asp-for="Config.Smoothing" />
-                        </div>
-                        <input asp-for="Config.Smoothing" class="form-control config-input mt-auto" data-config-field="smoothing" min="1" max="72" step="1" />
-                    </div>
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.NthRoot" class="form-label mb-0"></label>
-                            <info-tooltip asp-for="Config.NthRoot" />
-                        </div>
-                        <input asp-for="Config.NthRoot" type="number" class="form-control config-input mt-auto" data-config-field="nthRoot" min="1" max="25" step="0.1" />
-                    </div>
-                </div>
+        <div class="row mb-3">
+          <div class="col-md">
+            <div class="form-check">
+              <input asp-for="Config.UseLimitOrders" class="form-check-input config-input"
+                     data-config-field="useLimitOrders"/>
+              <label asp-for="Config.UseLimitOrders" class="form-check-label"></label>
+              <info-tooltip asp-for="Config.UseLimitOrders"/>
+            </div>
+          </div>
+        </div>
 
-                <div class="row mb-3">
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.QuoteTakeout" class="form-label mb-0">@Html.DisplayNameFor(m => m.Config.QuoteTakeout) [<span class="quote-symbol"></span>]</label>
-                            <info-tooltip asp-for="Config.QuoteTakeout" />
-                        </div>
-                        <input asp-for="Config.QuoteTakeout" type="number" class="form-control config-input mt-auto" data-config-field="quoteTakeout" min="0" step="1" />
-                    </div>
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.QuoteAllocation" class="form-label mb-0"></label>
-                            <info-tooltip asp-for="Config.QuoteAllocation" />
-                        </div>
-                        <input asp-for="Config.QuoteAllocation" type="number" class="form-control config-input mt-auto" data-config-field="quoteAllocation" min="0" max="100" step="0.1" />
-                    </div>
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.HeldAssetBiasMult" class="form-label mb-0"></label>
-                            <info-tooltip asp-for="Config.HeldAssetBiasMult" />
-                        </div>
-                        <input asp-for="Config.HeldAssetBiasMult" type="number" class="form-control config-input mt-auto" data-config-field="heldAssetBiasMult" min="1" step="0.01" />
-                    </div>
-                </div>
+        <h3 class="h5 text-muted border-top pt-3">Automation</h3>
 
-                <div class="row mb-3">
-                    <div class="col-md">
-                        <div class="form-check">
-                            <input asp-for="Config.UseLimitOrders" class="form-check-input config-input" data-config-field="useLimitOrders" />
-                            <label asp-for="Config.UseLimitOrders" class="form-check-label"></label><info-tooltip asp-for="Config.UseLimitOrders" />
-                        </div>
-                    </div>
-                </div>
-
-                <h3 class="h5 text-muted border-top pt-3">Automation</h3>
-
-                <div class="row mb-3">
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.MinimumOrderSizeQuote" class="form-label mb-0">@Html.DisplayNameFor(m => m.Config.MinimumOrderSizeQuote) [<span class="quote-symbol"></span>]</label>
-                            <info-tooltip asp-for="Config.MinimumOrderSizeQuote" />
-                        </div>
-                        <input asp-for="Config.MinimumOrderSizeQuote" class="form-control config-input mt-auto" data-config-field="minimumOrderSizeQuote" min="0" step="1" data-no-resim />
-                    </div>
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="form-label d-flex justify-content-between align-items-center mb-2">
+        <div class="row mb-3">
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.MinimumOrderSizeQuote"
+                     class="form-label mb-0">@Html.DisplayNameFor(m => m.Config.MinimumOrderSizeQuote) [<span
+                  class="quote-symbol"></span>]</label>
+              <info-tooltip asp-for="Config.MinimumOrderSizeQuote"/>
+            </div>
+            <input asp-for="Config.MinimumOrderSizeQuote" class="form-control config-input mt-auto"
+                   data-config-field="minimumOrderSizeQuote" min="0" step="1" data-no-resim/>
+          </div>
+          <div class="col-md-4 d-flex flex-column">
+            <div class="form-label d-flex justify-content-between align-items-center mb-2">
                             <span class="d-flex align-items-center">
                                 <label asp-for="Config.DriftThresholdPercent" class="mb-0"></label>
-                                <info-tooltip asp-for="Config.DriftThresholdPercent" />
+                                <info-tooltip asp-for="Config.DriftThresholdPercent"/>
                             </span>
-                            <span class="text-muted">(~<span class="quote-symbol"></span><span id="drift-threshold-quote"></span>)</span>
-                        </div>
-                        <input asp-for="Config.DriftThresholdPercent" type="number" class="form-control config-input mt-auto" data-config-field="driftThresholdPercent" min="0" max="100" step="0.1" data-no-resim />
-                    </div>
-                    <div class="col-md-4 d-flex flex-column">
-                        <div class="d-flex align-items-center mb-2">
-                            <label asp-for="Config.IntervalHours" class="form-label mb-0"></label>
-                            <info-tooltip asp-for="Config.IntervalHours" />
-                        </div>
-                        <input asp-for="Config.IntervalHours" class="form-control config-input mt-auto" data-config-field="intervalHours" min="1" max="672" step="1" data-no-resim />
-                    </div>
-                </div>
-
-                <div class="row mb-3">
-                    <div class="col-md">
-                        <div class="form-check mb-0">
-                            <input asp-for="Config.AutomationEnabled" class="form-check-input config-input" data-config-field="automationEnabled" data-no-resim />
-                            <label asp-for="Config.AutomationEnabled" class="form-check-label"></label><info-tooltip asp-for="Config.AutomationEnabled" />
-                        </div>
-                    </div>
-                </div>
-
-                <p class="text-success">
-                    <strong>Last rebalance</strong>: <time id="last-rebalance" datetime="@Model.LastRebalanceUtc" data-utc-seconds="true">@Model.LastRebalanceDisplay</time>
-                </p>
-
-                <button type="submit" class="btn btn-secondary">Save changes</button>
-                <button type="button" class="btn btn-primary" id="rebalance-now-btn" disabled>
-                    Rebalance now (fee ~<span class="quote-symbol"></span><span id="expected-fee">0.00</span>)
-                </button>
-            </form>
-        </section>
-    </div>
-    <div class="col-lg-6">
-        <section class="card">
-            <div class="card-body">
-                <h2 class="card-title h4">Current vs. balanced allocation</h2>
-                <div id="portfolio-error" class="alert alert-danger alert-dismissible fade d-none" role="alert">
-                    <span></span>
-                    <button type="button" class="btn-close" aria-label="Close"></button>
-                </div>
-                <div class="table-responsive" id="portfolio-table-wrapper">
-                    <table class="table table-hover mb-0" id="portfolio-table">
-                        <thead>
-                            <tr>
-                                <th rowspan="2">Asset</th>
-                                <th colspan="2" class="text-center">Current allocation</th>
-                                <th colspan="2" class="text-center">Balanced allocation</th>
-                                <th colspan="2" class="text-center">Difference</th>
-                            </tr>
-                            <tr>
-                                <th class="text-end quote-symbol">&nbsp;</th>
-                                <th class="text-end">%</th>
-                                <th class="text-end quote-symbol">&nbsp;</th>
-                                <th class="text-end">%</th>
-                                <th class="text-end quote-symbol">&nbsp;</th>
-                                <th class="text-end">%</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr id="portfolio-table-loading">
-                                <td colspan="7" class="text-center text-muted">Loading portfolio data&hellip;</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+              <span class="text-muted">(~<span class="quote-symbol"></span><span
+                  id="drift-threshold-quote"></span>)</span>
             </div>
-        </section>
-    </div>
+            <input asp-for="Config.DriftThresholdPercent" type="number" class="form-control config-input mt-auto"
+                   data-config-field="driftThresholdPercent" min="0" max="100" step="0.1" data-no-resim/>
+          </div>
+          <div class="col-md-4 d-flex flex-column">
+            <div class="d-flex align-items-center mb-2">
+              <label asp-for="Config.IntervalHours" class="form-label mb-0"></label>
+              <info-tooltip asp-for="Config.IntervalHours"/>
+            </div>
+            <input asp-for="Config.IntervalHours" class="form-control config-input mt-auto"
+                   data-config-field="intervalHours" min="1" max="672" step="1" data-no-resim/>
+          </div>
+        </div>
+
+        <div class="row mb-3">
+          <div class="col-md">
+            <div class="form-check mb-0">
+              <input asp-for="Config.AutomationEnabled" class="form-check-input config-input"
+                     data-config-field="automationEnabled" data-no-resim/>
+              <label asp-for="Config.AutomationEnabled" class="form-check-label"></label>
+              <info-tooltip asp-for="Config.AutomationEnabled"/>
+            </div>
+          </div>
+        </div>
+
+        <p class="text-success">
+          <strong>Last rebalance</strong>:
+          <time id="last-rebalance" datetime="@Model.LastRebalanceUtc"
+                data-utc-seconds="true">@Model.LastRebalanceDisplay</time>
+        </p>
+
+        <button type="submit" class="btn btn-secondary">Save changes</button>
+        <button type="button" class="btn btn-primary" id="rebalance-now-btn" disabled>
+          Rebalance now (fee ~<span class="quote-symbol"></span><span id="expected-fee">0.00</span>)
+        </button>
+      </form>
+    </section>
+  </div>
+  <div class="col-lg-6">
+    <section class="card">
+      <div class="card-body">
+        <h2 class="card-title h4">Current vs. balanced allocation</h2>
+        <div id="portfolio-error" class="alert alert-danger alert-dismissible fade d-none" role="alert">
+          <span></span>
+          <button type="button" class="btn-close" aria-label="Close"></button>
+        </div>
+        <div class="table-responsive" id="portfolio-table-wrapper">
+          <table class="table table-hover mb-0" id="portfolio-table">
+            <thead>
+            <tr>
+              <th rowspan="2">Asset</th>
+              <th colspan="2" class="text-center">Current allocation</th>
+              <th colspan="2" class="text-center">Balanced allocation</th>
+              <th colspan="2" class="text-center">Difference</th>
+            </tr>
+            <tr>
+              <th class="text-end quote-symbol">&nbsp;</th>
+              <th class="text-end">%</th>
+              <th class="text-end quote-symbol">&nbsp;</th>
+              <th class="text-end">%</th>
+              <th class="text-end quote-symbol">&nbsp;</th>
+              <th class="text-end">%</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr id="portfolio-table-loading">
+              <td colspan="7" class="text-center text-muted">Loading portfolio data&hellip;</td>
+            </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <script id="config-init" type="application/json">
     @Html.Raw(AppJsonSerializer.Serialize(Model.Config))
+
+
+
+
+
+
 </script>
 
 @section Scripts {
-    <script src="~/js/dashboard.js" asp-append-version="true" defer></script>
+  <script src="~/js/dashboard.js" asp-append-version="true" defer></script>
 }

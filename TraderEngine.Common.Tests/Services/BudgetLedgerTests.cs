@@ -268,7 +268,8 @@ public class BudgetLedgerTests
     var totalClaimed = claimed.Sum();
     var totalAvailable = initial + claimantCount * perDeposit;
 
-    Assert.IsTrue(totalClaimed <= totalAvailable, $"Claimed {totalClaimed} but only {totalAvailable} was ever available.");
+    Assert.IsTrue(totalClaimed <= totalAvailable,
+      $"Claimed {totalClaimed} but only {totalAvailable} was ever available.");
     Assert.AreEqual(totalAvailable, totalClaimed); // Every deposited unit was claimable by someone.
   }
 

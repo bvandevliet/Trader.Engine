@@ -14,7 +14,8 @@ namespace TraderEngine.API.Tests.Exchanges;
 /// </summary>
 internal sealed class FakeWebSocketTransport : IWebSocketTransport
 {
-  private readonly Channel<(byte[] Data, WebSocketMessageType Type)> _incoming = Channel.CreateUnbounded<(byte[], WebSocketMessageType)>();
+  private readonly Channel<(byte[] Data, WebSocketMessageType Type)> _incoming =
+    Channel.CreateUnbounded<(byte[], WebSocketMessageType)>();
 
   public WebSocketState State { get; private set; } = WebSocketState.Connecting;
 
@@ -57,7 +58,8 @@ internal sealed class FakeWebSocketTransport : IWebSocketTransport
     {
       State = WebSocketState.Closed;
 
-      return new WebSocketReceiveResult(0, WebSocketMessageType.Close, true, WebSocketCloseStatus.NormalClosure, "closed");
+      return new WebSocketReceiveResult(0, WebSocketMessageType.Close, true, WebSocketCloseStatus.NormalClosure,
+        "closed");
     }
 
     data.CopyTo(buffer, 0);

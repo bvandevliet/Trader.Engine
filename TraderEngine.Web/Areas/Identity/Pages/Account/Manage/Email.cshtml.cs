@@ -85,7 +85,13 @@ public class EmailModel : PageModel
       var callbackUrl = Url.Page(
         "/Account/ConfirmEmailChange",
         pageHandler: null,
-        values: new { area = "Identity", userId, email = Input.NewEmail, code },
+        values: new
+        {
+          area = "Identity",
+          userId,
+          email = Input.NewEmail,
+          code
+        },
         protocol: Request.Scheme)!;
 
       await _emailSender.SendConfirmationLinkAsync(user, Input.NewEmail, HtmlEncoder.Default.Encode(callbackUrl));
@@ -117,7 +123,12 @@ public class EmailModel : PageModel
     var callbackUrl = Url.Page(
       "/Account/ConfirmEmail",
       pageHandler: null,
-      values: new { area = "Identity", userId, code },
+      values: new
+      {
+        area = "Identity",
+        userId,
+        code
+      },
       protocol: Request.Scheme)!;
 
     await _emailSender.SendConfirmationLinkAsync(user, email!, HtmlEncoder.Default.Encode(callbackUrl));

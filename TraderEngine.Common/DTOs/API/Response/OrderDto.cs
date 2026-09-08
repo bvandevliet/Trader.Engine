@@ -65,7 +65,8 @@ public class OrderDto : OrderReqDto
   //public DateTime? Updated { get; set; }
 
   [JsonIgnore]
-  public bool HasEnded => Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;
+  public bool HasEnded =>
+    Status is not OrderStatus.BrandNew and not OrderStatus.New and not OrderStatus.PartiallyFilled;
 
   public override string ToString()
   {
@@ -83,6 +84,7 @@ public class OrderDto : OrderReqDto
         ? $"{amountQuote} {Market.QuoteSymbol}"
         : "?";
 
-    return $"{Market} {Side} {Type}{superseded}: {Status}, requested {requested}, filled {AmountFilled} ({AmountQuoteFilled} {Market.QuoteSymbol})";
+    return
+      $"{Market} {Side} {Type}{superseded}: {Status}, requested {requested}, filled {AmountFilled} ({AmountQuoteFilled} {Market.QuoteSymbol})";
   }
 }

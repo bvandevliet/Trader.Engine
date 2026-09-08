@@ -6,7 +6,8 @@ public static class SecurityHeadersExtensions
   /// Security headers — applied in all environments. This app can trigger real exchange trades,
   /// so it gets the same defense-in-depth headers as SimplePlanner.Net's reference pattern.
   /// </summary>
-  public static IApplicationBuilder UseTraderEngineSecurityHeaders(this IApplicationBuilder app, IWebHostEnvironment environment)
+  public static IApplicationBuilder UseTraderEngineSecurityHeaders(this IApplicationBuilder app,
+    IWebHostEnvironment environment)
   {
     return app.Use(async (context, next) =>
     {

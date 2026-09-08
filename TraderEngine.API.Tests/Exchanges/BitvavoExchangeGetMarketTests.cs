@@ -38,7 +38,8 @@ public class BitvavoExchangeGetMarketTests
     return new BitvavoExchange(
       Substitute.For<ILogger<BitvavoExchange>>(),
       httpClient,
-      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
+      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(),
+        Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
       new MemoryCache(new MemoryCacheOptions()));
   }
 
@@ -107,7 +108,8 @@ public class BitvavoExchangeGetMarketTests
   public async Task GetMarket_MarketNotFound_ReturnsUnavailable_NotNull()
   {
     // Arrange — errorCode 205 is Bitvavo's "market not found" response.
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.NotFound, """{"errorCode":"205","error":"Market not found."}""");
+    var handler =
+      new FakeHttpMessageHandler(HttpStatusCode.NotFound, """{"errorCode":"205","error":"Market not found."}""");
 
     var exchange = NewExchange(handler);
 
@@ -123,7 +125,8 @@ public class BitvavoExchangeGetMarketTests
   public async Task GetMarket_FetchFails_ReturnsNull_NotCached_RetriesOnNextCall()
   {
     // Arrange
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":"999","error":"Unexpected."}""");
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError,
+      """{"errorCode":"999","error":"Unexpected."}""");
 
     var exchange = NewExchange(handler);
 

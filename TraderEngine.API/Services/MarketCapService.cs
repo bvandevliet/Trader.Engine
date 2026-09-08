@@ -49,7 +49,8 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
       });
   }
 
-  public async Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null)
+  public async Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto,
+    List<MarketReqDto>? currentAssets = null)
   {
     var marketCapLatest = (await ListLatest(quoteSymbol, configReqDto.Smoothing)).ToList();
 
@@ -65,11 +66,13 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     // can't be Regex.Escape()'d without breaking that feature. A bounded match timeout instead
     // guards against a catastrophic-backtracking pattern hanging this shared service process
     // (ReDoS) — CodeQL's cs/regex-injection flags any Regex built from unescaped user input.
-    var includeTagsPattern = configReqDto.TagsToInclude.Any() ?
-      string.Join('|', configReqDto.TagsToInclude.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$")) : ".*";
+    var includeTagsPattern = configReqDto.TagsToInclude.Any()
+      ? string.Join('|', configReqDto.TagsToInclude.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"))
+      : ".*";
     var includeTagsRegex = new Regex(includeTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
-    var ignoreTagsPattern = string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
+    var ignoreTagsPattern =
+      string.Join('|', configReqDto.TagsToIgnore.Select(tag => $@"^(.*[-_\s])?({tag})([-_\s].*)?$"));
     var ignoreTagsRegex = new Regex(ignoreTagsPattern, RegexOptions.IgnoreCase, RegexMatchTimeout);
 
     // A lookup rather than currentAssets.FindAndRemove per market-cap record: the "remove" half
@@ -81,53 +84,61 @@ public class MarketCapService : MarketCapHandlingBase, IMarketCapService
     return
       marketCapLatest
 
-      // Determine weighting.
-      .Select(marketCapDataDto =>
-      {
-        var hasWeighting = configReqDto.WeightingOverrides.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
-        var isAllocated = currentAssetsSet?.Contains(marketCapDataDto.Market) ?? false;
-        var finalWeighting = hasWeighting ? weighting : 1;
-
-        return new
+        // Determine weighting.
+        .Select(marketCapDataDto =>
         {
-          MarketCapDataDto = marketCapDataDto,
-          HasWeighting = hasWeighting,
-          Weighting = finalWeighting,
-          OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.HeldAssetBiasMult : 1),
-        };
-      })
+          var hasWeighting =
+            configReqDto.WeightingOverrides.TryGetValue(marketCapDataDto.Market.BaseSymbol, out var weighting);
+          var isAllocated = currentAssetsSet?.Contains(marketCapDataDto.Market) ?? false;
+          var finalWeighting = hasWeighting ? weighting : 1;
 
-      // Skip zero-weighted assets.
-      .Where(marketCap => marketCap.Weighting > 0)
+          return new
+          {
+            MarketCapDataDto = marketCapDataDto,
+            HasWeighting = hasWeighting,
+            Weighting = finalWeighting,
+            OrderByWeighting = finalWeighting * (isAllocated ? configReqDto.HeldAssetBiasMult : 1),
+          };
+        })
 
-      // Handle included tags, but if asset has a weighting configured explicitly, that takes precedence.
-      // A timed-out pattern counts as a non-match here — fails this asset out of the "included" set
-      // rather than letting an unevaluated pattern wave it through.
-      .Where(marketCap => marketCap.HasWeighting || marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(includeTagsRegex, tag, matchOnTimeout: false)))
+        // Skip zero-weighted assets.
+        .Where(marketCap => marketCap.Weighting > 0)
 
-      // Handle ignored tags, but if asset has a weighting configured explicitly, that takes precedence.
-      // A timed-out pattern counts as a match here (i.e. ignored) for the same reason: when a tag
-      // can't be safely evaluated, exclude the asset rather than risk holding something the user
-      // explicitly asked to keep out (e.g. a stablecoin/meme tag).
-      .Where(marketCap => marketCap.HasWeighting || !marketCap.MarketCapDataDto.Tags.Any(tag => SafeIsMatch(ignoreTagsRegex, tag, matchOnTimeout: true)))
+        // Handle included tags, but if asset has a weighting configured explicitly, that takes precedence.
+        // A timed-out pattern counts as a non-match here — fails this asset out of the "included" set
+        // rather than letting an unevaluated pattern wave it through.
+        .Where(marketCap => marketCap.HasWeighting ||
+                            marketCap.MarketCapDataDto.Tags.Any(tag =>
+                              SafeIsMatch(includeTagsRegex, tag, matchOnTimeout: false)))
 
-      // Apply weighting and dampening.
-      .Select(marketCap => new
-      {
-        MarketCap = marketCap,
-        TargetAllocDto = new TargetAllocReqDto()
+        // Handle ignored tags, but if asset has a weighting configured explicitly, that takes precedence.
+        // A timed-out pattern counts as a match here (i.e. ignored) for the same reason: when a tag
+        // can't be safely evaluated, exclude the asset rather than risk holding something the user
+        // explicitly asked to keep out (e.g. a stablecoin/meme tag).
+        .Where(marketCap => marketCap.HasWeighting ||
+                            !marketCap.MarketCapDataDto.Tags.Any(tag =>
+                              SafeIsMatch(ignoreTagsRegex, tag, matchOnTimeout: true)))
+
+        // Apply weighting and dampening.
+        .Select(marketCap => new
         {
-          Market = marketCap.MarketCapDataDto.Market,
-          TargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
-        },
-        OrderByTargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap, 1 / configReqDto.NthRoot),
-      })
+          MarketCap = marketCap,
+          TargetAllocDto = new TargetAllocReqDto()
+          {
+            Market = marketCap.MarketCapDataDto.Market,
+            TargetWeight = (decimal)Math.Pow(Math.Max(0, marketCap.Weighting) * marketCap.MarketCapDataDto.MarketCap,
+              1 / configReqDto.NthRoot),
+          },
+          OrderByTargetWeight =
+            (decimal)Math.Pow(Math.Max(0, marketCap.OrderByWeighting) * marketCap.MarketCapDataDto.MarketCap,
+              1 / configReqDto.NthRoot),
+        })
 
-      // Sort by weighted Market Cap EMA value.
-      .OrderByDescending(alloc => alloc.OrderByTargetWeight)
+        // Sort by weighted Market Cap EMA value.
+        .OrderByDescending(alloc => alloc.OrderByTargetWeight)
 
-      // Return absolute allocations.
-      .Select(alloc => alloc.TargetAllocDto);
+        // Return absolute allocations.
+        .Select(alloc => alloc.TargetAllocDto);
   }
 
   public Task<Dictionary<string, string>> GetAssetNames(string quoteSymbol, IEnumerable<string> baseSymbols)

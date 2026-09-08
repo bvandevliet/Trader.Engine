@@ -90,11 +90,11 @@ public sealed class BitvavoRateLimitHandler : DelegatingHandler
   private bool ObserveHeaders(HttpResponseHeaders headers)
   {
     if (!headers.TryGetValues("bitvavo-ratelimit-remaining", out var remainingValues)
-      || !int.TryParse(remainingValues.FirstOrDefault(), out var remaining))
+        || !int.TryParse(remainingValues.FirstOrDefault(), out var remaining))
       return false;
 
     if (!headers.TryGetValues("bitvavo-ratelimit-resetat", out var resetAtValues)
-      || !long.TryParse(resetAtValues.FirstOrDefault(), out var resetAtUnixMs))
+        || !long.TryParse(resetAtValues.FirstOrDefault(), out var resetAtUnixMs))
       return false;
 
     _state.ObserveHeaders(remaining, resetAtUnixMs);
@@ -118,7 +118,9 @@ public sealed class BitvavoRateLimitHandler : DelegatingHandler
     if (!body.Contains("\"errorCode\":105", StringComparison.Ordinal))
       return;
 
-    _logger.LogWarning("Bitvavo reported a rate-limit ban (errorCode 105) with no usable rate-limit headers on the response; assuming a {Wait} ban.", BanFallbackWait);
+    _logger.LogWarning(
+      "Bitvavo reported a rate-limit ban (errorCode 105) with no usable rate-limit headers on the response; assuming a {Wait} ban.",
+      BanFallbackWait);
 
     _state.ObserveBan(DateTimeOffset.UtcNow + BanFallbackWait);
   }

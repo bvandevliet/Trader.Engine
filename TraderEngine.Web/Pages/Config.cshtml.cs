@@ -17,7 +17,8 @@ public class ConfigModel : TraderEnginePageModelBase
   private readonly IConfigRepository _configRepository;
   private readonly IDelegatedAccessResolver _delegatedAccessResolver;
 
-  public ConfigModel(UserManager<AppUser> userManager, IConfigRepository configRepository, IDelegatedAccessResolver delegatedAccessResolver)
+  public ConfigModel(UserManager<AppUser> userManager, IConfigRepository configRepository,
+    IDelegatedAccessResolver delegatedAccessResolver)
     : base(userManager)
   {
     _configRepository = configRepository;

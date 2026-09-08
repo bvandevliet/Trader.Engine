@@ -8,7 +8,7 @@
     <DockerComposeEnvFilePaths>.env.example;.env</DockerComposeEnvFilePaths>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="docker-compose.yml" />
-    <None Include="docker-compose.debug.yml" />
+    <None Include="docker-compose.yml"/>
+    <None Include="docker-compose.debug.yml"/>
   </ItemGroup>
 </Project>

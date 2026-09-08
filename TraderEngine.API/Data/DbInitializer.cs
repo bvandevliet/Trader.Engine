@@ -67,7 +67,7 @@ public static class DbInitializer
     }
 
     if (string.IsNullOrEmpty(seedSettings.Email) ||
-      string.IsNullOrEmpty(seedSettings.Password))
+        string.IsNullOrEmpty(seedSettings.Password))
     {
       return;
     }
@@ -89,7 +89,8 @@ public static class DbInitializer
     else
     {
       var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger(nameof(DbInitializer));
-      logger.LogCritical("Failed to seed admin user: {Errors}", string.Join("; ", result.Errors.Select(e => e.Description)));
+      logger.LogCritical("Failed to seed admin user: {Errors}",
+        string.Join("; ", result.Errors.Select(e => e.Description)));
     }
   }
 }

@@ -40,7 +40,8 @@ public class BitvavoExchangeGetTakerFeeTests
     return new BitvavoExchange(
       Substitute.For<ILogger<BitvavoExchange>>(),
       httpClient,
-      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
+      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(),
+        Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
       new MemoryCache(new MemoryCacheOptions()));
   }
 
@@ -125,7 +126,8 @@ public class BitvavoExchangeGetTakerFeeTests
   {
     // Arrange — a live-fee-lookup outage must never block a rebalance run outright; it should
     // degrade to the documented Category A default instead.
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":"999","error":"Unexpected."}""");
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError,
+      """{"errorCode":"999","error":"Unexpected."}""");
 
     var exchange = NewExchange(handler);
 
@@ -170,7 +172,8 @@ public class BitvavoExchangeGetTakerFeeTests
   public async Task GetMakerFee_FetchFails_FallsBackToDocumentedDefault_DoesNotThrow()
   {
     // Arrange
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":"999","error":"Unexpected."}""");
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError,
+      """{"errorCode":"999","error":"Unexpected."}""");
 
     var exchange = NewExchange(handler);
 

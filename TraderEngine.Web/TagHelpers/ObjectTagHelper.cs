@@ -19,7 +19,8 @@ public class ObjectTagHelper : UrlResolutionTagHelper
 
   private readonly IFileVersionProvider _fileVersionProvider;
 
-  public ObjectTagHelper(IFileVersionProvider fileVersionProvider, HtmlEncoder htmlEncoder, IUrlHelperFactory urlHelperFactory)
+  public ObjectTagHelper(IFileVersionProvider fileVersionProvider, HtmlEncoder htmlEncoder,
+    IUrlHelperFactory urlHelperFactory)
     : base(urlHelperFactory, htmlEncoder)
   {
     _fileVersionProvider = fileVersionProvider;

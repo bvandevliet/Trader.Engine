@@ -84,42 +84,53 @@ public class TraderEngineApiClient : ITraderEngineApiClient
     }
   }
 
-  public async Task<decimal> GetTotalDeposited(AppUser user, string exchangeName, ApiCredReqDto credentials, Guid? actingAsClientId = null, CancellationToken ct = default)
+  public async Task<decimal> GetTotalDeposited(AppUser user, string exchangeName, ApiCredReqDto credentials,
+    Guid? actingAsClientId = null, CancellationToken ct = default)
   {
-    var response = await PostAuthenticated(user, $"api/account/totals/deposited/{exchangeName}", credentials, actingAsClientId, ct);
+    var response = await PostAuthenticated(user, $"api/account/totals/deposited/{exchangeName}", credentials,
+      actingAsClientId, ct);
 
     return await response.Content.DeserializeAsync<decimal>(ct);
   }
 
-  public async Task<decimal> GetTotalWithdrawn(AppUser user, string exchangeName, ApiCredReqDto credentials, Guid? actingAsClientId = null, CancellationToken ct = default)
+  public async Task<decimal> GetTotalWithdrawn(AppUser user, string exchangeName, ApiCredReqDto credentials,
+    Guid? actingAsClientId = null, CancellationToken ct = default)
   {
-    var response = await PostAuthenticated(user, $"api/account/totals/withdrawn/{exchangeName}", credentials, actingAsClientId, ct);
+    var response = await PostAuthenticated(user, $"api/account/totals/withdrawn/{exchangeName}", credentials,
+      actingAsClientId, ct);
 
     return await response.Content.DeserializeAsync<decimal>(ct);
   }
 
-  public async Task<BalanceDto> GetCurrentBalance(AppUser user, string exchangeName, ApiCredReqDto credentials, Guid? actingAsClientId = null, CancellationToken ct = default)
+  public async Task<BalanceDto> GetCurrentBalance(AppUser user, string exchangeName, ApiCredReqDto credentials,
+    Guid? actingAsClientId = null, CancellationToken ct = default)
   {
-    var response = await PostAuthenticated(user, $"api/allocations/current/{exchangeName}", credentials, actingAsClientId, ct);
+    var response = await PostAuthenticated(user, $"api/allocations/current/{exchangeName}", credentials,
+      actingAsClientId, ct);
 
     return (await response.Content.DeserializeAsync<BalanceDto>(ct))!;
   }
 
-  public async Task<SimulationDto> SimulateRebalance(AppUser user, string exchangeName, string source, SimulationReqDto request, Guid? actingAsClientId = null, CancellationToken ct = default)
+  public async Task<SimulationDto> SimulateRebalance(AppUser user, string exchangeName, string source,
+    SimulationReqDto request, Guid? actingAsClientId = null, CancellationToken ct = default)
   {
-    var response = await PostAuthenticated(user, $"api/rebalance/simulate/{exchangeName}?source={Uri.EscapeDataString(source)}", request, actingAsClientId, ct);
+    var response = await PostAuthenticated(user,
+      $"api/rebalance/simulate/{exchangeName}?source={Uri.EscapeDataString(source)}", request, actingAsClientId, ct);
 
     return (await response.Content.DeserializeAsync<SimulationDto>(ct))!;
   }
 
-  public async Task<OrderDto[]> Rebalance(AppUser user, string exchangeName, string source, RebalanceReqDto request, Guid? actingAsClientId = null, CancellationToken ct = default)
+  public async Task<OrderDto[]> Rebalance(AppUser user, string exchangeName, string source, RebalanceReqDto request,
+    Guid? actingAsClientId = null, CancellationToken ct = default)
   {
-    var response = await PostAuthenticated(user, $"api/rebalance/{exchangeName}?source={Uri.EscapeDataString(source)}", request, actingAsClientId, ct);
+    var response = await PostAuthenticated(user, $"api/rebalance/{exchangeName}?source={Uri.EscapeDataString(source)}",
+      request, actingAsClientId, ct);
 
     return (await response.Content.DeserializeAsync<OrderDto[]>(ct))!;
   }
 
-  public async Task<Dictionary<string, string>> GetAssetNames(AppUser user, IEnumerable<string> baseSymbols, CancellationToken ct = default)
+  public async Task<Dictionary<string, string>> GetAssetNames(AppUser user, IEnumerable<string> baseSymbols,
+    CancellationToken ct = default)
   {
     var query = string.Join('&', baseSymbols.Select(baseSymbol => $"baseSymbols={Uri.EscapeDataString(baseSymbol)}"));
 

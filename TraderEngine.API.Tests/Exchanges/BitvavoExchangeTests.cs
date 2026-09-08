@@ -15,12 +15,10 @@ public class BitvavoExchangeTests
   {
     var logger = Substitute.For<ILogger<BitvavoExchange>>();
 
-    var httpClient = new HttpClient
-    {
-      BaseAddress = new("https://api.bitvavo.com/v2/")
-    };
+    var httpClient = new HttpClient { BaseAddress = new("https://api.bitvavo.com/v2/") };
 
-    var wsPool = new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState());
+    var wsPool = new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(),
+      Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState());
 
     var bitvavo = new BitvavoExchange(logger, httpClient, wsPool, new MemoryCache(new MemoryCacheOptions()));
 

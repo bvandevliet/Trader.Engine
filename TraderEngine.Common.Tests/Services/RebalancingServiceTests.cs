@@ -18,7 +18,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
@@ -50,11 +51,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance);
 
-    var targets = new[]
-    {
-      new TargetAllocReqDto(_btc, .5m),
-      new TargetAllocReqDto(_eth, .5m),
-    };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m), };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -89,11 +86,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance, minOrderSize: 1, makerFee: 0.0015m, takerFee: 0.0025m);
 
-    var targets = new[]
-    {
-      new TargetAllocReqDto(_btc, .5m),
-      new TargetAllocReqDto(_eth, .5m),
-    };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m), };
 
     var config = new ConfigReqDto { UseLimitOrders = true };
 
@@ -120,11 +113,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance);
 
-    var targets = new[]
-    {
-      new TargetAllocReqDto(_btc, .5m),
-      new TargetAllocReqDto(_eth, .5m),
-    };
+    var targets = new[] { new TargetAllocReqDto(_btc, .5m), new TargetAllocReqDto(_eth, .5m), };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -202,11 +191,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance);
 
-    var targets = new[]
-    {
-      new TargetAllocReqDto(_eur, .5m),
-      new TargetAllocReqDto(_btc, .5m),
-    };
+    var targets = new[] { new TargetAllocReqDto(_eur, .5m), new TargetAllocReqDto(_btc, .5m), };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -496,7 +481,8 @@ public class RebalancingServiceTests
     var expectedSol = Math.Floor(solRaw * ratio * 100) / 100;
 
     Assert.IsTrue(expectedEth < 5m, "Test setup assumption: ETH's scaled claim must fall below the exchange minimum.");
-    Assert.IsTrue(expectedSol >= 5m, "Test setup assumption: SOL's fair, unclamped claim must clear the exchange minimum.");
+    Assert.IsTrue(expectedSol >= 5m,
+      "Test setup assumption: SOL's fair, unclamped claim must clear the exchange minimum.");
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -577,11 +563,7 @@ public class RebalancingServiceTests
 
     var exchange = NewExchange(curBalance, minOrderSize: 5);
 
-    var targets = new[]
-    {
-      new TargetAllocReqDto(_btc, .03m),
-      new TargetAllocReqDto(_eth, .97m),
-    };
+    var targets = new[] { new TargetAllocReqDto(_btc, .03m), new TargetAllocReqDto(_eth, .97m), };
 
     // Act
     var orders = await _service.Rebalance(exchange, _credentials, new ConfigReqDto(), targets, curBalance);
@@ -728,9 +710,7 @@ public class RebalancingServiceTests
 
     var targets = new[]
     {
-      new TargetAllocReqDto(_eur, .05m),
-      new TargetAllocReqDto(_btc, .40m),
-      new TargetAllocReqDto(_eth, .30m),
+      new TargetAllocReqDto(_eur, .05m), new TargetAllocReqDto(_btc, .40m), new TargetAllocReqDto(_eth, .30m),
       new TargetAllocReqDto(_ada, .25m),
     };
 

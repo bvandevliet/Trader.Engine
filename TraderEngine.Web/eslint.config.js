@@ -7,9 +7,15 @@ import css from '@eslint/css';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
-  { files: ['**/*.{js,mjs,cjs,ts,mts,cts}'], plugins: { js }, extends: ['js/recommended'], languageOptions: { globals: globals.browser } },
+  {
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    plugins: { js },
+    extends: ['js/recommended'],
+    languageOptions: { globals: globals.browser },
+  },
   tseslint.configs.recommended,
-  { files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+  {
+    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
     rules: {
       'arrow-body-style': 'error',
       'array-bracket-newline': ['error', 'consistent'],
@@ -174,7 +180,8 @@ export default defineConfig([
       'wrap-iife': 'error',
       'yield-star-spacing': 'error',
       yoda: ['error', 'never', { onlyEquality: true }],
-    } },
+    },
+  },
   { files: ['**/*.json'], plugins: { json }, language: 'json/json', extends: ['json/recommended'] },
   { files: ['**/*.jsonc'], plugins: { json }, language: 'json/jsonc', extends: ['json/recommended'] },
   { files: ['**/*.json5'], plugins: { json }, language: 'json/json5', extends: ['json/recommended'] },

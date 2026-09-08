@@ -25,7 +25,10 @@ public class BitvavoExchangeCancelOrderTests
   {
     var httpClient = new HttpClient(handler) { BaseAddress = new("https://api.bitvavo.com/v2/") };
 
-    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient, new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()), new MemoryCache(new MemoryCacheOptions()));
+    return new BitvavoExchange(Substitute.For<ILogger<BitvavoExchange>>(), httpClient,
+      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(),
+        Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
+      new MemoryCache(new MemoryCacheOptions()));
   }
 
   [TestMethod]
@@ -80,7 +83,8 @@ public class BitvavoExchangeCancelOrderTests
   public async Task CancelOrder_ExchangeReturnsError_ReturnsNull_DoesNotThrow()
   {
     // Arrange
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.NotFound, """{"errorCode":"240","error":"Order not found."}""");
+    var handler =
+      new FakeHttpMessageHandler(HttpStatusCode.NotFound, """{"errorCode":"240","error":"Order not found."}""");
 
     var exchange = NewExchange(handler);
 

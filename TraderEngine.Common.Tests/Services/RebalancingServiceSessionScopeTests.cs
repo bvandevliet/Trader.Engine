@@ -18,7 +18,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceSessionScopeTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
@@ -51,8 +52,20 @@ public class RebalancingServiceSessionScopeTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 1 },
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 1 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = 1
+      },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = 1
+      },
     };
 
     // Act
@@ -73,7 +86,13 @@ public class RebalancingServiceSessionScopeTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 1 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = 1
+      },
     };
 
     // Act

@@ -18,7 +18,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceExecuteOrdersTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
@@ -39,8 +40,20 @@ public class RebalancingServiceExecuteOrdersTests
     // Buy listed first in the input, sell second — output must still be sell-then-buy.
     var orders = new[]
     {
-      new OrderReqDto { Market = _eth, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, AmountQuote = 30 },
+      new OrderReqDto
+      {
+        Market = _eth,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 50
+      },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        AmountQuote = 30
+      },
     };
 
     // Act
@@ -68,8 +81,20 @@ public class RebalancingServiceExecuteOrdersTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _eur, Side = OrderSide.Sell, Type = OrderType.Market, AmountQuote = 10 },
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, AmountQuote = 30 },
+      new OrderReqDto
+      {
+        Market = _eur,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        AmountQuote = 10
+      },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        AmountQuote = 30
+      },
     };
 
     // Act
@@ -91,8 +116,20 @@ public class RebalancingServiceExecuteOrdersTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 4 },
-      new OrderReqDto { Market = _eth, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 20 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 4
+      },
+      new OrderReqDto
+      {
+        Market = _eth,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 20
+      },
     };
 
     // Act
@@ -118,7 +155,13 @@ public class RebalancingServiceExecuteOrdersTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 3 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = 3
+      },
     };
 
     // Act
@@ -150,10 +193,22 @@ public class RebalancingServiceExecuteOrdersTests
     var orders = new[]
     {
       // Dust/full-liquidation sell: Amount-based, no AmountQuote, invisible to the estimate.
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 100 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = 100
+      },
       // Just above the exchange minimum — would be dropped by a ratio of 0, but the sell's real
       // 100 EUR proceeds easily cover it once reconciled.
-      new OrderReqDto { Market = _eth, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 6 },
+      new OrderReqDto
+      {
+        Market = _eth,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 6
+      },
     };
 
     // Act
@@ -180,7 +235,13 @@ public class RebalancingServiceExecuteOrdersTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Sell, Type = OrderType.Market, Amount = 0.005m },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = 0.005m
+      },
     };
 
     // Act
@@ -205,7 +266,13 @@ public class RebalancingServiceExecuteOrdersTests
     var orders = new[]
     {
       // 50 / 101 ~= 0.495 BTC, well under the 1 BTC floor.
-      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 50
+      },
     };
 
     // Act
@@ -250,8 +317,20 @@ public class RebalancingServiceExecuteOrdersTests
 
     var orders = new[]
     {
-      new OrderReqDto { Market = _btc, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
-      new OrderReqDto { Market = _eth, Side = OrderSide.Buy, Type = OrderType.Market, AmountQuote = 50 },
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 50
+      },
+      new OrderReqDto
+      {
+        Market = _eth,
+        Side = OrderSide.Buy,
+        Type = OrderType.Market,
+        AmountQuote = 50
+      },
     };
 
     // Act
@@ -280,7 +359,8 @@ public class RebalancingServiceExecuteOrdersTests
     {
     }
 
-    public new Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "Mock")
+    public new Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials,
+      MarketReqDto? market = null, string source = "Mock")
     {
       CancelAllOpenOrdersCallCount++;
 

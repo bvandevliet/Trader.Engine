@@ -8,8 +8,10 @@ namespace TraderEngine.Data.Mappers;
 [Mapper]
 public static partial class EfMarketCapMapper
 {
-  [MapProperty($"{nameof(MarketCapDataDto.Market)}.{nameof(MarketReqDto.QuoteSymbol)}", nameof(MarketCapMetric.QuoteSymbol))]
-  [MapProperty($"{nameof(MarketCapDataDto.Market)}.{nameof(MarketReqDto.BaseSymbol)}", nameof(MarketCapMetric.BaseSymbol))]
+  [MapProperty($"{nameof(MarketCapDataDto.Market)}.{nameof(MarketReqDto.QuoteSymbol)}",
+    nameof(MarketCapMetric.QuoteSymbol))]
+  [MapProperty($"{nameof(MarketCapDataDto.Market)}.{nameof(MarketReqDto.BaseSymbol)}",
+    nameof(MarketCapMetric.BaseSymbol))]
   public static partial MarketCapMetric MapToEntity(MarketCapDataDto source);
 
   // Hand-written: MarketReqDto's flat source fields must go through its constructor (which

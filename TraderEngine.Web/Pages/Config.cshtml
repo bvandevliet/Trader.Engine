@@ -1,95 +1,106 @@
 @page
 @model TraderEngine.Web.Pages.ConfigModel
 @{
-    ViewData["Title"] = "Advanced Allocation Config";
+  ViewData["Title"] = "Advanced Allocation Config";
 }
 
 <h1>@ViewData["Title"]</h1>
 
 @if (Model.ActingForClient is { } client)
 {
-    <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
-        <span>Acting as portfolio manager for <strong>@client.DisplayName</strong>'s portfolio.</span>
-        <span>
+  <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
+    <span>Acting as portfolio manager for <strong>@client.DisplayName</strong>'s portfolio.</span>
+    <span>
             <a class="btn btn-sm btn-outline-secondary" asp-page="/Dashboard" asp-route-actingAsClientId="@client.Id">Dashboard</a>
             <a class="btn btn-sm btn-outline-secondary" asp-page="/Delegation">Back to my clients</a>
         </span>
-    </div>
+  </div>
 }
 
 <form method="post" id="allocation-config-form">
-    <input type="hidden" asp-for="ActingAsClientId" />
-    <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+  <input type="hidden" asp-for="ActingAsClientId"/>
+  <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
 
-    <section class="card mb-3">
-        <fieldset class="card-body">
-            <legend class="card-title h5">Tags to include</legend>
-            <p class="text-muted small">
-                Tag regex patterns to explicitly include.<br />
-                Only assets that have one or more tags matching any of these patterns will be included in your portfolio, unless a weighting override is set for an asset.<br />
-                If empty, all assets are included.
-            </p>
-            <div id="tags-to-include-rows">
-                @foreach (var tag in Model.TagsToInclude)
-                {
-                    <div class="input-group mb-2 tag-row">
-                        <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
-                        <input type="text" name="TagsToInclude" value="@tag" class="form-control font-monospace type-regex" />
-                        <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
-                        <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
-                    </div>
-                }
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-include-rows" data-template="tag">+ Add pattern</button>
-        </fieldset>
-    </section>
+  <section class="card mb-3">
+    <fieldset class="card-body">
+      <legend class="card-title h5">Tags to include</legend>
+      <p class="text-muted small">
+        Tag regex patterns to explicitly include.<br/>
+        Only assets that have one or more tags matching any of these patterns will be included in your portfolio, unless
+        a weighting override is set for an asset.<br/>
+        If empty, all assets are included.
+      </p>
+      <div id="tags-to-include-rows">
+        @foreach (var tag in Model.TagsToInclude)
+        {
+          <div class="input-group mb-2 tag-row">
+            <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
+            <input type="text" name="TagsToInclude" value="@tag" class="form-control font-monospace type-regex"/>
+            <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
+            <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+          </div>
+        }
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-include-rows"
+              data-template="tag">+ Add pattern
+      </button>
+    </fieldset>
+  </section>
 
-    <section class="card mb-3">
-        <fieldset class="card-body">
-            <legend class="card-title h5">Tags to ignore</legend>
-            <p class="text-muted small">
-                Tag regex patterns to explicitly exclude.<br />
-                Assets that have one or more tags matching any of these patterns will never be included in your portfolio, unless a weighting override is set for an asset.
-            </p>
-            <div id="tags-to-ignore-rows">
-                @foreach (var tag in Model.TagsToIgnore)
-                {
-                    <div class="input-group mb-2 tag-row">
-                        <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
-                        <input type="text" name="TagsToIgnore" value="@tag" class="form-control font-monospace type-regex" />
-                        <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
-                        <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
-                    </div>
-                }
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-ignore-rows" data-template="tag">+ Add pattern</button>
-        </fieldset>
-    </section>
+  <section class="card mb-3">
+    <fieldset class="card-body">
+      <legend class="card-title h5">Tags to ignore</legend>
+      <p class="text-muted small">
+        Tag regex patterns to explicitly exclude.<br/>
+        Assets that have one or more tags matching any of these patterns will never be included in your portfolio,
+        unless a weighting override is set for an asset.
+      </p>
+      <div id="tags-to-ignore-rows">
+        @foreach (var tag in Model.TagsToIgnore)
+        {
+          <div class="input-group mb-2 tag-row">
+            <span class="input-group-text font-monospace">^(.*[-_\s])?(</span>
+            <input type="text" name="TagsToIgnore" value="@tag" class="form-control font-monospace type-regex"/>
+            <span class="input-group-text font-monospace">)([-_\s].*)?$</span>
+            <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+          </div>
+        }
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="tags-to-ignore-rows"
+              data-template="tag">+ Add pattern
+      </button>
+    </fieldset>
+  </section>
 
-    <section class="card mb-3">
-        <fieldset class="card-body">
-            <legend class="card-title h5">Per-asset weighting overrides</legend>
-            <p class="text-muted small">
-                To configure, specify the asset symbol in the left field (e.g. BTC) and its override weight in the right field.<br />
-                Default is 1, set to 0 to exclude the asset (e.g. shitcoins).
-            </p>
-            <div id="weighting-rows">
-                @for (var i = 0; i < Model.OverrideAssets.Count; i++)
-                {
-                    <div class="input-group mb-2 weighting-row">
-                        <input type="text" name="OverrideAssets" value="@Model.OverrideAssets[i]" class="form-control" placeholder="Asset symbol" />
-                        <input type="number" name="OverrideWeights" value="@Model.OverrideWeights[i]" class="form-control" min="0" step="0.01" placeholder="Weight" />
-                        <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
-                    </div>
-                }
-            </div>
-            <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="weighting-rows" data-template="weighting">+ Add weighting</button>
-        </fieldset>
-    </section>
+  <section class="card mb-3">
+    <fieldset class="card-body">
+      <legend class="card-title h5">Per-asset weighting overrides</legend>
+      <p class="text-muted small">
+        To configure, specify the asset symbol in the left field (e.g. BTC) and its override weight in the right
+        field.<br/>
+        Default is 1, set to 0 to exclude the asset (e.g. shitcoins).
+      </p>
+      <div id="weighting-rows">
+        @for (var i = 0; i < Model.OverrideAssets.Count; i++)
+        {
+          <div class="input-group mb-2 weighting-row">
+            <input type="text" name="OverrideAssets" value="@Model.OverrideAssets[i]" class="form-control"
+                   placeholder="Asset symbol"/>
+            <input type="number" name="OverrideWeights" value="@Model.OverrideWeights[i]" class="form-control" min="0"
+                   step="0.01" placeholder="Weight"/>
+            <button type="button" class="btn btn-outline-danger remove-row">&times;</button>
+          </div>
+        }
+      </div>
+      <button type="button" class="btn btn-sm btn-outline-secondary add-row" data-target="weighting-rows"
+              data-template="weighting">+ Add weighting
+      </button>
+    </fieldset>
+  </section>
 
-    <button type="submit" class="btn btn-primary">Save changes</button>
+  <button type="submit" class="btn btn-primary">Save changes</button>
 </form>
 
 @section Scripts {
-    <script src="~/js/config.js" asp-append-version="true" defer></script>
+  <script src="~/js/config.js" asp-append-version="true" defer></script>
 }

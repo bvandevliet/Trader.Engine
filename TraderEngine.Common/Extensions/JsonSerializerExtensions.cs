@@ -5,7 +5,8 @@ namespace TraderEngine.Common.Extensions;
 
 public static class JsonSerializerExtensions
 {
-  public static JsonSerializerOptions ConfigureDefaultJsonSerializerOptions(this JsonSerializerOptions options, bool readOnly = false)
+  public static JsonSerializerOptions ConfigureDefaultJsonSerializerOptions(this JsonSerializerOptions options,
+    bool readOnly = false)
   {
     options.PropertyNameCaseInsensitive = true;
     options.PropertyNamingPolicy = JsonNamingPolicy.CamelCase;

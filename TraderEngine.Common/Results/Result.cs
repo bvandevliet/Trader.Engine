@@ -19,7 +19,8 @@ public class Result<TSuccess>(TSuccess? value, string[]? messages)
   }
 }
 
-public class Result<TSuccess, TErrCode>(TSuccess? value, TErrCode errorCode, string[]? messages) : Result<TSuccess>(value, messages) where TErrCode : Enum
+public class Result<TSuccess, TErrCode>(TSuccess? value, TErrCode errorCode, string[]? messages)
+  : Result<TSuccess>(value, messages) where TErrCode : Enum
 {
   public TErrCode ErrorCode { get; } = errorCode;
 

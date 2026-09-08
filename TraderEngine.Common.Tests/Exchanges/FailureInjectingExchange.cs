@@ -43,7 +43,12 @@ internal sealed class FailureInjectingExchange : MockExchange, IExchange
   {
     _newOrderOverrides[baseSymbol] = () =>
       Task.FromResult(Result<OrderDto, ExchangeErrCodeEnum>.Failure(
-        new OrderDto { Market = market, Side = OrderSide.Sell, Status = OrderStatus.Failed },
+        new OrderDto
+        {
+          Market = market,
+          Side = OrderSide.Sell,
+          Status = OrderStatus.Failed
+        },
         ExchangeErrCodeEnum.Other));
   }
 
@@ -75,7 +80,8 @@ internal sealed class FailureInjectingExchange : MockExchange, IExchange
       }));
   }
 
-  public new Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "Mock")
+  public new Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order,
+    string source = "Mock")
   {
     return _newOrderOverrides.TryGetValue(order.Market.BaseSymbol, out var overrideFn)
       ? overrideFn()

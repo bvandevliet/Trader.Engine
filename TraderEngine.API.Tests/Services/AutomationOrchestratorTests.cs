@@ -435,7 +435,8 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_SmallestAllocationFullSell_IgnoresAllocationsBelowMinimumOrderSize_ReturnsFalse()
+  public void
+    HasNonContiguousFullSellOrder_SmallestAllocationFullSell_IgnoresAllocationsBelowMinimumOrderSize_ReturnsFalse()
   {
     // Arrange
     var configReqDto = new ConfigReqDto
@@ -512,7 +513,8 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_AllFullSellOrdersContiguous_IgnoresAllocationsBelowMinimumOrderSize_ReturnsFalse()
+  public void
+    HasNonContiguousFullSellOrder_AllFullSellOrdersContiguous_IgnoresAllocationsBelowMinimumOrderSize_ReturnsFalse()
   {
     // Arrange
     var configReqDto = new ConfigReqDto
@@ -672,7 +674,8 @@ public class AutomationOrchestratorTests
   }
 
   [TestMethod]
-  public void HasNonContiguousFullSellOrder_SmallestFullSellThenSingleKeptAllocation_IgnoresAllocationsBelowMinimumOrderSize_ToleratedReturnsFalse()
+  public void
+    HasNonContiguousFullSellOrder_SmallestFullSellThenSingleKeptAllocation_IgnoresAllocationsBelowMinimumOrderSize_ToleratedReturnsFalse()
   {
     // Arrange
     // Same as the non-dust variant, plus a dust LTC full sell that must be ignored entirely.
@@ -774,14 +777,29 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 }, // kept
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10  }, // fully sold
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          }, // kept
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          }, // fully sold
         ]
       }
     };
@@ -809,15 +827,35 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 }, // kept
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 }, // kept
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10  }, // fully sold
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          }, // kept
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          }, // kept
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          }, // fully sold
         ]
       }
     };
@@ -848,17 +886,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 100 }, // fully sold, tolerated
-        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 2   }, // fully sold, flagged
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 100
+        }, // fully sold, tolerated
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Sell,
+          Amount = 2
+        }, // fully sold, flagged
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBnb, AmountQuote = 10,  Amount = 100 }, // kept (1st)
-          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 }, // fully sold, tolerated
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  }, // kept (2nd)
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   }, // fully sold — flagged
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          }, // kept (1st)
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          }, // fully sold, tolerated
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          }, // kept (2nd)
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          }, // fully sold — flagged
         ]
       }
     };
@@ -888,8 +956,18 @@ public class AutomationOrchestratorTests
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
         ]
       }
     };
@@ -916,17 +994,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 100 },
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
-        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 2 },
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 100
+        },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Sell,
+          Amount = 2
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
         ]
       }
     };
@@ -951,13 +1059,23 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
         ]
       }
     };
@@ -988,15 +1106,35 @@ public class AutomationOrchestratorTests
       Orders =
       [
         // Sell 5 out of 10 ETH — partial, not a full sell.
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 5 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 5
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1025,16 +1163,42 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 50 }, // partial: allocation.Amount = 100
-        new OrderDto { Market = marketEth, Side = OrderSide.Buy,  Amount = null, AmountQuote = 7 },
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 50
+        }, // partial: allocation.Amount = 100
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 7
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1063,16 +1227,41 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 50 }, // partial: allocation.Amount = 100
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 }, // full sell: matches allocation.Amount
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 50
+        }, // partial: allocation.Amount = 100
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        }, // full sell: matches allocation.Amount
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1101,17 +1290,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 50 }, // partial: allocation.Amount = 100
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 5  }, // partial: allocation.Amount = 10
-        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 2  }, // full sell: matches allocation.Amount
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 50
+        }, // partial: allocation.Amount = 100
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 5
+        }, // partial: allocation.Amount = 10
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Sell,
+          Amount = 2
+        }, // full sell: matches allocation.Amount
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
         ]
       }
     };
@@ -1139,17 +1358,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 50  }, // partial
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 5   }, // partial
-        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 1   }, // partial
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 50
+        }, // partial
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 5
+        }, // partial
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Sell,
+          Amount = 1
+        }, // partial
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketAda, AmountQuote = 15,  Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1179,15 +1428,35 @@ public class AutomationOrchestratorTests
       Orders =
       [
         // A buy order for ETH that happens to match the allocation amount — should not trigger.
-        new OrderDto { Market = marketEth, Side = OrderSide.Buy, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Buy,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1218,15 +1487,30 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
           // Quote allocation sits below ETH in sorted order; must be excluded from analysis.
-          new AllocationDto { Market = marketQuote, AmountQuote = 50, Amount = 50 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
+          new AllocationDto
+          {
+            Market = marketQuote,
+            AmountQuote = 50,
+            Amount = 50
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
         ]
       }
     };
@@ -1256,19 +1540,54 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketBnb, Side = OrderSide.Sell, Amount = 100 },
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 100 },
+        new OrderDto
+        {
+          Market = marketBnb,
+          Side = OrderSide.Sell,
+          Amount = 100
+        },
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 100
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
           // Quote allocation sits between ADA (15) and ETH (70) — must be transparent.
-          new AllocationDto { Market = marketQuote, AmountQuote = 50, Amount = 50 },
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 },
-          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketQuote,
+            AmountQuote = 50,
+            Amount = 50
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1298,17 +1617,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketQuote, AmountQuote = 50, Amount = 50 },
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 },
-          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketQuote,
+            AmountQuote = 50,
+            Amount = 50
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          },
         ]
       }
     };
@@ -1342,17 +1691,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketAda, Side = OrderSide.Sell, Amount = 100 },
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Sell,
+          Amount = 100
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketAda, AmountQuote = 30, Amount = 100 },
-          new AllocationDto { Market = marketXrp, AmountQuote = 18, Amount = 200 }, // dust — between BNB and ADA
-          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 }, // dust
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 30,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 18,
+            Amount = 200
+          }, // dust — between BNB and ADA
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          }, // dust
         ]
       }
     };
@@ -1383,17 +1762,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketAda, AmountQuote = 30, Amount = 100 },
-          new AllocationDto { Market = marketXrp, AmountQuote = 18, Amount = 200 }, // dust — between BNB and ADA
-          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 }, // dust
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 30,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 18,
+            Amount = 200
+          }, // dust — between BNB and ADA
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          }, // dust
         ]
       }
     };
@@ -1430,16 +1839,41 @@ public class AutomationOrchestratorTests
       Orders =
       [
         // Full sell of the dust allocation — must be ignored.
-        new OrderDto { Market = marketXrp, Side = OrderSide.Sell, Amount = 200 },
+        new OrderDto
+        {
+          Market = marketXrp,
+          Side = OrderSide.Sell,
+          Amount = 200
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketAda, AmountQuote = 30,  Amount = 100 },
-          new AllocationDto { Market = marketXrp, AmountQuote = 18,  Amount = 200 }, // dust
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 30,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 18,
+            Amount = 200
+          }, // dust
         ]
       }
     };
@@ -1469,17 +1903,47 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketXrp, Side = OrderSide.Sell, Amount = 200 }, // dust full sell — ignored
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10  }, // full sell, tolerated
+        new OrderDto
+        {
+          Market = marketXrp,
+          Side = OrderSide.Sell,
+          Amount = 200
+        }, // dust full sell — ignored
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        }, // full sell, tolerated
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketAda, AmountQuote = 30,  Amount = 100 }, // kept
-          new AllocationDto { Market = marketXrp, AmountQuote = 18,  Amount = 200 }, // dust
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 30,
+            Amount = 100
+          }, // kept
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 18,
+            Amount = 200
+          }, // dust
         ]
       }
     };
@@ -1510,18 +1974,53 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketXrp, Side = OrderSide.Sell, Amount = 200 }, // dust full sell — ignored
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10  }, // non-contiguous full sell
+        new OrderDto
+        {
+          Market = marketXrp,
+          Side = OrderSide.Sell,
+          Amount = 200
+        }, // dust full sell — ignored
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        }, // non-contiguous full sell
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2   },
-          new AllocationDto { Market = marketEth, AmountQuote = 70,  Amount = 10  },
-          new AllocationDto { Market = marketSol, AmountQuote = 45,  Amount = 5   }, // kept (2nd)
-          new AllocationDto { Market = marketAda, AmountQuote = 30,  Amount = 100 }, // kept (1st)
-          new AllocationDto { Market = marketXrp, AmountQuote = 18,  Amount = 200 }, // dust
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketSol,
+            AmountQuote = 45,
+            Amount = 5
+          }, // kept (2nd)
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 30,
+            Amount = 100
+          }, // kept (1st)
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 18,
+            Amount = 200
+          }, // dust
         ]
       }
     };
@@ -1549,15 +2048,35 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketBtc, Side = OrderSide.Sell, Amount = 2 },
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Sell,
+          Amount = 2
+        },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 40, Amount = 2 },  // dust
-          new AllocationDto { Market = marketEth, AmountQuote = 30, Amount = 10 }, // dust
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 40,
+            Amount = 2
+          }, // dust
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 30,
+            Amount = 10
+          }, // dust
         ]
       }
     };
@@ -1605,16 +2124,76 @@ public class AutomationOrchestratorTests
       // method must return false regardless of the balance.
       Orders =
       [
-        new OrderDto { Market = marketCc,   Side = OrderSide.Buy, Amount = null, AmountQuote = 6.02m   },
-        new OrderDto { Market = marketHype, Side = OrderSide.Buy, Amount = null, AmountQuote = 18.44m  },
-        new OrderDto { Market = marketSui,  Side = OrderSide.Buy, Amount = null, AmountQuote = 6.62m   },
-        new OrderDto { Market = marketNear, Side = OrderSide.Buy, Amount = null, AmountQuote = 15.6m   },
-        new OrderDto { Market = marketBtc,  Side = OrderSide.Buy, Amount = null, AmountQuote = 18.98m  },
-        new OrderDto { Market = marketSol,  Side = OrderSide.Buy, Amount = null, AmountQuote = 12.89m  },
-        new OrderDto { Market = marketGram, Side = OrderSide.Buy, Amount = null, AmountQuote = 5.75m   },
-        new OrderDto { Market = marketXrp,  Side = OrderSide.Buy, Amount = null, AmountQuote = 14.53m  },
-        new OrderDto { Market = marketEth,  Side = OrderSide.Buy, Amount = null, AmountQuote = 95.43m  },
-        new OrderDto { Market = marketAda,  Side = OrderSide.Buy, Amount = null, AmountQuote = 5.94m   },
+        new OrderDto
+        {
+          Market = marketCc,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 6.02m
+        },
+        new OrderDto
+        {
+          Market = marketHype,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 18.44m
+        },
+        new OrderDto
+        {
+          Market = marketSui,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 6.62m
+        },
+        new OrderDto
+        {
+          Market = marketNear,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 15.6m
+        },
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 18.98m
+        },
+        new OrderDto
+        {
+          Market = marketSol,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 12.89m
+        },
+        new OrderDto
+        {
+          Market = marketGram,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 5.75m
+        },
+        new OrderDto
+        {
+          Market = marketXrp,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 14.53m
+        },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 95.43m
+        },
+        new OrderDto
+        {
+          Market = marketAda,
+          Side = OrderSide.Buy,
+          Amount = null,
+          AmountQuote = 5.94m
+        },
       ],
       // Pre-manual-rebalance balance, reconstructed by subtracting the bought amounts from the
       // post-rebalance snapshot the user shared. LINK and HBAR have no orders (no buy/sell).
@@ -1622,20 +2201,90 @@ public class AutomationOrchestratorTests
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc,   AmountQuote = 1308.67m, Amount = 0.023869113m    },
-          new AllocationDto { Market = marketEth,   AmountQuote = 1113.16m, Amount = 0.750839555m    },
-          new AllocationDto { Market = marketXrp,   AmountQuote = 835.91m,  Amount = 846.616499844m  },
-          new AllocationDto { Market = marketSol,   AmountQuote = 644.36m,  Amount = 10.768532788m   },
-          new AllocationDto { Market = marketHype,  AmountQuote = 428.38m,  Amount = 7.269823397m    },
-          new AllocationDto { Market = marketCc,    AmountQuote = 278.07m,  Amount = 2017.627202m    },
-          new AllocationDto { Market = marketAda,   AmountQuote = 268.85m,  Amount = 1919.312424m    },
-          new AllocationDto { Market = marketLink,  AmountQuote = 269.89m,  Amount = 39.23430509m    }, // no order
-          new AllocationDto { Market = marketGram,  AmountQuote = 231.01m,  Amount = 161.285343m     },
-          new AllocationDto { Market = marketHbar,  AmountQuote = 215.22m,  Amount = 3116.12541567m  }, // no order
-          new AllocationDto { Market = marketSui,   AmountQuote = 192.51m,  Amount = 308.070705m     },
-          new AllocationDto { Market = marketNear,  AmountQuote = 181.65m,  Amount = 97.069571m      },
-          new AllocationDto { Market = marketFet,   AmountQuote = 0.000000001m, Amount = 0.000000008779m },
-          new AllocationDto { Market = marketQuote, AmountQuote = 300m,     Amount = 300m            },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 1308.67m,
+            Amount = 0.023869113m
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 1113.16m,
+            Amount = 0.750839555m
+          },
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 835.91m,
+            Amount = 846.616499844m
+          },
+          new AllocationDto
+          {
+            Market = marketSol,
+            AmountQuote = 644.36m,
+            Amount = 10.768532788m
+          },
+          new AllocationDto
+          {
+            Market = marketHype,
+            AmountQuote = 428.38m,
+            Amount = 7.269823397m
+          },
+          new AllocationDto
+          {
+            Market = marketCc,
+            AmountQuote = 278.07m,
+            Amount = 2017.627202m
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 268.85m,
+            Amount = 1919.312424m
+          },
+          new AllocationDto
+          {
+            Market = marketLink,
+            AmountQuote = 269.89m,
+            Amount = 39.23430509m
+          }, // no order
+          new AllocationDto
+          {
+            Market = marketGram,
+            AmountQuote = 231.01m,
+            Amount = 161.285343m
+          },
+          new AllocationDto
+          {
+            Market = marketHbar,
+            AmountQuote = 215.22m,
+            Amount = 3116.12541567m
+          }, // no order
+          new AllocationDto
+          {
+            Market = marketSui,
+            AmountQuote = 192.51m,
+            Amount = 308.070705m
+          },
+          new AllocationDto
+          {
+            Market = marketNear,
+            AmountQuote = 181.65m,
+            Amount = 97.069571m
+          },
+          new AllocationDto
+          {
+            Market = marketFet,
+            AmountQuote = 0.000000001m,
+            Amount = 0.000000008779m
+          },
+          new AllocationDto
+          {
+            Market = marketQuote,
+            AmountQuote = 300m,
+            Amount = 300m
+          },
         ]
       }
     };
@@ -1686,34 +2335,134 @@ public class AutomationOrchestratorTests
       Orders =
       [
         // CC dropped off the market cap list — full sell.
-        new OrderDto { Market = marketCc,   Side = OrderSide.Sell, Amount = 2061.79124m },
+        new OrderDto
+        {
+          Market = marketCc,
+          Side = OrderSide.Sell,
+          Amount = 2061.79124m
+        },
         // Buy orders for remaining positions using the freed EUR + added EUR.
-        new OrderDto { Market = marketBtc,  Side = OrderSide.Buy, Amount = 0.002m },
-        new OrderDto { Market = marketEth,  Side = OrderSide.Buy, Amount = 0.1m   },
-        new OrderDto { Market = marketXrp,  Side = OrderSide.Buy, Amount = 30m    },
-        new OrderDto { Market = marketSol,  Side = OrderSide.Buy, Amount = 0.5m   },
-        new OrderDto { Market = marketHype, Side = OrderSide.Buy, Amount = 0.5m   },
+        new OrderDto
+        {
+          Market = marketBtc,
+          Side = OrderSide.Buy,
+          Amount = 0.002m
+        },
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Buy,
+          Amount = 0.1m
+        },
+        new OrderDto
+        {
+          Market = marketXrp,
+          Side = OrderSide.Buy,
+          Amount = 30m
+        },
+        new OrderDto
+        {
+          Market = marketSol,
+          Side = OrderSide.Buy,
+          Amount = 0.5m
+        },
+        new OrderDto
+        {
+          Market = marketHype,
+          Side = OrderSide.Buy,
+          Amount = 0.5m
+        },
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc,   AmountQuote = 1328m,  Amount = 0.02421523m      },
-          new AllocationDto { Market = marketEth,   AmountQuote = 1209m,  Amount = 0.81515762m      },
-          new AllocationDto { Market = marketXrp,   AmountQuote = 850m,   Amount = 861.274316m      },
-          new AllocationDto { Market = marketSol,   AmountQuote = 657m,   Amount = 10.98334106m     },
-          new AllocationDto { Market = marketHype,  AmountQuote = 447m,   Amount = 7.58547953m      },
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 1328m,
+            Amount = 0.02421523m
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 1209m,
+            Amount = 0.81515762m
+          },
+          new AllocationDto
+          {
+            Market = marketXrp,
+            AmountQuote = 850m,
+            Amount = 861.274316m
+          },
+          new AllocationDto
+          {
+            Market = marketSol,
+            AmountQuote = 657m,
+            Amount = 10.98334106m
+          },
+          new AllocationDto
+          {
+            Market = marketHype,
+            AmountQuote = 447m,
+            Amount = 7.58547953m
+          },
           // CC is being fully sold (2061.79124 == allocation Amount) while NEAR, SUI, HBAR,
           // GRAM, LINK, ADA (all smaller) are kept — this is the non-contiguous gap.
-          new AllocationDto { Market = marketCc,    AmountQuote = 284m,   Amount = 2061.79124m      },
-          new AllocationDto { Market = marketAda,   AmountQuote = 275m,   Amount = 1961.538912m     },
-          new AllocationDto { Market = marketLink,  AmountQuote = 270m,   Amount = 39.23430509m     },
-          new AllocationDto { Market = marketGram,  AmountQuote = 237m,   Amount = 165.320431m      },
-          new AllocationDto { Market = marketHbar,  AmountQuote = 215m,   Amount = 3116.12541567m   },
-          new AllocationDto { Market = marketSui,   AmountQuote = 199m,   Amount = 318.66372191m    },
-          new AllocationDto { Market = marketNear,  AmountQuote = 197m,   Amount = 105.44541027m    },
-          new AllocationDto { Market = marketFet,   AmountQuote = 0.000000001m, Amount = 0.000000008779m },
-          new AllocationDto { Market = marketQuote, AmountQuote = 300m,   Amount = 300m             },
+          new AllocationDto
+          {
+            Market = marketCc,
+            AmountQuote = 284m,
+            Amount = 2061.79124m
+          },
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 275m,
+            Amount = 1961.538912m
+          },
+          new AllocationDto
+          {
+            Market = marketLink,
+            AmountQuote = 270m,
+            Amount = 39.23430509m
+          },
+          new AllocationDto
+          {
+            Market = marketGram,
+            AmountQuote = 237m,
+            Amount = 165.320431m
+          },
+          new AllocationDto
+          {
+            Market = marketHbar,
+            AmountQuote = 215m,
+            Amount = 3116.12541567m
+          },
+          new AllocationDto
+          {
+            Market = marketSui,
+            AmountQuote = 199m,
+            Amount = 318.66372191m
+          },
+          new AllocationDto
+          {
+            Market = marketNear,
+            AmountQuote = 197m,
+            Amount = 105.44541027m
+          },
+          new AllocationDto
+          {
+            Market = marketFet,
+            AmountQuote = 0.000000001m,
+            Amount = 0.000000008779m
+          },
+          new AllocationDto
+          {
+            Market = marketQuote,
+            AmountQuote = 300m,
+            Amount = 300m
+          },
         ]
       }
     };
@@ -1747,19 +2496,59 @@ public class AutomationOrchestratorTests
     {
       Orders =
       [
-        new OrderDto { Market = marketEth, Side = OrderSide.Sell, Amount = 10 },
-        new OrderDto { Market = marketLtc, Side = OrderSide.Sell, Amount = 5 }, // dust, also fully sold
+        new OrderDto
+        {
+          Market = marketEth,
+          Side = OrderSide.Sell,
+          Amount = 10
+        },
+        new OrderDto
+        {
+          Market = marketLtc,
+          Side = OrderSide.Sell,
+          Amount = 5
+        }, // dust, also fully sold
       ],
       CurBalance = new BalanceDto
       {
         Allocations =
         [
-          new AllocationDto { Market = marketBtc, AmountQuote = 100, Amount = 2 },
-          new AllocationDto { Market = marketEth, AmountQuote = 70, Amount = 10 },
-          new AllocationDto { Market = marketQuote, AmountQuote = 50, Amount = 50 }, // quote — excluded
-          new AllocationDto { Market = marketAda, AmountQuote = 15, Amount = 100 },
-          new AllocationDto { Market = marketBnb, AmountQuote = 10, Amount = 100 },
-          new AllocationDto { Market = marketLtc, AmountQuote = 1, Amount = 5 },    // dust — excluded
+          new AllocationDto
+          {
+            Market = marketBtc,
+            AmountQuote = 100,
+            Amount = 2
+          },
+          new AllocationDto
+          {
+            Market = marketEth,
+            AmountQuote = 70,
+            Amount = 10
+          },
+          new AllocationDto
+          {
+            Market = marketQuote,
+            AmountQuote = 50,
+            Amount = 50
+          }, // quote — excluded
+          new AllocationDto
+          {
+            Market = marketAda,
+            AmountQuote = 15,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketBnb,
+            AmountQuote = 10,
+            Amount = 100
+          },
+          new AllocationDto
+          {
+            Market = marketLtc,
+            AmountQuote = 1,
+            Amount = 5
+          }, // dust — excluded
         ]
       }
     };

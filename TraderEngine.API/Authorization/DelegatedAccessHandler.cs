@@ -37,8 +37,8 @@ public class DelegatedAccessHandler : AuthorizationHandler<DelegatedAccessRequir
     var nameIdentifierClaim = context.User.FindFirstValue(ClaimTypes.NameIdentifier);
 
     if (nameIdentifierClaim is null
-      || !Guid.TryParse(nameIdentifierClaim, out var managerId)
-      || !Guid.TryParse(actingAsClientIdClaim, out var clientId))
+        || !Guid.TryParse(nameIdentifierClaim, out var managerId)
+        || !Guid.TryParse(actingAsClientIdClaim, out var clientId))
     {
       return;
     }

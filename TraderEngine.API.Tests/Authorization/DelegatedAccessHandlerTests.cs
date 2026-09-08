@@ -22,7 +22,8 @@ public class DelegatedAccessHandlerTests
   private static ClaimsPrincipal NewPrincipal(params Claim[] claims) =>
     new(new ClaimsIdentity(claims, "TestAuthType"));
 
-  private static async Task<AuthorizationHandlerContext> RunHandler(IDelegationAuthorizationService delegationAuth, ClaimsPrincipal user)
+  private static async Task<AuthorizationHandlerContext> RunHandler(IDelegationAuthorizationService delegationAuth,
+    ClaimsPrincipal user)
   {
     var handler = new DelegatedAccessHandler(delegationAuth);
     var context = new AuthorizationHandlerContext([new DelegatedAccessRequirement()], user, resource: null);

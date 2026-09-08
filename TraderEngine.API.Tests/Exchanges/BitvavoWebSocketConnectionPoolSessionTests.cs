@@ -128,7 +128,9 @@ public class BitvavoWebSocketConnectionPoolSessionTests
     await session1.DisposeAsync(); // starts the grace-period countdown
 
     // Act
-    await using var session2 = await pool.AcquireSessionAsync(_credentials, CancellationToken.None); // should cancel the pending teardown
+    await using var
+      session2 = await pool.AcquireSessionAsync(_credentials,
+        CancellationToken.None); // should cancel the pending teardown
 
     // Assert
     var client = await pool.GetConnectedAsync(_credentials, CancellationToken.None);
@@ -161,7 +163,8 @@ public class BitvavoWebSocketConnectionPoolSessionTests
     // Arrange
     var rateLimitState = new BitvavoRateLimitState();
     var transport = new FakeWebSocketTransport();
-    var transports = new List<FakeWebSocketTransport> { transport }; // no further transports queued — every reconnect attempt fails
+    var transports =
+      new List<FakeWebSocketTransport> { transport }; // no further transports queued — every reconnect attempt fails
     var index = 0;
 
     BitvavoWebSocketClient Factory(ExchangeCredentials credentials)
@@ -186,11 +189,13 @@ public class BitvavoWebSocketConnectionPoolSessionTests
 
     // Assert
     Assert.IsFalse(pool.IsSessionDegraded(_credentials.ApiKey)); // not yet observed by the pool
-    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => pool.GetConnectedAsync(_credentials, CancellationToken.None));
+    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+      pool.GetConnectedAsync(_credentials, CancellationToken.None));
     Assert.IsTrue(pool.IsSessionDegraded(_credentials.ApiKey));
 
     // A subsequent call short-circuits immediately, without attempting a new connection.
-    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => pool.GetConnectedAsync(_credentials, CancellationToken.None));
+    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+      pool.GetConnectedAsync(_credentials, CancellationToken.None));
   }
 
   [TestMethod]
@@ -232,7 +237,8 @@ public class BitvavoWebSocketConnectionPoolSessionTests
 
     var (pool, _, _) = NewPool(Factory);
 
-    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() => pool.GetConnectedAsync(_credentials, CancellationToken.None));
+    await Assert.ThrowsExactlyAsync<InvalidOperationException>(() =>
+      pool.GetConnectedAsync(_credentials, CancellationToken.None));
 
     // Act: a fresh connect attempt (second factory invocation) should succeed.
     var client = await pool.GetConnectedAsync(_credentials, CancellationToken.None);

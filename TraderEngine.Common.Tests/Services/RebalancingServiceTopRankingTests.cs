@@ -10,7 +10,8 @@ namespace TraderEngine.Common.Tests.Services;
 [TestClass]
 public class RebalancingServiceTopRankingTests
 {
-  private static readonly IRebalancingService _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
+  private static readonly IRebalancingService
+    _service = new RebalancingService(NullLogger<RebalancingService>.Instance);
 
   private static readonly ExchangeCredentials _credentials = new("test-key", "test-secret");
 
@@ -167,7 +168,8 @@ public class RebalancingServiceTopRankingTests
     var exchange = new ScriptedExchange();
 
     // Act
-    var result = await _service.GetTopRankingAllocs(exchange, _credentials, Array.Empty<TargetAllocReqDto>(), topRankingCount: 10);
+    var result = await _service.GetTopRankingAllocs(exchange, _credentials, Array.Empty<TargetAllocReqDto>(),
+      topRankingCount: 10);
 
     // Assert
     Assert.AreEqual(0, result.Count);

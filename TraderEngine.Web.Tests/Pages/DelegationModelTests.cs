@@ -27,7 +27,8 @@ public class DelegationModelTests
     return Substitute.For<UserManager<AppUser>>(store, null, null, null, null, null, null, null, null);
   }
 
-  private static DelegationModel NewModel(UserManager<AppUser> userManager, IPortfolioDelegationRepository delegationRepository, AppUser currentUser)
+  private static DelegationModel NewModel(UserManager<AppUser> userManager,
+    IPortfolioDelegationRepository delegationRepository, AppUser currentUser)
   {
     userManager.GetUserAsync(Arg.Any<System.Security.Claims.ClaimsPrincipal>()).Returns(currentUser);
 
@@ -39,7 +40,8 @@ public class DelegationModelTests
   }
 
   [TestMethod]
-  public async Task OnPostToggleManagerRoleAsync_UserNotCurrentlyManager_AddsExactlyThePortfolioManagerRole_NeverAnyOtherRole()
+  public async Task
+    OnPostToggleManagerRoleAsync_UserNotCurrentlyManager_AddsExactlyThePortfolioManagerRole_NeverAnyOtherRole()
   {
     // Arrange
     var user = new AppUser { Id = Guid.NewGuid() };
@@ -55,7 +57,8 @@ public class DelegationModelTests
     // shape can ever cause a different role (e.g. Admin) to be assigned through this handler,
     // since it takes zero parameters and never reads a role name from client input.
     await userManager.Received(1).AddToRoleAsync(user, Roles.PortfolioManager);
-    await userManager.DidNotReceive().AddToRoleAsync(Arg.Any<AppUser>(), Arg.Is<string>(role => role != Roles.PortfolioManager));
+    await userManager.DidNotReceive()
+      .AddToRoleAsync(Arg.Any<AppUser>(), Arg.Is<string>(role => role != Roles.PortfolioManager));
     await userManager.DidNotReceive().RemoveFromRoleAsync(Arg.Any<AppUser>(), Arg.Any<string>());
   }
 
@@ -81,7 +84,12 @@ public class DelegationModelTests
   public async Task OnPostGrantAsync_IdentifierResolvesToSelf_RejectsWithoutGrantingAccess()
   {
     // Arrange
-    var client = new AppUser { Id = Guid.NewGuid(), UserName = "self", Email = "self@test.local" };
+    var client = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      UserName = "self",
+      Email = "self@test.local"
+    };
     var userManager = NewUserManagerSubstitute();
     userManager.FindByEmailAsync("self@test.local").Returns(client);
     var delegationRepository = Substitute.For<IPortfolioDelegationRepository>();
@@ -100,7 +108,11 @@ public class DelegationModelTests
   {
     // Arrange
     var client = new AppUser { Id = Guid.NewGuid() };
-    var nonManager = new AppUser { Id = Guid.NewGuid(), Email = "notamanager@test.local" };
+    var nonManager = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      Email = "notamanager@test.local"
+    };
     var userManager = NewUserManagerSubstitute();
     userManager.FindByEmailAsync("notamanager@test.local").Returns(nonManager);
     userManager.IsInRoleAsync(nonManager, Roles.PortfolioManager).Returns(false);
@@ -139,7 +151,12 @@ public class DelegationModelTests
   {
     // Arrange
     var client = new AppUser { Id = Guid.NewGuid() };
-    var manager = new AppUser { Id = Guid.NewGuid(), Email = "manager@test.local", DisplayName = "Manager" };
+    var manager = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      Email = "manager@test.local",
+      DisplayName = "Manager"
+    };
     var userManager = NewUserManagerSubstitute();
     userManager.FindByEmailAsync("manager@test.local").Returns(manager);
     userManager.IsInRoleAsync(manager, Roles.PortfolioManager).Returns(true);

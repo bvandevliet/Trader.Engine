@@ -35,7 +35,8 @@ public static class DataProtectionExtensions
   /// XML, which is acceptable for local development but not for a deployment handling real
   /// exchange credentials.
   /// </summary>
-  public static IServiceCollection AddSharedDataProtection(this IServiceCollection services, IConfiguration configuration, string keyRingPath)
+  public static IServiceCollection AddSharedDataProtection(this IServiceCollection services,
+    IConfiguration configuration, string keyRingPath)
   {
     var dataProtectionBuilder = services
       .AddDataProtection()

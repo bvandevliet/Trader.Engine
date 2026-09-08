@@ -25,7 +25,8 @@ public interface IMarketCapService
   /// <param name="configReqDto"></param>
   /// <param name="currentAssets"></param>
   /// <returns></returns>
-  public Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto, List<MarketReqDto>? currentAssets = null);
+  public Task<IEnumerable<TargetAllocReqDto>?> BalancedTargetAllocs(string quoteSymbol, ConfigReqDto configReqDto,
+    List<MarketReqDto>? currentAssets = null);
 
   /// <summary>
   /// Gets the most recently known CoinMarketCap display name for each of the given <paramref name="baseSymbols"/>,

@@ -35,7 +35,8 @@ public class BitvavoExchangeGetAssetTests
     return new BitvavoExchange(
       Substitute.For<ILogger<BitvavoExchange>>(),
       httpClient,
-      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(), Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
+      new BitvavoWebSocketConnectionPool(Substitute.For<ILoggerFactory>(),
+        Substitute.For<ILogger<BitvavoWebSocketConnectionPool>>(), new BitvavoRateLimitState()),
       new MemoryCache(new MemoryCacheOptions()));
   }
 
@@ -102,7 +103,8 @@ public class BitvavoExchangeGetAssetTests
   public async Task GetAsset_FetchFails_ReturnsNull_NotCached_RetriesOnNextCall()
   {
     // Arrange
-    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError, """{"errorCode":"999","error":"Unexpected."}""");
+    var handler = new FakeHttpMessageHandler(HttpStatusCode.InternalServerError,
+      """{"errorCode":"999","error":"Unexpected."}""");
 
     var exchange = NewExchange(handler);
 

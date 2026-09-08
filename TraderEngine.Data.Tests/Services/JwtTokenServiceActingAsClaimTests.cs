@@ -33,7 +33,11 @@ public class JwtTokenServiceActingAsClaimTests
   public void GenerateToken_NoActingAsClientId_OmitsTheClaimAndUsesCallerAsNameIdentifier()
   {
     // Arrange
-    var user = new AppUser { Id = Guid.NewGuid(), UserName = "alice" };
+    var user = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      UserName = "alice"
+    };
     var service = NewService();
 
     // Act
@@ -55,7 +59,11 @@ public class JwtTokenServiceActingAsClaimTests
   public void GenerateToken_ActingAsClientIdEqualsOwnId_OmitsTheClaim()
   {
     // Arrange
-    var user = new AppUser { Id = Guid.NewGuid(), UserName = "alice" };
+    var user = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      UserName = "alice"
+    };
     var service = NewService();
 
     // Act
@@ -70,7 +78,11 @@ public class JwtTokenServiceActingAsClaimTests
   public void GenerateToken_ActingAsADifferentClientId_KeepsNameIdentifierAsTheRealCaller_AndEmbedsTheTargetSeparately()
   {
     // Arrange
-    var manager = new AppUser { Id = Guid.NewGuid(), UserName = "manager" };
+    var manager = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      UserName = "manager"
+    };
     var clientId = Guid.NewGuid();
     var service = NewService();
 
@@ -88,7 +100,11 @@ public class JwtTokenServiceActingAsClaimTests
   public void GenerateToken_UserNameIsNull_FallsBackToUserIdForTheNameClaim()
   {
     // Arrange
-    var user = new AppUser { Id = Guid.NewGuid(), UserName = null };
+    var user = new AppUser
+    {
+      Id = Guid.NewGuid(),
+      UserName = null
+    };
     var service = NewService();
 
     // Act

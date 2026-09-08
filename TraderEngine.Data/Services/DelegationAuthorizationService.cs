@@ -10,7 +10,8 @@ public class DelegationAuthorizationService : IDelegationAuthorizationService
   private readonly IPortfolioDelegationRepository _delegationRepository;
   private readonly UserManager<AppUser> _userManager;
 
-  public DelegationAuthorizationService(IPortfolioDelegationRepository delegationRepository, UserManager<AppUser> userManager)
+  public DelegationAuthorizationService(IPortfolioDelegationRepository delegationRepository,
+    UserManager<AppUser> userManager)
   {
     _delegationRepository = delegationRepository;
     _userManager = userManager;

@@ -25,7 +25,10 @@ function isValidRegexPattern (pattern: string): boolean
 function addRegexValidationHandler (input: HTMLInputElement): void
 {
   // eslint-disable-next-line func-style
-  const validate = (): void => { input.classList.toggle('is-invalid', input.value !== '' && !isValidRegexPattern(input.value)); };
+  const validate = (): void =>
+  {
+    input.classList.toggle('is-invalid', input.value !== '' && !isValidRegexPattern(input.value));
+  };
 
   validate();
   input.addEventListener('input', validate);

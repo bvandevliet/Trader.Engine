@@ -1,5 +1,6 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // The .NET Foundation licenses this file to you under the MIT license.
+
 #nullable disable
 
 using System.ComponentModel.DataAnnotations;
@@ -114,7 +115,7 @@ public class LoginModel : PageModel
       // account created afterward via Register), so this accepts either rather than
       // relying on PasswordSignInAsync's username-only overload.
       var user = await _userManager.FindByNameAsync(Input.UserNameOrEmail)
-        ?? await _userManager.FindByEmailAsync(Input.UserNameOrEmail);
+                 ?? await _userManager.FindByEmailAsync(Input.UserNameOrEmail);
 
       if (user == null)
       {
@@ -125,7 +126,8 @@ public class LoginModel : PageModel
       // lockoutOnFailure: true so failed attempts count towards the account lockout
       // policy configured in Program.cs (brute-force protection) — the stock scaffolded
       // template default (false) would silently leave that policy unenforced here.
-      var result = await _signInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+      var result =
+        await _signInManager.PasswordSignInAsync(user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
       if (result.Succeeded)
       {
         _logger.LogInformation("User logged in.");
@@ -146,10 +148,16 @@ public class LoginModel : PageModel
 
         return LocalRedirect(returnUrl);
       }
+
       if (result.RequiresTwoFactor)
       {
-        return RedirectToPage("./LoginWith2fa", new { ReturnUrl = returnUrl, Input.RememberMe });
+        return RedirectToPage("./LoginWith2fa", new
+        {
+          ReturnUrl = returnUrl,
+          Input.RememberMe
+        });
       }
+
       if (result.IsLockedOut)
       {
         _logger.LogWarning("User account locked out.");

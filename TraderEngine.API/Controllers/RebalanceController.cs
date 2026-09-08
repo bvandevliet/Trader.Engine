@@ -40,7 +40,8 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("simulate/{exchangeName}")]
-  public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, string source, SimulationReqDto simulationReqDto)
+  public async Task<ActionResult<SimulationDto>> SimulateRebalance(string exchangeName, string source,
+    SimulationReqDto simulationReqDto)
   {
     _logger.LogTrace("Handling SimulateRebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -50,7 +51,8 @@ public class RebalanceController : ControllerBase
       return NotFound($"Exchange '{exchangeName}' not found.");
 
     var userId = User.GetEffectiveUserId();
-    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret, userId);
+    var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey,
+      simulationReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Get current balance.
     var balanceResult = await exchange.GetBalance(credentials);
@@ -64,7 +66,8 @@ public class RebalanceController : ControllerBase
     var balance = balanceResult.Value!;
 
     var rawTargetAllocs = simulationReqDto.TargetAllocs ??
-      await _marketCapService().BalancedTargetAllocs(_quoteSymbol, simulationReqDto.Config, balance.Allocations.Select(alloc => alloc.Market).ToList());
+                          await _marketCapService().BalancedTargetAllocs(_quoteSymbol, simulationReqDto.Config,
+                            balance.Allocations.Select(alloc => alloc.Market).ToList());
 
     if (null == rawTargetAllocs)
     {
@@ -72,7 +75,8 @@ public class RebalanceController : ControllerBase
     }
 
     // Filter for assets that are potentially tradable.
-    var targetAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, rawTargetAllocs, simulationReqDto.Config.TopRankingCount);
+    var targetAllocsTask = _rebalancingService.GetTopRankingAllocs(exchange, credentials, rawTargetAllocs,
+      simulationReqDto.Config.TopRankingCount);
 
     // Map here to retain current balance as it will be
     // modified by the simulation since it is passed by reference.
@@ -88,7 +92,8 @@ public class RebalanceController : ControllerBase
     // allocation price (no real order book lookup) and fill it instantly at the maker rate, so
     // UseLimitOrders is honored here too — the preview's estimated fees stay accurate without
     // ever touching a real API for a placement that will never actually rest.
-    var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, targetAllocs, balance, source);
+    var orders = await _rebalancingService.Rebalance(simExchange, credentials, simulationReqDto.Config, targetAllocs,
+      balance, source);
 
     // NOTE: This is not needed because the balance is passed by reference.
     //var newBalance = await simExchange.GetBalance(credentials);
@@ -105,7 +110,8 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("{exchangeName}")]
-  public async Task<ActionResult<OrderDto[]>> Rebalance(string exchangeName, string source, RebalanceReqDto rebalanceReqDto)
+  public async Task<ActionResult<OrderDto[]>> Rebalance(string exchangeName, string source,
+    RebalanceReqDto rebalanceReqDto)
   {
     _logger.LogTrace("Handling Rebalance request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -115,14 +121,17 @@ public class RebalanceController : ControllerBase
       return NotFound($"Exchange '{exchangeName}' not found.");
 
     var userId = User.GetEffectiveUserId();
-    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret, userId);
+    var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey,
+      rebalanceReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Filter for assets that are potentially tradable.
-    var targetAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials, rebalanceReqDto.TargetAllocs, rebalanceReqDto.Config.TopRankingCount);
+    var targetAllocs = await _rebalancingService.GetTopRankingAllocs(exchange, credentials,
+      rebalanceReqDto.TargetAllocs, rebalanceReqDto.Config.TopRankingCount);
 
     // Execute rebalance.
     // TODO: Properly handle exchange auth errors.
-    var orders = await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, targetAllocs, null, source);
+    var orders =
+      await _rebalancingService.Rebalance(exchange, credentials, rebalanceReqDto.Config, targetAllocs, null, source);
 
     // Persisted here rather than left to the caller (TraderEngine.Web used to set this only after
     // a successful round trip): the rebalance has already run for real by this point regardless of
@@ -136,7 +145,8 @@ public class RebalanceController : ControllerBase
   }
 
   [HttpPost("execute/{exchangeName}")]
-  public async Task<ActionResult<OrderDto[]>> ExecuteOrders(string exchangeName, string source, ExecuteOrdersReqDto executeOrdersReqDto)
+  public async Task<ActionResult<OrderDto[]>> ExecuteOrders(string exchangeName, string source,
+    ExecuteOrdersReqDto executeOrdersReqDto)
   {
     _logger.LogTrace("Handling ExecuteOrders request for '{Host}' ..", HttpContext.Connection.RemoteIpAddress);
 
@@ -146,7 +156,8 @@ public class RebalanceController : ControllerBase
       return NotFound($"Exchange '{exchangeName}' not found.");
 
     var userId = User.GetEffectiveUserId();
-    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret, userId);
+    var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey,
+      executeOrdersReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Execute rebalance orders.
     // TODO: Properly handle exchange auth errors.

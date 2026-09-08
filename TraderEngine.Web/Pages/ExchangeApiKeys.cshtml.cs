@@ -33,7 +33,11 @@ public class ExchangeApiKeysModel : TraderEnginePageModelBase
   }
 
   [BindProperty]
-  public ApiCredReqDto Input { get; set; } = new() { ApiKey = string.Empty, ApiSecret = string.Empty };
+  public ApiCredReqDto Input { get; set; } = new()
+  {
+    ApiKey = string.Empty,
+    ApiSecret = string.Empty
+  };
 
   private async Task<string> GetOutboundIp(CancellationToken ct)
   {

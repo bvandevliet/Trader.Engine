@@ -36,10 +36,10 @@ public static partial class CommonMapper
       AmountQuoteAvailable = source.AmountQuoteAvailable,
       AmountQuoteTotal = source.AmountQuoteTotal,
       Allocations = source.Allocations
-      .OrderBy(a => !a.Market.BaseSymbol.Equals(source.QuoteSymbol))
-      .ThenByDescending(a => a.AmountQuote)
-      .Select(MapAllocation)
-      .ToList(),
+        .OrderBy(a => !a.Market.BaseSymbol.Equals(source.QuoteSymbol))
+        .ThenByDescending(a => a.AmountQuote)
+        .Select(MapAllocation)
+        .ToList(),
     };
   }
 }

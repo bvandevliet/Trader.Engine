@@ -27,14 +27,16 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
     _inner = inner;
   }
 
-  public Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials, CancellationToken ct = default)
+  public Task<IAsyncDisposable> BeginOrderNotificationSessionAsync(ExchangeCredentials credentials,
+    CancellationToken ct = default)
   {
     BeginSessionCallCount++;
 
     return Task.FromResult<IAsyncDisposable>(new TrackingDisposable(() => SessionDisposeCallCount++));
   }
 
-  public Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout, CancellationToken ct = default)
+  public Task<OrderDto?> WaitForOrderEndedAsync(ExchangeCredentials credentials, OrderDto order, TimeSpan timeout,
+    CancellationToken ct = default)
   {
     throw new NotImplementedException();
   }
@@ -96,7 +98,8 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
     return _inner.GetBestBidAsk(credentials, market);
   }
 
-  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order, string source = "API")
+  public Task<Result<OrderDto, ExchangeErrCodeEnum>> NewOrder(ExchangeCredentials credentials, OrderReqDto order,
+    string source = "API")
   {
     return _inner.NewOrder(credentials, order, source);
   }
@@ -106,7 +109,8 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
     return _inner.GetOrder(credentials, orderId, market);
   }
 
-  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market, string source = "API")
+  public Task<OrderDto?> CancelOrder(ExchangeCredentials credentials, string orderId, MarketReqDto market,
+    string source = "API")
   {
     return _inner.CancelOrder(credentials, orderId, market, source);
   }
@@ -116,12 +120,14 @@ internal sealed class ScriptedOrderNotificationExchange : IExchange, IExchangeOr
     return _inner.GetOpenOrders(credentials, market);
   }
 
-  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null, string source = "API")
+  public Task<IEnumerable<OrderDto>?> CancelAllOpenOrders(ExchangeCredentials credentials, MarketReqDto? market = null,
+    string source = "API")
   {
     return _inner.CancelAllOpenOrders(credentials, market, source);
   }
 
-  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials, string? baseSymbol = null, string source = "API")
+  public Task<Result<IEnumerable<OrderDto>?, ExchangeErrCodeEnum>> SellAllPositions(ExchangeCredentials credentials,
+    string? baseSymbol = null, string source = "API")
   {
     return _inner.SellAllPositions(credentials, baseSymbol, source);
   }

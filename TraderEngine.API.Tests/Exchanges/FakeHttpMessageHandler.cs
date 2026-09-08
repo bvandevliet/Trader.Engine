@@ -44,7 +44,8 @@ internal sealed class FakeHttpMessageHandler(HttpStatusCode statusCode, string r
     _responseBody = newResponseBody;
   }
 
-  protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+  protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request,
+    CancellationToken cancellationToken)
   {
     RequestCount++;
     LastRequest = request;

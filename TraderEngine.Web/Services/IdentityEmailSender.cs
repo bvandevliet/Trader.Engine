@@ -18,7 +18,8 @@ public class IdentityEmailSender : IEmailSender<AppUser>
 
   public Task SendConfirmationLinkAsync(AppUser user, string email, string confirmationLink)
   {
-    return SendEmail(email, "Confirm your email", $"Confirm your account by <a href='{confirmationLink}'>clicking here</a>.");
+    return SendEmail(email, "Confirm your email",
+      $"Confirm your account by <a href='{confirmationLink}'>clicking here</a>.");
   }
 
   public Task SendPasswordResetLinkAsync(AppUser user, string email, string resetLink)

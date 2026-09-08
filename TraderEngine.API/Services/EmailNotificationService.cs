@@ -33,7 +33,7 @@ public class EmailNotificationService : IEmailNotificationService
   private async Task<AppUser> GetUserOrThrow(Guid userId)
   {
     return await _userManager.FindByIdAsync(userId.ToString())
-      ?? throw new InvalidOperationException($"User '{userId}' not found.");
+           ?? throw new InvalidOperationException($"User '{userId}' not found.");
   }
 
   // Emails have no client-side JS to localize timestamps with (see localizeTimestamps in the web
@@ -57,7 +57,7 @@ public class EmailNotificationService : IEmailNotificationService
   }
 
   private readonly string _cssString =
-@"
+    @"
 pre,
 code,
 kbd,
@@ -78,7 +78,8 @@ td+td {
 }";
 
   public async Task SendAutomationSucceeded(
-    Guid userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, SimulationDto simulated, OrderDto[] ordersExecuted)
+    Guid userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, SimulationDto simulated,
+    OrderDto[] ordersExecuted)
   {
     var userInfo = await GetUserOrThrow(userId);
 
@@ -86,77 +87,79 @@ td+td {
     var cumulativeValue = newAmountQuoteTotal + totalWithdrawn;
 
     var htmlString =
-    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
-    $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} and executed successfully!</p>" +
-    $"<p>Your current balance summary:<br>" +
-    $"<table class=\"monospace\">" +
-    $"<tr>" +
-    $"<td>Deposited</td>" +
-    $"<td style=\"text-align:right;\">(i)</td>" +
-    $"<td>:</td>" +
-    $"<td style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
-    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
-    $"</tr><tr>" +
-    $"<td>Withdrawn</td>" +
-    $"<td style=\"text-align:right;\">(o)</td>" +
-    $"<td>:</td>" +
-    $"<td style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
-    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
-    $"</tr><tr>" +
-    $"<td>Balance</td>" +
-    $"<td style=\"text-align:right;\">(v)</td>" +
-    $"<td>:</td>" +
-    $"<td style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
-    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
-    $"</tr><tr>" +
-    $"<td>Cumulative</td>" +
-    $"<td style=\"text-align:right;\">(V=o+v)</td>" +
-    $"<td>:</td>" +
-    $"<td style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
-    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
-    $"</tr><tr style=\"border-top-width:1px;\">" +
-    $"<td>Total gain</td>" +
-    $"<td style=\"text-align:right;\">(V-i)</td>" +
-    $"<td>:</td>" +
-    $"<td style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
-    $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
-    $"</tr><tr>" +
-    $"<td></td>" +
-    $"<td style=\"text-align:right;\">(V/i-1)</td>" +
-    $"<td>:</td>" +
-    $"<td style=\"text-align:right;\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
-    $"<td>%</td>" +
-    $"</tr>" +
-    $"</table></p>" +
-    $"<p>The below {ordersExecuted.Length} orders were executed" +
-    $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
-    $"<table class=\"monospace\">" +
-    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Sell).OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
+      $"<meta name=\"format-detection\" content=\"telephone=no\">" +
+      $"<style>{_cssString}</style>" +
+      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
+      $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} and executed successfully!</p>" +
+      $"<p>Your current balance summary:<br>" +
+      $"<table class=\"monospace\">" +
       $"<tr>" +
-      $"<td>Sold</td>" +
-      $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
-      $"<td>of {order.Market.BaseSymbol}</td>" +
-      $"</tr>")) +
-    string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Buy).OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
-      $"<tr>" +
-      $"<td>Bought</td>" +
-      $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
-      $"<td>of {order.Market.BaseSymbol}</td>" +
-      $"</tr>")) +
-    $"</table>" +
-    $"<p>Below is your new portfolio balance overview.</p>" +
-    $"<table class=\"monospace\">" +
-    string.Concat(simulated.NewBalance.Allocations.Select(alloc =>
-      $"<tr>" +
-      $"<td>{alloc.Market.BaseSymbol}</td>" +
-      $"<td style=\"text-align:right;\">{alloc.AmountQuote.Round(2)} {alloc.Market.QuoteSymbol}</td>" +
-      $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : alloc.AmountQuote / newAmountQuoteTotal * 100).Round(2)} %</td>" +
-      $"</tr>")) +
-    $"</table>" +
-    $"<p>This email was automatically generated. Happy trading!<br>" +
-    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
+      $"<td>Deposited</td>" +
+      $"<td style=\"text-align:right;\">(i)</td>" +
+      $"<td>:</td>" +
+      $"<td style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
+      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"</tr><tr>" +
+      $"<td>Withdrawn</td>" +
+      $"<td style=\"text-align:right;\">(o)</td>" +
+      $"<td>:</td>" +
+      $"<td style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
+      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"</tr><tr>" +
+      $"<td>Balance</td>" +
+      $"<td style=\"text-align:right;\">(v)</td>" +
+      $"<td>:</td>" +
+      $"<td style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
+      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"</tr><tr>" +
+      $"<td>Cumulative</td>" +
+      $"<td style=\"text-align:right;\">(V=o+v)</td>" +
+      $"<td>:</td>" +
+      $"<td style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
+      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"</tr><tr style=\"border-top-width:1px;\">" +
+      $"<td>Total gain</td>" +
+      $"<td style=\"text-align:right;\">(V-i)</td>" +
+      $"<td>:</td>" +
+      $"<td style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
+      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"</tr><tr>" +
+      $"<td></td>" +
+      $"<td style=\"text-align:right;\">(V/i-1)</td>" +
+      $"<td>:</td>" +
+      $"<td style=\"text-align:right;\">{cumulativeValue.GainPerc(totalDeposited, 2)}</td>" +
+      $"<td>%</td>" +
+      $"</tr>" +
+      $"</table></p>" +
+      $"<p>The below {ordersExecuted.Length} orders were executed" +
+      $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
+      $"<table class=\"monospace\">" +
+      string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Sell)
+        .OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
+          $"<tr>" +
+          $"<td>Sold</td>" +
+          $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
+          $"<td>of {order.Market.BaseSymbol}</td>" +
+          $"</tr>")) +
+      string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Buy)
+        .OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
+          $"<tr>" +
+          $"<td>Bought</td>" +
+          $"<td style=\"text-align:right;\">{order.AmountQuoteFilled.Round(2)} {order.Market.QuoteSymbol}</td>" +
+          $"<td>of {order.Market.BaseSymbol}</td>" +
+          $"</tr>")) +
+      $"</table>" +
+      $"<p>Below is your new portfolio balance overview.</p>" +
+      $"<table class=\"monospace\">" +
+      string.Concat(simulated.NewBalance.Allocations.Select(alloc =>
+        $"<tr>" +
+        $"<td>{alloc.Market.BaseSymbol}</td>" +
+        $"<td style=\"text-align:right;\">{alloc.AmountQuote.Round(2)} {alloc.Market.QuoteSymbol}</td>" +
+        $"<td style=\"text-align:right;\">{(newAmountQuoteTotal == 0 ? 0 : alloc.AmountQuote / newAmountQuoteTotal * 100).Round(2)} %</td>" +
+        $"</tr>")) +
+      $"</table>" +
+      $"<p>This email was automatically generated. Happy trading!<br>" +
+      $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     using var message = new MimeMessage();
 
@@ -174,32 +177,33 @@ td+td {
   }
 
   public async Task SendAutomationFailed(
-    Guid userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData, bool sendAdmin = true)
+    Guid userId, DateTime timestamp, string reason, OrderDto[]? ordersAttempted, object debugData,
+    bool sendAdmin = true)
   {
     var userInfo = await GetUserOrThrow(userId);
 
     var userMsgBody =
-    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
-    $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} but failed!<br>" +
-    $"We will try again within an hour.</p>" +
-    $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
-    $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
-    $"<pre>{string.Join("</pre><pre>", (ordersAttempted ?? []).Select(order => HttpUtility.HtmlEncode(order.ToString())))}</pre>" +
-    $"<p>This email was automatically generated. Happy trading!" +
-    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
+      $"<meta name=\"format-detection\" content=\"telephone=no\">" +
+      $"<style>{_cssString}</style>" +
+      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
+      $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} but failed!<br>" +
+      $"We will try again within an hour.</p>" +
+      $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
+      $"<p>The below {ordersAttempted?.Length ?? 0} orders were attempted:</p>" +
+      $"<pre>{string.Join("</pre><pre>", (ordersAttempted ?? []).Select(order => HttpUtility.HtmlEncode(order.ToString())))}</pre>" +
+      $"<p>This email was automatically generated. Happy trading!" +
+      $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     var adminMsgBody =
-    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
-    $"<style>{_cssString}</style>" +
-    $"<p>Hi Admin,</p>" +
-    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed!</p>" +
-    $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
-    $"<p>Debug data:</p>" +
-    $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), _jsonOptions)}</pre>" +
-    $"<p>This email was automatically generated. Happy trading!<br>" +
-    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
+      $"<meta name=\"format-detection\" content=\"telephone=no\">" +
+      $"<style>{_cssString}</style>" +
+      $"<p>Hi Admin,</p>" +
+      $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed!</p>" +
+      $"<p>Reason: {HttpUtility.HtmlEncode(reason)}</p>" +
+      $"<p>Debug data:</p>" +
+      $"<pre>{JsonSerializer.Serialize(debugData, debugData.GetType(), _jsonOptions)}</pre>" +
+      $"<p>This email was automatically generated. Happy trading!<br>" +
+      $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     using var userMessage = new MimeMessage();
 
@@ -231,13 +235,13 @@ td+td {
     var userInfo = await GetUserOrThrow(userId);
 
     var userMsgBody =
-    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
-    $"<style>{_cssString}</style>" +
-    $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
-    $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} " +
-    $"but failed because exchange API authentication failed!</p>" +
-    $"<p>Please update your exchange API key or disable automation.<br>" +
-    $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
+      $"<meta name=\"format-detection\" content=\"telephone=no\">" +
+      $"<style>{_cssString}</style>" +
+      $"<p>Hi {HttpUtility.HtmlEncode(userInfo.DisplayName)},</p>" +
+      $"<p>An automatic portfolio rebalance was triggered at {FormatForUser(timestamp, userInfo.TimeZoneId)} " +
+      $"but failed because exchange API authentication failed!</p>" +
+      $"<p>Please update your exchange API key or disable automation.<br>" +
+      $"Visit Trader at <a href=\"{_emailSettings.WebsiteUrl}\">{_emailSettings.WebsiteUrl}</a></p>";
 
     using var userMessage = new MimeMessage();
 
@@ -260,12 +264,12 @@ td+td {
     var userInfo = await GetUserOrThrow(userId);
 
     var htmlString =
-    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
-    $"<style>{_cssString}</style>" +
-    $"<p>Hi Admin,</p>" +
-    $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed with an exception:</p>" +
-    $"<p>{exception.Message}:</p>" +
-    $"<pre>{exception.StackTrace}</pre>";
+      $"<meta name=\"format-detection\" content=\"telephone=no\">" +
+      $"<style>{_cssString}</style>" +
+      $"<p>Hi Admin,</p>" +
+      $"<p>An automatic portfolio rebalance for user {userId} ({userInfo.DisplayName}) was triggered at {timestamp:yyyy-MM-dd HH:mm:ss} UTC but failed with an exception:</p>" +
+      $"<p>{exception.Message}:</p>" +
+      $"<pre>{exception.StackTrace}</pre>";
 
     using var message = new MimeMessage();
 
@@ -286,12 +290,12 @@ td+td {
     DateTime timestamp, Exception exception)
   {
     var htmlString =
-    $"<meta name=\"format-detection\" content=\"telephone=no\">" +
-    $"<style>{_cssString}</style>" +
-    $"<p>Hi Admin,</p>" +
-    $"<p>A Worker exception has occurred at {timestamp:yyyy-MM-dd HH:mm:ss} UTC:</p>" +
-    $"<p>{exception.Message}:</p>" +
-    $"<pre>{exception.StackTrace}</pre>";
+      $"<meta name=\"format-detection\" content=\"telephone=no\">" +
+      $"<style>{_cssString}</style>" +
+      $"<p>Hi Admin,</p>" +
+      $"<p>A Worker exception has occurred at {timestamp:yyyy-MM-dd HH:mm:ss} UTC:</p>" +
+      $"<p>{exception.Message}:</p>" +
+      $"<pre>{exception.StackTrace}</pre>";
 
     using var message = new MimeMessage();
 

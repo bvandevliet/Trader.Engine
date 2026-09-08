@@ -47,7 +47,10 @@ function syncFavicon (resolvedTheme: 'light' | 'dark'): void
 {
   const favicon = document.querySelector<HTMLLinkElement>('#favicon-svg');
 
-  if (favicon) { favicon.href = faviconHrefs[resolvedTheme]; }
+  if (favicon)
+  {
+    favicon.href = faviconHrefs[resolvedTheme];
+  }
 }
 
 // Syncs the navbar's <object>-embedded favicon.svg to the resolved theme —
@@ -62,7 +65,10 @@ function syncBrandLogo (resolvedTheme: 'light' | 'dark'): void
     const lightGroup = svgDoc?.getElementById('light-icon');
     const darkGroup = svgDoc?.getElementById('dark-icon');
 
-    if (!svgDoc?.documentElement || !lightGroup || !darkGroup) { return; }
+    if (!svgDoc?.documentElement || !lightGroup || !darkGroup)
+    {
+      return;
+    }
 
     lightGroup.style.display = resolvedTheme === 'light' ? 'inline' : 'none';
     darkGroup.style.display = resolvedTheme === 'dark' ? 'inline' : 'none';
@@ -90,7 +96,10 @@ function updateToggleButton (theme: Theme): void
   const button = document.querySelector<HTMLButtonElement>('#bd-theme');
   const icon = document.querySelector<HTMLElement>('.theme-icon-active');
 
-  if (!button || !icon) { return; }
+  if (!button || !icon)
+  {
+    return;
+  }
 
   icon.className = `bi ${themeIcons[theme]} theme-icon-active`;
   button.dataset.bsThemeValue = theme;
