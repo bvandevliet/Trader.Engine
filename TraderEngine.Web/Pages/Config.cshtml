@@ -6,7 +6,19 @@
 
 <h1>@ViewData["Title"]</h1>
 
+@if (Model.ActingForClient is { } client)
+{
+    <div class="alert alert-info d-flex justify-content-between align-items-center" role="alert">
+        <span>Acting as portfolio manager for <strong>@client.DisplayName</strong>'s portfolio.</span>
+        <span>
+            <a class="btn btn-sm btn-outline-secondary" asp-page="/Dashboard" asp-route-actingAsClientId="@client.Id">Dashboard</a>
+            <a class="btn btn-sm btn-outline-secondary" asp-page="/Delegation">Back to my clients</a>
+        </span>
+    </div>
+}
+
 <form method="post" id="allocation-config-form">
+    <input type="hidden" asp-for="ActingAsClientId" />
     <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
 
     <section class="card mb-3">

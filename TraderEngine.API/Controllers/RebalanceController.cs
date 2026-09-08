@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using TraderEngine.API.Extensions;
 using TraderEngine.API.Factories;
 using TraderEngine.API.Services;
 using TraderEngine.Common.DTOs.API.Request;
@@ -49,7 +49,7 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var userId = User.GetEffectiveUserId();
     var credentials = new ExchangeCredentials(simulationReqDto.ExchangeApiCred.ApiKey, simulationReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Get current balance.
@@ -114,7 +114,7 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var userId = User.GetEffectiveUserId();
     var credentials = new ExchangeCredentials(rebalanceReqDto.ExchangeApiCred.ApiKey, rebalanceReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Filter for assets that are potentially tradable.
@@ -145,7 +145,7 @@ public class RebalanceController : ControllerBase
     if (exchange == null)
       return NotFound($"Exchange '{exchangeName}' not found.");
 
-    var userId = Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+    var userId = User.GetEffectiveUserId();
     var credentials = new ExchangeCredentials(executeOrdersReqDto.ExchangeApiCred.ApiKey, executeOrdersReqDto.ExchangeApiCred.ApiSecret, userId);
 
     // Execute rebalance orders.

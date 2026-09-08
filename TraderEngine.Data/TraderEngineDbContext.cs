@@ -23,6 +23,8 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
 
   public DbSet<MarketCapMetric> MarketCapMetrics => Set<MarketCapMetric>();
 
+  public DbSet<PortfolioManagerGrant> PortfolioManagerGrants => Set<PortfolioManagerGrant>();
+
   protected override void OnModelCreating(ModelBuilder builder)
   {
     base.OnModelCreating(builder);
@@ -89,6 +91,31 @@ public class TraderEngineDbContext(DbContextOptions<TraderEngineDbContext> optio
         .OnDelete(DeleteBehavior.Cascade);
 
       entity.HasIndex(c => new { c.UserId, c.ExchangeName }).IsUnique();
+    });
+
+    builder.Entity<PortfolioManagerGrant>(entity =>
+    {
+      entity.HasOne(g => g.Manager)
+        .WithMany()
+        .HasForeignKey(g => g.ManagerId)
+        .OnDelete(DeleteBehavior.Cascade);
+
+      entity.HasOne(g => g.Client)
+        .WithMany()
+        .HasForeignKey(g => g.ClientId)
+        .OnDelete(DeleteBehavior.Cascade);
+
+      // One row per (manager, client) pair, ever — re-granting after a revoke reuses this row
+      // rather than inserting a new one (see PortfolioManagerGrant's doc comment).
+      entity.HasIndex(g => new { g.ManagerId, g.ClientId }).IsUnique();
+
+      // The composite index above only serves manager-first lookups efficiently; a client's "who
+      // manages me" query needs its own index on the leading ClientId column.
+      entity.HasIndex(g => g.ClientId);
+
+      // Belt-and-suspenders alongside the app-level self-grant rejection in the Delegation page —
+      // a user granting themselves access would be a meaningless no-op row.
+      entity.ToTable(t => t.HasCheckConstraint("ck_portfolio_manager_grant_no_self_grant", "manager_id <> client_id"));
     });
 
     builder.Entity<MarketCapMetric>(entity =>

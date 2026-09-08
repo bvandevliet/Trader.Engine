@@ -1,0 +1,116 @@
+@page
+@model TraderEngine.Web.Pages.DelegationModel
+@{
+    ViewData["Title"] = "Delegated Access";
+}
+
+<h1>@ViewData["Title"]</h1>
+
+<section class="card mb-3">
+    <div class="card-body">
+        <h2 class="card-title h4">Portfolio manager status</h2>
+        @if (Model.IsPortfolioManager)
+        {
+            <p>You are currently a portfolio manager, eligible to be granted access to other users' portfolios.</p>
+            <form asp-page-handler="ToggleManagerRole" method="post">
+                <button type="submit" class="btn btn-outline-danger" data-confirm="Stop being a portfolio manager? This does not remove clients who've granted you access; re-enabling restores it instantly.">Stop being a portfolio manager</button>
+            </form>
+        }
+        else
+        {
+            <p class="text-muted">Becoming a portfolio manager lets other users grant you access to view, configure and rebalance their portfolios on their behalf.</p>
+            <form asp-page-handler="ToggleManagerRole" method="post">
+                <button type="submit" class="btn btn-primary">Become a portfolio manager</button>
+            </form>
+        }
+    </div>
+</section>
+
+<section class="card mb-3">
+    <div class="card-body">
+        <h2 class="card-title h4">Managers with access to your portfolio</h2>
+        <p class="text-muted small">
+            Grant a portfolio manager access by their exact username or email. They will immediately be able to view your
+            balance, view and edit your rebalance configuration, and trigger a rebalance on your account, but never
+            your exchange API keys, which stay exclusively yours.
+        </p>
+        <form asp-page-handler="Grant" method="post" class="d-flex align-items-center gap-2 mb-3">
+            <input type="text" asp-for="ManagerIdentifier" class="form-control" placeholder="Manager's username or email" required />
+            <button type="submit" class="btn btn-outline-secondary flex-shrink-0">Grant access</button>
+        </form>
+        @if (Model.MyManagers.Count > 0)
+        {
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Manager</th>
+                            <th>Granted</th>
+                            <th style="width: 1%;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var manager in Model.MyManagers)
+                        {
+                            <tr>
+                                <td>@manager.DisplayName <span class="text-muted">(@manager.UserName)</span></td>
+                                <td class="text-nowrap"><time datetime="@manager.GrantedAt.ToString("o")" data-utc-date-only="true">@manager.GrantedAt.UtcDateTime.ToString("yyyy-MM-dd")</time></td>
+                                <td class="text-nowrap">
+                                    <form asp-page-handler="RevokeGrant" asp-route-managerId="@manager.UserId" method="post">
+                                        <button type="submit" class="btn btn-sm btn-danger" data-confirm="Revoke this manager's access to your portfolio?">Revoke</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+        else
+        {
+            <p class="text-muted mb-0">No portfolio managers currently have access to your portfolio.</p>
+        }
+    </div>
+</section>
+
+@if (Model.IsPortfolioManager)
+{
+    <section class="card mb-3">
+        <div class="card-body">
+            <h2 class="card-title h4">Clients you manage</h2>
+            @if (Model.MyClients.Count > 0)
+            {
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Client</th>
+                                <th>Granted</th>
+                                <th style="width: 1%;"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var client in Model.MyClients)
+                            {
+                                <tr>
+                                    <td>@client.DisplayName <span class="text-muted">(@client.UserName)</span></td>
+                                    <td class="text-nowrap"><time datetime="@client.GrantedAt.ToString("o")" data-utc-date-only="true">@client.GrantedAt.UtcDateTime.ToString("yyyy-MM-dd")</time></td>
+                                    <td class="text-nowrap">
+                                        <a asp-page="/Dashboard" asp-route-actingAsClientId="@client.UserId" class="btn btn-sm btn-primary">Open dashboard</a>
+                                        <form asp-page-handler="RevokeClient" asp-route-clientId="@client.UserId" method="post" style="display:inline;">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" data-confirm="Stop managing this client's portfolio?">Stop managing</button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <p class="text-muted mb-0">No clients currently grant you access to their portfolio.</p>
+            }
+        </div>
+    </section>
+}

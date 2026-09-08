@@ -23,6 +23,8 @@
   <Project Path="TraderEngine.API/TraderEngine.API.csproj" />
   <Project Path="TraderEngine.Common.Tests/TraderEngine.Common.Tests.csproj" />
   <Project Path="TraderEngine.Common/TraderEngine.Common.csproj" />
+  <Project Path="TraderEngine.Data.Tests/TraderEngine.Data.Tests.csproj" />
   <Project Path="TraderEngine.Data/TraderEngine.Data.csproj" />
+  <Project Path="TraderEngine.Web.Tests/TraderEngine.Web.Tests.csproj" />
   <Project Path="TraderEngine.Web/TraderEngine.Web.csproj" />
 </Solution>

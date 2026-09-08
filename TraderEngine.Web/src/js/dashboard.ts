@@ -62,6 +62,19 @@ interface SimulateResponseDto {
 
 const POLL_INTERVAL_MS = 5000;
 
+// Present only when this dashboard is being viewed by a portfolio manager acting on a client's
+// account. Read straight from the URL rather than a server-rendered data attribute: every
+// navigation here is a full page load, so OnGetAsync has already re-validated this exact value
+// before this script ever runs, and re-reading the same query string it arrived with keeps the
+// two in lockstep by construction rather than by convention. Absent, every call below targets the
+// caller's own account exactly as before this feature existed.
+const actingAsClientId = new URLSearchParams(window.location.search).get('actingAsClientId');
+
+function withActingAsClientId (url: string): string
+{
+  return actingAsClientId ? `${url}?actingAsClientId=${encodeURIComponent(actingAsClientId)}` : url;
+}
+
 const configInitEl = document.getElementById('config-init');
 
 // The full ConfigReqDto as last saved — the visible form only edits a subset of its fields
@@ -279,7 +292,7 @@ function renderBalanceSummary (balance: BalanceDto): void
 // without any rebalance parameter changing, so this keeps ticking regardless of form activity.
 async function refreshBalance (): Promise<void>
 {
-  const response = await fetch('/dashboard/currentbalance');
+  const response = await fetch(withActingAsClientId('/dashboard/currentbalance'));
 
   if (!response.ok) { return; }
 
@@ -322,7 +335,7 @@ async function init (): Promise<void>
 
   try
   {
-    const initData = await postJson<InitDto>('/dashboard/init', buildConfigFromForm());
+    const initData = await postJson<InitDto>(withActingAsClientId('/dashboard/init'), buildConfigFromForm());
 
     ({ totalDeposited, totalWithdrawn } = initData);
 
@@ -367,7 +380,7 @@ async function simulate (): Promise<void>
 
   try
   {
-    const { simulation, assetNames } = await postJson<SimulateResponseDto>('/dashboard/simulate', buildConfigFromForm());
+    const { simulation, assetNames } = await postJson<SimulateResponseDto>(withActingAsClientId('/dashboard/simulate'), buildConfigFromForm());
 
     applySimulation(simulation, assetNames);
 
@@ -398,7 +411,7 @@ async function saveConfig (): Promise<void>
 
   try
   {
-    await postJson('/dashboard/save', buildConfigFromForm());
+    await postJson(withActingAsClientId('/dashboard/save'), buildConfigFromForm());
 
     showAlert(paramsNoticeEl, 'Configuration updated.');
 
@@ -468,7 +481,7 @@ rebalanceNowBtn.addEventListener('click', () =>
     {
       // The response already carries the post-trade balance (see OnPostRebalanceNowAsync) — no
       // separate /dashboard/currentbalance round-trip needed to refresh these two.
-      const { currentBalance } = await postJson<{ currentBalance: BalanceDto }>('/dashboard/rebalancenow', {
+      const { currentBalance } = await postJson<{ currentBalance: BalanceDto }>(withActingAsClientId('/dashboard/rebalancenow'), {
         config: buildConfigFromForm(),
         targetAllocs: lastSimulation.targetAllocs,
       });

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using TraderEngine.Data.AppSettings;
+using TraderEngine.Data.Constants;
 using TraderEngine.Data.Entities;
 
 namespace TraderEngine.Data.Services;
@@ -19,7 +20,7 @@ public class JwtTokenService(IOptions<JwtSettings> jwtOptions) : IJwtTokenServic
   private readonly JwtSettings _jwtSettings = jwtOptions.Value;
   private readonly JsonWebTokenHandler _tokenHandler = new();
 
-  public (string Token, DateTimeOffset ExpiresAt) GenerateToken(AppUser user)
+  public (string Token, DateTimeOffset ExpiresAt) GenerateToken(AppUser user, Guid? actingAsClientId = null)
   {
     var expiresAt = DateTimeOffset.UtcNow.AddMinutes(_jwtSettings.ExpiryMinutes);
 
@@ -28,6 +29,9 @@ public class JwtTokenService(IOptions<JwtSettings> jwtOptions) : IJwtTokenServic
       new(ClaimTypes.NameIdentifier, user.Id.ToString()),
       new(ClaimTypes.Name, user.UserName ?? user.Id.ToString()),
     ];
+
+    if (actingAsClientId is { } clientId && clientId != user.Id)
+      claims.Add(new(DelegationClaimTypes.ActingAsClientId, clientId.ToString()));
 
     var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSettings.SigningKey));
     var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);

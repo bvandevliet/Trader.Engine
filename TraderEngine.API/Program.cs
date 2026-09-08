@@ -1,6 +1,7 @@
 using System.Text;
 using System.Threading.Channels;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Authorization;
 using Microsoft.EntityFrameworkCore;
@@ -8,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using TraderEngine.API.AppSettings;
+using TraderEngine.API.Authorization;
 using TraderEngine.API.Data;
 using TraderEngine.API.Exchanges;
 using TraderEngine.API.Extensions;
@@ -88,7 +90,18 @@ public class Program
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.SigningKey)),
       });
 
-    builder.Services.AddAuthorization();
+    // The default policy already requires an authenticated user (AddAuthorization()'s own
+    // default); adding DelegatedAccessRequirement here — rather than only inside individual
+    // controllers — means every endpoint, including any added later, automatically re-verifies a
+    // delegated (ActingAsClientId-carrying) token against the database before proceeding. See
+    // DelegatedAccessHandler.
+    builder.Services.AddAuthorization(options =>
+    {
+      options.DefaultPolicy = new AuthorizationPolicyBuilder(options.DefaultPolicy)
+        .AddRequirements(new DelegatedAccessRequirement())
+        .Build();
+    });
+    builder.Services.AddScoped<IAuthorizationHandler, DelegatedAccessHandler>();
 
     builder.Services.AddTraderEngineApiRateLimiting();
 

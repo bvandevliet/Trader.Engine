@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using TraderEngine.Common.DTOs.API.Request;
 using TraderEngine.Data.Entities;
 using TraderEngine.Data.Repositories;
+using TraderEngine.Web.Services;
 
 namespace TraderEngine.Web.Pages;
 
@@ -14,12 +15,28 @@ namespace TraderEngine.Web.Pages;
 public class ConfigModel : TraderEnginePageModelBase
 {
   private readonly IConfigRepository _configRepository;
+  private readonly IDelegatedAccessResolver _delegatedAccessResolver;
 
-  public ConfigModel(UserManager<AppUser> userManager, IConfigRepository configRepository)
+  public ConfigModel(UserManager<AppUser> userManager, IConfigRepository configRepository, IDelegatedAccessResolver delegatedAccessResolver)
     : base(userManager)
   {
     _configRepository = configRepository;
+    _delegatedAccessResolver = delegatedAccessResolver;
   }
+
+  /// <summary>
+  /// Carries the acting-as-client context across the page's plain form POST (no JS on this page,
+  /// unlike Dashboard) — a hidden input, not a query string, since this page's form always POSTs
+  /// to its own URL.
+  /// </summary>
+  [BindProperty(SupportsGet = true)]
+  public Guid? ActingAsClientId { get; set; }
+
+  /// <summary>
+  /// Null when editing your own config; otherwise the client whose config you're currently
+  /// editing as their portfolio manager.
+  /// </summary>
+  public AppUser? ActingForClient { get; set; }
 
   [BindProperty]
   public List<string> TagsToInclude { get; set; } = [];
@@ -33,15 +50,32 @@ public class ConfigModel : TraderEnginePageModelBase
   [BindProperty]
   public List<double> OverrideWeights { get; set; } = [];
 
-  public async Task OnGetAsync()
+  public async Task<IActionResult> OnGetAsync()
   {
-    var user = await GetCurrentUserAsync();
-    var config = await _configRepository.GetConfig(user.Id);
+    var caller = await GetCurrentUserAsync();
+
+    DelegatedAccessContext ctx;
+
+    try
+    {
+      ctx = await _delegatedAccessResolver.ResolveAsync(caller, ActingAsClientId);
+    }
+    catch (DelegationAccessDeniedException ex)
+    {
+      TempData["Error"] = ex.Message;
+      return RedirectToPage("/Delegation");
+    }
+
+    ActingForClient = ctx.IsDelegated ? ctx.EffectiveUser : null;
+
+    var config = await _configRepository.GetConfig(ctx.EffectiveUser.Id);
 
     TagsToInclude = config.TagsToInclude;
     TagsToIgnore = config.TagsToIgnore;
     OverrideAssets = config.WeightingOverrides.Keys.ToList();
     OverrideWeights = config.WeightingOverrides.Values.ToList();
+
+    return Page();
   }
 
   public async Task<IActionResult> OnPostAsync()
@@ -49,16 +83,29 @@ public class ConfigModel : TraderEnginePageModelBase
     if (!ValidateTagPatterns())
       return Page();
 
-    var user = await GetCurrentUserAsync();
-    var config = await _configRepository.GetConfig(user.Id);
+    var caller = await GetCurrentUserAsync();
+
+    DelegatedAccessContext ctx;
+
+    try
+    {
+      ctx = await _delegatedAccessResolver.ResolveAsync(caller, ActingAsClientId);
+    }
+    catch (DelegationAccessDeniedException ex)
+    {
+      TempData["Error"] = ex.Message;
+      return RedirectToPage("/Delegation");
+    }
+
+    var config = await _configRepository.GetConfig(ctx.EffectiveUser.Id);
 
     ApplyTo(config);
 
-    await _configRepository.SaveConfig(user.Id, config);
+    await _configRepository.SaveConfig(ctx.EffectiveUser.Id, config);
 
     TempData["Notice"] = "Configuration updated.";
 
-    return RedirectToPage();
+    return RedirectToPage(new { ActingAsClientId });
   }
 
   /// <summary>

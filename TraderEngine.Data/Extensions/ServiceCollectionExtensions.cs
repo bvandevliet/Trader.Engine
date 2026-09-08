@@ -16,6 +16,8 @@ public static class ServiceCollectionExtensions
     return services
       .AddScoped<IJwtTokenService, JwtTokenService>()
       .AddScoped<IConfigRepository, EfConfigRepository>()
-      .AddScoped<IApiCredentialsRepository, EfApiCredentialsRepository>();
+      .AddScoped<IApiCredentialsRepository, EfApiCredentialsRepository>()
+      .AddScoped<IPortfolioDelegationRepository, EfPortfolioDelegationRepository>()
+      .AddScoped<IDelegationAuthorizationService, DelegationAuthorizationService>();
   }
 }

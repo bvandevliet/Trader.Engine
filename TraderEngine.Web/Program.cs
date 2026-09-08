@@ -53,6 +53,8 @@ public class Program
 
     builder.Services.AddScoped<IEmailSender<AppUser>, IdentityEmailSender>();
 
+    builder.Services.AddScoped<IDelegatedAccessResolver, DelegatedAccessResolver>();
+
     builder.Services.ConfigureApplicationCookie(options =>
     {
       // Cookies
