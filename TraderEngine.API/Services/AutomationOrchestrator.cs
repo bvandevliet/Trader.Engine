@@ -328,13 +328,36 @@ public class AutomationOrchestrator : IAutomationOrchestrator
         // Save last rebalance timestamp.
         _ = await configRepo.SaveConfig(userConfig.Key, configReqDto);
 
-        // Send success notification.
+        // Send success notification. The balance shown must reflect what was actually executed
+        // against the real exchange, not the pre-trade dry-run's simulated projection (`simulated`
+        // above) — that projection is computed before ordersExecuted are even placed and can diverge
+        // from reality (real slippage, real partial fills the idealized simulation can't produce),
+        // to the point of showing impossible values like a negative EUR allocation. Falls back to
+        // the simulated projection, clearly logged, if the post-trade balance can't be fetched —
+        // the trades already happened, so a reporting hiccup here shouldn't be treated as fatal.
         var totalDepositedTask = exchange.TotalDeposited(credentials);
         var totalWithdrawnTask = exchange.TotalWithdrawn(credentials);
+        var postTradeBalanceResult = await exchange.GetBalance(credentials);
         _ = await Task.WhenAll(totalDepositedTask, totalWithdrawnTask);
+
+        var postTradeBalanceDto = postTradeBalanceResult.ErrorCode == ExchangeErrCodeEnum.Ok &&
+                                   postTradeBalanceResult.Value is not null
+          ? CommonMapper.MapBalance(postTradeBalanceResult.Value)
+          : simulated.NewBalance;
+
+        if (postTradeBalanceResult.ErrorCode != ExchangeErrCodeEnum.Ok || postTradeBalanceResult.Value is null)
+        {
+          _logger.LogWarning(
+            "Failed to fetch post-trade balance for user '{userId}': {ErrorCode} {Summary}. " +
+            "Falling back to the pre-trade simulated projection for the success email.",
+            userConfig.Key, postTradeBalanceResult.ErrorCode, postTradeBalanceResult.Summary);
+        }
+
+        var totalFee = ordersExecuted.Sum(order => order.FeePaid);
+
         await emailNotification.SendAutomationSucceeded(
-          userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, simulated,
-          ordersExecuted);
+          userConfig.Key, now, totalDepositedTask.Result.Value, totalWithdrawnTask.Result.Value, postTradeBalanceDto,
+          totalFee, ordersExecuted);
       }
       catch (Exception exception)
       {

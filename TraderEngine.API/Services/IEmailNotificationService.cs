@@ -5,7 +5,7 @@ namespace TraderEngine.API.Services;
 public interface IEmailNotificationService
 {
   public Task SendAutomationSucceeded(Guid userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn,
-    SimulationDto simulated, OrderDto[] ordersExecuted);
+    BalanceDto newBalance, decimal totalFee, OrderDto[] ordersExecuted);
 
   public Task SendAutomationFailed(Guid userId, DateTime timestamp, string reason, OrderDto[]? ordersExecuted,
     object debugData, bool sendAdmin = true);

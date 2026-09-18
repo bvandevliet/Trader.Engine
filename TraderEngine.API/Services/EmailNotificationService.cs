@@ -78,12 +78,12 @@ td+td {
 }";
 
   public async Task SendAutomationSucceeded(
-    Guid userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, SimulationDto simulated,
-    OrderDto[] ordersExecuted)
+    Guid userId, DateTime timestamp, decimal totalDeposited, decimal totalWithdrawn, BalanceDto newBalance,
+    decimal totalFee, OrderDto[] ordersExecuted)
   {
     var userInfo = await GetUserOrThrow(userId);
 
-    var newAmountQuoteTotal = simulated.NewBalance.AmountQuoteTotal;
+    var newAmountQuoteTotal = newBalance.AmountQuoteTotal;
     var cumulativeValue = newAmountQuoteTotal + totalWithdrawn;
 
     var htmlString =
@@ -98,31 +98,31 @@ td+td {
       $"<td style=\"text-align:right;\">(i)</td>" +
       $"<td>:</td>" +
       $"<td style=\"text-align:right;\">{totalDeposited.Round(2)}</td>" +
-      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"<td>{newBalance.QuoteSymbol}</td>" +
       $"</tr><tr>" +
       $"<td>Withdrawn</td>" +
       $"<td style=\"text-align:right;\">(o)</td>" +
       $"<td>:</td>" +
       $"<td style=\"text-align:right;\">{totalWithdrawn.Round(2)}</td>" +
-      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"<td>{newBalance.QuoteSymbol}</td>" +
       $"</tr><tr>" +
       $"<td>Balance</td>" +
       $"<td style=\"text-align:right;\">(v)</td>" +
       $"<td>:</td>" +
-      $"<td style=\"text-align:right;\">{simulated.NewBalance.AmountQuoteTotal.Floor(2)}</td>" +
-      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"<td style=\"text-align:right;\">{newBalance.AmountQuoteTotal.Floor(2)}</td>" +
+      $"<td>{newBalance.QuoteSymbol}</td>" +
       $"</tr><tr>" +
       $"<td>Cumulative</td>" +
       $"<td style=\"text-align:right;\">(V=o+v)</td>" +
       $"<td>:</td>" +
       $"<td style=\"text-align:right;\">{cumulativeValue.Floor(2)}</td>" +
-      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"<td>{newBalance.QuoteSymbol}</td>" +
       $"</tr><tr style=\"border-top-width:1px;\">" +
       $"<td>Total gain</td>" +
       $"<td style=\"text-align:right;\">(V-i)</td>" +
       $"<td>:</td>" +
       $"<td style=\"text-align:right;\">{(cumulativeValue - totalDeposited).Floor(2)}</td>" +
-      $"<td>{simulated.NewBalance.QuoteSymbol}</td>" +
+      $"<td>{newBalance.QuoteSymbol}</td>" +
       $"</tr><tr>" +
       $"<td></td>" +
       $"<td style=\"text-align:right;\">(V/i-1)</td>" +
@@ -132,7 +132,7 @@ td+td {
       $"</tr>" +
       $"</table></p>" +
       $"<p>The below {ordersExecuted.Length} orders were executed" +
-      $" with a total fee paid of {simulated.TotalFee.Ceiling(2)} {simulated.NewBalance.QuoteSymbol}.</p>" +
+      $" with a total fee paid of {totalFee.Ceiling(2)} {newBalance.QuoteSymbol}.</p>" +
       $"<table class=\"monospace\">" +
       string.Concat(ordersExecuted.Where(order => order.Side == OrderSide.Sell)
         .OrderByDescending(order => order.AmountQuoteFilled).Select(order =>
@@ -151,7 +151,7 @@ td+td {
       $"</table>" +
       $"<p>Below is your new portfolio balance overview.</p>" +
       $"<table class=\"monospace\">" +
-      string.Concat(simulated.NewBalance.Allocations.Select(alloc =>
+      string.Concat(newBalance.Allocations.Select(alloc =>
         $"<tr>" +
         $"<td>{alloc.Market.BaseSymbol}</td>" +
         $"<td style=\"text-align:right;\">{alloc.AmountQuote.Round(2)} {alloc.Market.QuoteSymbol}</td>" +
