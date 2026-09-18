@@ -16,7 +16,7 @@ using TraderEngine.Common.Results;
 
 namespace TraderEngine.API.Exchanges;
 
-public class BitvavoExchange : IExchange, IExchangeOrderNotifications
+public class BitvavoExchange : IExchange, IExchangeOrderNotifications, IExchangeQuoteBalance
 {
   private readonly ILogger<BitvavoExchange> _logger;
   private readonly HttpClient _httpClient;
@@ -91,7 +91,13 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     return request;
   }
 
-  public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
+  /// <summary>
+  /// Fetches and deserializes the raw <c>GET /balance</c> response, shared by <see cref="GetBalance"/>
+  /// (which then prices every entry) and <see cref="GetQuoteBalanceAvailable"/> (which only needs
+  /// one entry, unpriced) so the request/error-handling logic isn't duplicated between them.
+  /// </summary>
+  private async Task<Result<List<BitvavoAllocationDto>, ExchangeErrCodeEnum>> FetchRawBalanceAsync(
+    ExchangeCredentials credentials)
   {
     using var request = CreateRequestMsg(credentials, HttpMethod.Get, "balance");
 
@@ -107,7 +113,8 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
 
         if ((int)response.StatusCode is 401 or 403 || errorCode == "105" || errorCode?.StartsWith('3') is true)
         {
-          return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.AuthenticationError);
+          return Result<List<BitvavoAllocationDto>, ExchangeErrCodeEnum>.Failure(
+            default, ExchangeErrCodeEnum.AuthenticationError);
         }
       }
       catch (Exception ex)
@@ -121,7 +128,7 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
         request.RequestUri, (int)response.StatusCode, response.ReasonPhrase,
         await response.Content.ReadAsStringAsync());
 
-      return Result<Balance, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
+      return Result<List<BitvavoAllocationDto>, ExchangeErrCodeEnum>.Failure(default, ExchangeErrCodeEnum.Other);
     }
 
     List<BitvavoAllocationDto>? result;
@@ -138,6 +145,16 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
         await response.Content.ReadAsStringAsync());
       throw;
     }
+
+    return Result<List<BitvavoAllocationDto>, ExchangeErrCodeEnum>.Success(result);
+  }
+
+  public async Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
+  {
+    var rawResult = await FetchRawBalanceAsync(credentials);
+
+    if (rawResult.Value is not { } result)
+      return Result<Balance, ExchangeErrCodeEnum>.Failure(default, rawResult.ErrorCode);
 
     var balance = new Balance(QuoteSymbol);
 
@@ -175,6 +192,27 @@ public class BitvavoExchange : IExchange, IExchangeOrderNotifications
     _ = balance.TryAddAllocation(new(QuoteSymbol, QuoteSymbol, 1));
 
     return Result<Balance, ExchangeErrCodeEnum>.Success(balance);
+  }
+
+  /// <summary>
+  /// <inheritdoc cref="IExchangeQuoteBalance.GetQuoteBalanceAvailable" path="/summary"/> Skips the
+  /// per-asset <see cref="GetPrice"/> calls <see cref="GetBalance"/> makes for every other held
+  /// asset, since only the quote-currency entry itself is needed here.
+  /// </summary>
+  public async Task<Result<decimal, ExchangeErrCodeEnum>> GetQuoteBalanceAvailable(ExchangeCredentials credentials)
+  {
+    var rawResult = await FetchRawBalanceAsync(credentials);
+
+    if (rawResult.Value is not { } result)
+      return Result<decimal, ExchangeErrCodeEnum>.Failure(default, rawResult.ErrorCode);
+
+    var quoteAlloc = result.Find(alloc => alloc.Symbol.Equals(QuoteSymbol));
+
+    var amountQuote = quoteAlloc is null
+      ? 0
+      : decimal.Parse(quoteAlloc.Available) + decimal.Parse(quoteAlloc.InOrder);
+
+    return Result<decimal, ExchangeErrCodeEnum>.Success(amountQuote);
   }
 
   public async Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)

@@ -16,7 +16,7 @@ namespace TraderEngine.Common.Tests.Exchanges;
 /// leaves unimplemented (<c>GetOrder</c>/<c>CancelOrder</c> throw).
 /// Members not exercised by the tests using this double throw <see cref="NotImplementedException"/>.
 /// </summary>
-internal sealed class ScriptedExchange : IExchange
+internal sealed class ScriptedExchange : IExchange, IExchangeQuoteBalance
 {
   public ILogger<IExchange>? Logger => null;
 
@@ -214,9 +214,38 @@ internal sealed class ScriptedExchange : IExchange
     return balance;
   }
 
+  /// <summary>
+  /// Number of times <see cref="GetBalance"/> was called.
+  /// </summary>
+  public int GetBalanceCalls { get; private set; }
+
   public Task<Result<Balance, ExchangeErrCodeEnum>> GetBalance(ExchangeCredentials credentials)
   {
+    GetBalanceCalls++;
+
     return Task.FromResult(Result<Balance, ExchangeErrCodeEnum>.Success(BalanceResponse));
+  }
+
+  /// <summary>
+  /// Number of times <see cref="GetQuoteBalanceAvailable"/> was called.
+  /// </summary>
+  public int GetQuoteBalanceAvailableCalls { get; private set; }
+
+  /// <summary>
+  /// Overrides the result <see cref="GetQuoteBalanceAvailable"/> reports. Defaults to <see langword="null"/>,
+  /// meaning success with <see cref="BalanceResponse"/>'s own <see cref="Balance.AmountQuoteAvailable"/>
+  /// (mirroring the real <see cref="IExchangeQuoteBalance"/> contract without needing every test to
+  /// configure two balances that agree with each other). Set to a <see cref="ExchangeErrCodeEnum.Other"/>
+  /// failure to exercise the fallback-to-full-<see cref="GetBalance"/> path.
+  /// </summary>
+  public Result<decimal, ExchangeErrCodeEnum>? QuoteBalanceAvailableResponse { get; set; }
+
+  public Task<Result<decimal, ExchangeErrCodeEnum>> GetQuoteBalanceAvailable(ExchangeCredentials credentials)
+  {
+    GetQuoteBalanceAvailableCalls++;
+
+    return Task.FromResult(QuoteBalanceAvailableResponse ??
+      Result<decimal, ExchangeErrCodeEnum>.Success(BalanceResponse.AmountQuoteAvailable));
   }
 
   public Task<Result<decimal, ExchangeErrCodeEnum>> TotalDeposited(ExchangeCredentials credentials)

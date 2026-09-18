@@ -956,10 +956,8 @@ public class RebalancingService : IRebalancingService
 
     try
     {
-      var balanceResult = await exchange.GetBalance(credentials);
-
-      if (balanceResult.Value is { } balance)
-        actualAvailable = balance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
+      if (await GetQuoteBalanceAvailable(exchange, credentials) is { } amountQuoteAvailable)
+        actualAvailable = amountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
     }
     catch (Exception ex)
     {
@@ -969,6 +967,29 @@ public class RebalancingService : IRebalancingService
     }
 
     ledger.Complete(actualAvailable);
+  }
+
+  /// <summary>
+  /// Fetches just the available quote-currency balance, using <see cref="IExchangeQuoteBalance"/>'s
+  /// lightweight path when <paramref name="exchange"/> supports it (skipping the cost of pricing
+  /// every other held asset via a full <see cref="IExchange.GetBalance"/> call), falling back to a
+  /// full balance fetch if the exchange doesn't implement that capability or the lightweight call
+  /// itself fails. Returns null only if both paths fail (or neither is available and the fallback
+  /// fails), leaving the caller to decide how to handle that.
+  /// </summary>
+  private static async Task<decimal?> GetQuoteBalanceAvailable(IExchange exchange, ExchangeCredentials credentials)
+  {
+    if (exchange is IExchangeQuoteBalance quoteBalanceExchange)
+    {
+      var quoteResult = await quoteBalanceExchange.GetQuoteBalanceAvailable(credentials);
+
+      if (quoteResult.ErrorCode == ExchangeErrCodeEnum.Ok)
+        return quoteResult.Value;
+    }
+
+    var balanceResult = await exchange.GetBalance(credentials);
+
+    return balanceResult.Value?.AmountQuoteAvailable;
   }
 
   /// <summary>
@@ -1034,10 +1055,14 @@ public class RebalancingService : IRebalancingService
     var sellOrders = PrepareSellOrders(exchange, orderList);
     var buyOrders = PrepareBuyOrders(exchange, orderList);
 
-    var curBalanceResult = await exchange.GetBalance(credentials);
-    var curBalance = curBalanceResult.Value!;
+    // Only AmountQuoteAvailable is needed here (unlike the target-allocs overload above, which
+    // needs every allocation's current value to compute drifts), so this uses the lightweight
+    // IExchangeQuoteBalance path when available rather than pricing every held asset just to read
+    // one figure off the result.
+    var amountQuoteAvailable = await GetQuoteBalanceAvailable(exchange, credentials)
+      ?? throw new InvalidOperationException($"Failed to fetch quote balance on exchange {exchange.GetType().Name}.");
 
-    var initialAvailableWithFeeBuffer = curBalance.AmountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
+    var initialAvailableWithFeeBuffer = amountQuoteAvailable * (1 - await exchange.GetTakerFee(credentials));
 
     return await ExecuteInterleaved(exchange, credentials, sellOrders, buyOrders, source,
       initialAvailableWithFeeBuffer);
