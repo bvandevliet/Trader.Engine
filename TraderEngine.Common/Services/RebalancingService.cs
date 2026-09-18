@@ -369,66 +369,71 @@ public class RebalancingService : IRebalancingService
     OrderReqDto fallbackReq;
     var toppedUpFullCost = 0m;
 
-    // Mirror the dust-prevention branch in SellOveragesAndVerify: a remainder below the exchange's
-    // minimum order size would get rejected as an AmountQuote-based order, but exchanges commonly
-    // still allow a full-position liquidation by exact (asset-decimals-rounded) Amount. Sells use
-    // that escape hatch directly (no extra funds needed to sell what's already held); a buy has
-    // nothing to fully acquire, so it can only be rescued by topping the remainder up to the
-    // exchange minimum with a small extra claim against the shared batch budget, if one was given.
-    if (remainingAmountQuote < exchange.MinOrderSizeInQuote)
+    // A sell already has an exact remaining base-asset quantity to liquidate — size the fallback
+    // directly by that Amount (asset-decimals-truncated), dust or not, rather than by AmountQuote.
+    // Sizing a sell by AmountQuote forces the exchange to convert a target quote value back into a
+    // base quantity at execution time; under slippage that conversion can undershoot the requested
+    // quote value, and Bitvavo then reports the order as "Expired" (its AmountQuote target unmet)
+    // even though the entire remaining base position was actually liquidated — confirmed live: a
+    // full-liquidation HBAR sell filled 100% of the remaining base amount yet came back "Expired"
+    // because a few cents of its AmountQuote target went unfilled, which tripped the "not all
+    // orders were filled" automation check even though the position was, in fact, fully sold.
+    if (orderReq.Side == OrderSide.Sell)
     {
-      if (orderReq.Side != OrderSide.Sell)
+      // Honor decimals precision for the amount of this asset.
+      var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
+      var decimals = assetData?.Decimals;
+
+      var sellAmount = decimals is not int
+        ? limitOrder.AmountRemaining
+        : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
+
+      if (sellAmount <= 0)
+        return ([limitOrder], 0);
+
+      fallbackReq = new OrderReqDto()
       {
-        var toppedUpAmountQuote =
-          await TryClaimDustTopUp(exchange, credentials, orderReq.Market, claimTopUp, remainingAmountQuote);
+        Market = orderReq.Market,
+        Side = OrderSide.Sell,
+        Type = OrderType.Market,
+        Amount = sellAmount,
+      };
+    }
+    // Mirror the dust-prevention branch above for the buy side: a remainder below the exchange's
+    // minimum order size would get rejected as an AmountQuote-based order. A buy has nothing to
+    // fully acquire (unlike a sell's fixed remaining holding), so it can only be rescued by topping
+    // the remainder up to the exchange minimum with a small extra claim against the shared batch
+    // budget, if one was given.
+    else if (remainingAmountQuote < exchange.MinOrderSizeInQuote)
+    {
+      var toppedUpAmountQuote =
+        await TryClaimDustTopUp(exchange, credentials, orderReq.Market, claimTopUp, remainingAmountQuote);
 
-        if (toppedUpAmountQuote is null)
-        {
-          _logger.LogInformation(
-            "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
-            orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
-
-          return ([limitOrder], 0);
-        }
-
-        var (toppedUpAmountQuoteValue, fullCost) = toppedUpAmountQuote.Value;
-
-        toppedUpFullCost = fullCost;
-
+      if (toppedUpAmountQuote is null)
+      {
         _logger.LogInformation(
-          "Rounding up unfilled buy remainder for market {Market}: {RemainingAmountQuote} topped up to the exchange minimum of {MinOrderSizeInQuote} using {ToppedUpFullCost} claimed from the batch budget.",
-          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote,
-          toppedUpFullCost);
+          "Dropping unfilled buy remainder for market {Market}: {RemainingAmountQuote} is below the exchange minimum of {MinOrderSizeInQuote}, no fallback order placed.",
+          orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote);
 
-        fallbackReq = new OrderReqDto()
-        {
-          Market = orderReq.Market,
-          Side = orderReq.Side,
-          Type = OrderType.Market,
-          AmountQuote = toppedUpAmountQuoteValue,
-        };
+        return ([limitOrder], 0);
       }
-      else
+
+      var (toppedUpAmountQuoteValue, fullCost) = toppedUpAmountQuote.Value;
+
+      toppedUpFullCost = fullCost;
+
+      _logger.LogInformation(
+        "Rounding up unfilled buy remainder for market {Market}: {RemainingAmountQuote} topped up to the exchange minimum of {MinOrderSizeInQuote} using {ToppedUpFullCost} claimed from the batch budget.",
+        orderReq.Market.ToString().SanitizeForLog(), remainingAmountQuote, exchange.MinOrderSizeInQuote,
+        toppedUpFullCost);
+
+      fallbackReq = new OrderReqDto()
       {
-        // Honor decimals precision for the amount of this asset.
-        var assetData = await exchange.GetAsset(credentials, orderReq.Market.BaseSymbol);
-        var decimals = assetData?.Decimals;
-
-        var dustAmount = decimals is not int
-          ? limitOrder.AmountRemaining
-          : TruncateToDecimals(limitOrder.AmountRemaining, (int)decimals);
-
-        if (dustAmount <= 0)
-          return ([limitOrder], 0);
-
-        fallbackReq = new OrderReqDto()
-        {
-          Market = orderReq.Market,
-          Side = OrderSide.Sell,
-          Type = OrderType.Market,
-          Amount = dustAmount,
-        };
-      }
+        Market = orderReq.Market,
+        Side = orderReq.Side,
+        Type = OrderType.Market,
+        AmountQuote = toppedUpAmountQuoteValue,
+      };
     }
     else
     {

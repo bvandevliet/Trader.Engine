@@ -310,6 +310,81 @@ public class RebalancingServiceLimitOrderTests
   }
 
   [TestMethod]
+  public async Task Rebalance_LimitSellCancelledUnfilled_NonDustRemainder_FallsBackToRemainingAmountSell()
+  {
+    // Arrange
+    // Remainder is 0.6 BTC @ 100 bid = 60 EUR — above MinOrderSizeInQuote (1) — a "non-dust"
+    // remainder. Unlike a buy (which has no fixed base quantity to aim for and so is sized by
+    // AmountQuote), a sell already knows exactly how much base asset is left to liquidate: sizing
+    // the fallback by that Amount avoids forcing the exchange to convert an AmountQuote target back
+    // into a base quantity under slippage, which can leave the order's quote target technically
+    // unmet (and reported e.g. "Expired" by Bitvavo) even though the entire base position sold.
+    var exchange = new ScriptedExchange { MinOrderSizeInQuote = 1 };
+    exchange.SetBestBidAsk("BTC", bid: 100, ask: 101);
+    exchange.SetAssetDecimals("BTC", 8);
+
+    exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
+    {
+      Id = "limit-1",
+      Market = _btc,
+      Side = OrderSide.Sell,
+      Type = OrderType.Limit,
+      Status = OrderStatus.New,
+      Amount = 1,
+      AmountFilled = 0,
+      AmountRemaining = 1,
+    }));
+
+    exchange.EnqueueGetOrderResponse(new OrderDto
+    {
+      Id = "limit-1",
+      Market = _btc,
+      Side = OrderSide.Sell,
+      Type = OrderType.Limit,
+      Status = OrderStatus.Canceled,
+      Amount = 1,
+      AmountFilled = 0.4m,
+      AmountRemaining = 0.6m,
+    });
+
+    exchange.EnqueueNewOrderResponse(Result<OrderDto, ExchangeErrCodeEnum>.Success(new OrderDto
+    {
+      Id = "market-1",
+      Market = _btc,
+      Side = OrderSide.Sell,
+      Type = OrderType.Market,
+      Status = OrderStatus.Filled,
+      Amount = 0.6m,
+      AmountFilled = 0.6m,
+      AmountRemaining = 0,
+    }));
+
+    var orders = new[]
+    {
+      new OrderReqDto
+      {
+        Market = _btc,
+        Side = OrderSide.Sell,
+        Type = OrderType.Limit,
+        Amount = 1
+      },
+    };
+
+    // Act
+    var results = await _service.Rebalance(exchange, _credentials, orders, "Test");
+
+    // Assert
+    Assert.AreEqual(2, results.Length);
+    Assert.IsTrue(results[0].IsSuperseded);
+    Assert.IsFalse(results[1].IsSuperseded);
+
+    Assert.AreEqual(2, exchange.NewOrderCalls.Count);
+    Assert.AreEqual(0.6m, exchange.NewOrderCalls[1].Amount);
+    Assert.IsNull(exchange.NewOrderCalls[1].AmountQuote);
+    Assert.AreEqual(OrderType.Market, exchange.NewOrderCalls[1].Type);
+  }
+
+  [TestMethod]
   public async Task Rebalance_LimitBuyCancelledUnfilled_DustRemainder_IsToppedUpToExchangeMinimum()
   {
     // Arrange
