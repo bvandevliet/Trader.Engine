@@ -28,7 +28,7 @@
     <PackageVersion Include="MSTest.TestAdapter" Version="4.3.3"/>
     <PackageVersion Include="MSTest.TestFramework" Version="4.3.3"/>
     <PackageVersion Include="MySqlConnector" Version="2.6.2"/>
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3"/>
+    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.4"/>
     <PackageVersion Include="NSubstitute" Version="6.2.0"/>
     <PackageVersion Include="NuGet.Protocol" Version="7.9.0"/>
     <PackageVersion Include="Riok.Mapperly" Version="4.3.1"/>
